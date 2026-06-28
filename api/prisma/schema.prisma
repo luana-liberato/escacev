@@ -1,0 +1,332 @@
+// schema.prisma — Escacev
+// Banco: PostgreSQL | ORM: Prisma
+//
+// Arquitetura: multitenant por instituicaoId em todas as tabelas.
+// MVP: operação com uma única instituição pré-cadastrada via seed.
+// v2: onboarding de novos tenants sem refatoração de schema.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum PerfilUsuario {
+  ADMIN_GERAL
+  ADMIN_MINISTERIO
+  MEMBRO
+}
+
+enum StatusEscala {
+  RASCUNHO   // invisível ao membro (RN04)
+  PUBLICADA  // visível ao membro
+}
+
+enum StatusTroca {
+  PENDENTE
+  ACEITA
+  REJEITADA
+  CONFIRMADA // admin confirmou
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// INSTITUIÇÃO — tenant raiz
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Instituicao {
+  id        String   @id @default(cuid())
+  nome      String
+  descricao String?
+  logoUrl   String?
+  criadoEm  DateTime @default(now())
+
+  membros     Membro[]
+  ministerios Ministerio[]
+  eventos     Evento[]
+
+  @@map("instituicoes")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AUTENTICAÇÃO — separado do Membro para permitir múltiplos vínculos
+// Uma Conta pode ter Membro em várias instituições (v2)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Conta {
+  id          String   @id @default(cuid())
+  googleSub   String   @unique  // sub do Google OAuth — identificador estável e obrigatório
+  email       String   @unique
+  nomeExibido String?
+  fotoUrl     String?
+  criadoEm    DateTime @default(now())
+
+  membros Membro[]
+
+  @@map("contas")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MEMBRO — pessoa dentro de uma instituição
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Membro {
+  id            String        @id @default(cuid())
+  contaId       String
+  instituicaoId String
+  nome          String
+  email         String        // email de contato/convite (pode diferir da Conta)
+  perfil        PerfilUsuario @default(MEMBRO)
+  ativo         Boolean       @default(true)
+  criadoEm     DateTime       @default(now())
+
+  conta       Conta       @relation(fields: [contaId], references: [id])
+  instituicao Instituicao @relation(fields: [instituicaoId], references: [id])
+
+  ministerios        MembroMinisterio[]
+  alocacoes          Alocacao[]
+  indisponibilidades Indisponibilidade[]
+  trocasPropostas    Troca[]             @relation("TrocaProponente")
+  trocasRecebidas    Troca[]             @relation("TrocaAlvo")
+  notificacoes       Notificacao[]
+
+  @@unique([contaId, instituicaoId]) // uma conta = um membro por instituição
+  @@map("membros")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MINISTÉRIO — grupo dentro da instituição
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Ministerio {
+  id            String   @id @default(cuid())
+  instituicaoId String
+  nome          String
+  descricao     String?
+  criadoEm     DateTime @default(now())
+
+  instituicao Instituicao      @relation(fields: [instituicaoId], references: [id])
+  funcoes     Funcao[]
+  membros     MembroMinisterio[]
+  escalas     Escala[]
+
+  @@map("ministerios")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FUNÇÃO — catálogo de funções por ministério (ex: baterista, vocal, pregador)
+// Membros NÃO têm função fixa — a função é atribuída na alocação da escala
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Funcao {
+  id           String   @id @default(cuid())
+  ministerioId String
+  nome         String
+  criadoEm    DateTime @default(now())
+
+  ministerio  Ministerio @relation(fields: [ministerioId], references: [id])
+  vagas       VagaEvento[]
+
+  // Matriz de compatibilidade — sempre armazenar com funcaoAId < funcaoBId (RN02)
+  compatibilidadesComoA CompatibilidadeFuncao[] @relation("FuncaoA")
+  compatibilidadesComoB CompatibilidadeFuncao[] @relation("FuncaoB")
+
+  @@map("funcoes")
+}
+
+// Compatibilidade entre funções (RN01, RN02)
+// Ausência de registro = incompatível por padrão
+// Regra de armazenamento: sempre funcaoAId < funcaoBId (evita duplicatas)
+model CompatibilidadeFuncao {
+  id        String @id @default(cuid())
+  funcaoAId String
+  funcaoBId String
+
+  funcaoA Funcao @relation("FuncaoA", fields: [funcaoAId], references: [id])
+  funcaoB Funcao @relation("FuncaoB", fields: [funcaoBId], references: [id])
+
+  @@unique([funcaoAId, funcaoBId])
+  @@map("compatibilidade_funcoes")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MEMBRO ↔ MINISTÉRIO — sem função fixa (atribuída só na escala)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model MembroMinisterio {
+  id           String   @id @default(cuid())
+  membroId     String
+  ministerioId String
+  criadoEm    DateTime @default(now())
+
+  membro     Membro     @relation(fields: [membroId], references: [id])
+  ministerio Ministerio @relation(fields: [ministerioId], references: [id])
+
+  @@unique([membroId, ministerioId])
+  @@map("membros_ministerios")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EVENTO — entrada do calendário da instituição
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Evento {
+  id            String   @id @default(cuid())
+  instituicaoId String
+  nome          String
+  tipo          String   // "culto" | "ensaio" | "especial"
+  inicio        DateTime
+  fim           DateTime
+  criadoEm     DateTime @default(now())
+
+  instituicao Instituicao  @relation(fields: [instituicaoId], references: [id])
+  vagas       VagaEvento[]
+  escalas     Escala[]
+
+  @@map("eventos")
+}
+
+// Vaga por função em um evento (ex: 1 baterista, 2 vocais)
+model VagaEvento {
+  id         String @id @default(cuid())
+  eventoId   String
+  funcaoId   String
+  quantidade Int    @default(1)
+
+  evento    Evento     @relation(fields: [eventoId], references: [id])
+  funcao    Funcao     @relation(fields: [funcaoId], references: [id])
+  alocacoes Alocacao[]
+
+  @@unique([eventoId, funcaoId])
+  @@map("vagas_evento")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ESCALA — escala de um ministério para um evento
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Escala {
+  id           String       @id @default(cuid())
+  ministerioId String
+  eventoId     String
+  status       StatusEscala @default(RASCUNHO)
+  publicadaEm  DateTime?    // preenchido ao publicar (RN07: prioridade por publicadaEm)
+  criadoEm    DateTime      @default(now())
+
+  ministerio Ministerio @relation(fields: [ministerioId], references: [id])
+  evento     Evento     @relation(fields: [eventoId], references: [id])
+  alocacoes  Alocacao[]
+
+  @@unique([ministerioId, eventoId])
+  @@map("escalas")
+}
+
+// Alocação de um membro em uma vaga da escala
+// conflito = true quando admin confirmou sabendo do conflito (RN03)
+model Alocacao {
+  id       String   @id @default(cuid())
+  escalaId String
+  vagaId   String
+  membroId String
+  conflito Boolean  @default(false) // RN03: sobrescrita ciente do conflito
+  criadoEm DateTime @default(now())
+
+  escala Escala     @relation(fields: [escalaId], references: [id])
+  vaga   VagaEvento @relation(fields: [vagaId], references: [id])
+  membro Membro     @relation(fields: [membroId], references: [id])
+
+  trocasOrigem Troca[] @relation("TrocaOrigem")
+
+  @@unique([escalaId, vagaId, membroId])
+  @@index([membroId]) // motor de conflito varre por membroId — index importante
+  @@map("alocacoes")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// INDISPONIBILIDADE — período em que o membro não pode ser escalado (RN05)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Indisponibilidade {
+  id       String   @id @default(cuid())
+  membroId String
+  inicio   DateTime
+  fim      DateTime
+  motivo   String?
+  criadoEm DateTime @default(now())
+
+  membro Membro @relation(fields: [membroId], references: [id])
+
+  @@index([membroId, inicio, fim]) // consultado pelo motor de conflito
+  @@map("indisponibilidades")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TROCA / COBERTURA — RF09 (desejável)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Troca {
+  id               String      @id @default(cuid())
+  proponenteId     String
+  alvoId           String?     // null em pedido de cobertura (aberto a candidatos)
+  alocacaoOrigemId String
+  tipo             String      // "DIRETA" | "COBERTURA"
+  status           StatusTroca @default(PENDENTE)
+  criadoEm        DateTime    @default(now())
+  atualizadoEm    DateTime    @updatedAt
+
+  proponente     Membro   @relation("TrocaProponente", fields: [proponenteId], references: [id])
+  alvo           Membro?  @relation("TrocaAlvo", fields: [alvoId], references: [id])
+  alocacaoOrigem Alocacao @relation("TrocaOrigem", fields: [alocacaoOrigemId], references: [id])
+
+  @@map("trocas")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CÓDIGO DE ACESSO — v2 (não implementado no MVP)
+//
+// Permite que uma pessoa entre em um tenant digitando um código na tela de acesso,
+// sem precisar de convite individual. O admin gera o código e o compartilha
+// (ex: via WhatsApp do grupo).
+//
+// Model planejado para v2:
+//
+// model CodigoAcesso {
+//   id            String    @id @default(cuid())
+//   instituicaoId String
+//   codigo        String    @unique   // ex: "IPBC-2026" — gerado ou definido pelo admin
+//   descricao     String?             // ex: "Acesso para novos membros do coral"
+//   usos          Int       @default(0)
+//   maxUsos       Int?                // null = ilimitado
+//   expiradoEm    DateTime?           // null = sem expiração
+//   ativo         Boolean   @default(true)
+//   criadoEm      DateTime  @default(now())
+//
+//   instituicao Instituicao @relation(fields: [instituicaoId], references: [id])
+// }
+//
+// Fluxo: usuário acessa /entrar → digita o código → sistema identifica a instituição
+// → usuário faz login com Google → Conta é criada/vinculada → Membro criado com
+// perfil MEMBRO padrão naquela instituição.
+// ─────────────────────────────────────────────────────────────────────────────
+
+
+
+model Notificacao {
+  id       String   @id @default(cuid())
+  membroId String
+  tipo     String   // "ESCALADO" | "INDISPONIBILIDADE_CONFLITO" | "LEMBRETE" | "TROCA"
+  titulo   String
+  corpo    String
+  lida     Boolean  @default(false)
+  criadoEm DateTime @default(now())
+
+  membro Membro @relation(fields: [membroId], references: [id])
+
+  @@map("notificacoes")
+}

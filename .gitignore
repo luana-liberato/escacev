@@ -1,0 +1,38 @@
+# Dependências
+node_modules/
+
+# Variáveis de ambiente
+.env
+.env.local
+.env.*.local
+
+# Builds
+dist/
+build/
+web/dist/
+api/dist/
+
+# Prisma
+api/prisma/*.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor / SO
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Vite
+.vite/
+
+# Claude Code (configurações locais/pessoais)
+.claude/settings.local.json
+
+# Documentação pessoal de estudo
+etendimento-escacev.md

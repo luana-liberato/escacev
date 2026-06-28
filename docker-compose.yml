@@ -1,0 +1,55 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: escacev-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: escacev
+      POSTGRES_PASSWORD: escacev
+      POSTGRES_DB: escacev
+    ports:
+      - '5432:5432'
+    volumes:
+      - escacev-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U escacev -d escacev']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    container_name: escacev-api
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://escacev:escacev@postgres:5432/escacev
+      PORT: '3001'
+      NODE_ENV: development
+      INSTITUTION_ID: inst-escacev
+      INSTITUTION_NAME: Minha Igreja
+    ports:
+      - '3001:3001'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # Aplica as migrations já versionadas antes de subir a API.
+    command: sh -c "npx prisma migrate deploy && npm run dev"
+
+  web:
+    container_name: escacev-web
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      # O browser roda no host, então aponta para a porta exposta da API.
+      VITE_API_URL: http://localhost:3001
+    ports:
+      - '5173:5173'
+    depends_on:
+      - api
+
+volumes:
+  escacev-pgdata:
