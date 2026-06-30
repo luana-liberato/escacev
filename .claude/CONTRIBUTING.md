@@ -78,6 +78,37 @@ chore(deps): adiciona passport-google-oauth20
 
 ---
 
+## Disciplina de Commits — Incrementais e Atômicos
+
+Além de seguir o formato Conventional Commits, o trabalho é commitado em incrementos
+pequenos e lógicos, à medida que cada parte fica pronta e testada — nunca num único
+commit grande ao final da tarefa. Isso mantém o histórico legível e serve como
+registro do processo de construção do projeto.
+
+### Princípios
+- **Um commit = uma unidade lógica.** Cada entidade, repositório, use case + endpoint
+  ou middleware vira seu próprio commit. Mudanças sem relação não compartilham o mesmo commit.
+- **Cada commit deixa o projeto funcional.** O código compila e roda após cada commit —
+  um estado que quebra o build não é commitado.
+- **Commit progressivo.** Assim que uma peça é validada, ela é commitada antes do início
+  da próxima, em vez de acumular tudo.
+- **Mensagem descreve apenas o que aquele commit entrega**, no padrão Conventional Commits.
+- **Ordem por dependência:** entidade → repositório → use case → controller → rota.
+
+### Exemplo — uma feature quebrada em commits
+Em vez de um único `feat(auth): autenticação com Google`, prefira:
+
+```
+feat(auth): adiciona entidades Conta e Membro com factory create()
+feat(auth): implementa repositórios de Conta e Membro
+feat(auth): configura estratégia Google OAuth e rotas de login
+feat(auth): adiciona serviço de geração e verificação de JWT
+feat(auth): implementa middlewares auth, rbac e errorHandler
+chore(auth): atualiza seed com admin geral para teste de login
+```
+
+---
+
 ## Padrão de Branches
 
 - **`main`** — sempre deployável. Reflete o estado estável do projeto.

@@ -35,8 +35,8 @@
 - [x] Primeira migration (init) + seed da instituição
 - [x] Primeiro commit + tag sprint-0
 - [ ] Provisionar VPS (Docker, nginx, domínio apontado)
-- [ ] Criar projeto no Google Cloud Console + tela de consentimento OAuth
-- [ ] Gerar Client ID e Client Secret do Google OAuth
+- [x] Criar projeto no Google Cloud Console + tela de consentimento OAuth
+- [x] Gerar Client ID e Client Secret do Google OAuth
 - [ ] Configurar conta de e-mail transacional (Mailtrap para dev, SendGrid/SMTP para prod)
 
 ---

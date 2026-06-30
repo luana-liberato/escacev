@@ -79,24 +79,24 @@ escacev/
 ### 4.1 Entidades — Construtor Privado + Factory Static
 
 ```typescript
-// ✅ CORRETO — sempre assim
-class Ministerio {
+// ✅ CORRETO — sempre assim (propriedades em inglês; mensagens em português)
+class Ministry {
   private constructor(
     public readonly id: string,
-    public readonly nome: string,
-    public readonly instituicaoId: string,
-    public readonly criadoEm: Date,
+    public readonly name: string,
+    public readonly institutionId: string,
+    public readonly createdAt: Date,
   ) {}
 
-  static create(props: { nome: string; instituicaoId: string }): Ministerio {
-    if (!props.nome?.trim()) throw new AppError('Nome é obrigatório', 400);
-    return new Ministerio(cuid(), props.nome.trim(), props.instituicaoId, new Date());
+  static create(props: { name: string; institutionId: string }): Ministry {
+    if (!props.name?.trim()) throw new AppError('Nome é obrigatório', 400);
+    return new Ministry(cuid(), props.name.trim(), props.institutionId, new Date());
   }
 }
 
 // ❌ ERRADO — nunca construtor público em entidades de domínio
-class Ministerio {
-  constructor(public nome: string) {}
+class Ministry {
+  constructor(public name: string) {}
 }
 ```
 
@@ -104,17 +104,17 @@ class Ministerio {
 
 ```typescript
 // Use cases recebem dependências via construtor — nunca importam diretamente
-class CriarMinisterioUseCase {
-  constructor(private readonly ministerioRepo: MinisterioRepository) {}
+class CreateMinistryUseCase {
+  constructor(private readonly ministryRepo: MinistryRepository) {}
 
-  async execute(dto: { nome: string; instituicaoId: string }) {
-    const ministerio = Ministerio.create(dto);
-    return this.ministerioRepo.save(ministerio);
+  async execute(dto: { name: string; institutionId: string }) {
+    const ministry = Ministry.create(dto);
+    return this.ministryRepo.save(ministry);
   }
 }
 
 // No controller, instanciar assim:
-const useCase = new CriarMinisterioUseCase(new PrismaMinisterioRepository());
+const useCase = new CreateMinistryUseCase(new PrismaMinistryRepository());
 ```
 
 ### 4.3 asyncHandler — Toda rota usa este wrapper
@@ -126,7 +126,7 @@ export const asyncHandler = (fn: RequestHandler): RequestHandler =>
   (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
 // Nas rotas — nunca omitir:
-router.post('/ministerios', auth, rbac('ADMIN_GERAL'), asyncHandler(controller.criar));
+router.post('/ministerios', auth, rbac('ADMIN_GERAL'), asyncHandler(controller.create));
 ```
 
 ### 4.4 Formato de Resposta da API
@@ -134,7 +134,7 @@ router.post('/ministerios', auth, rbac('ADMIN_GERAL'), asyncHandler(controller.c
 ```typescript
 // SEMPRE este shape — nunca inventar outro formato
 // Sucesso:
-res.status(201).json({ success: true,  data: ministerio, message: 'Ministério criado' });
+res.status(201).json({ success: true,  data: ministry, message: 'Ministério criado' });
 // Erro:
 res.status(400).json({ success: false, data: null,       message: 'Nome é obrigatório' });
 ```
@@ -142,12 +142,59 @@ res.status(400).json({ success: false, data: null,       message: 'Nome é obrig
 ### 4.5 Tenant via JWT — Regra de Ouro
 
 ```typescript
-// O instituicaoId NUNCA vem no body da request — sempre do token JWT
-const { instituicaoId, membroId, perfil } = req.user; // injetado pelo middleware auth
+// O institutionId NUNCA vem no body da request — sempre do token JWT
+const { institutionId, memberId, role } = req.user; // injetado pelo middleware auth
 
 // ❌ NUNCA fazer isso:
-const { instituicaoId } = req.body;
+const { institutionId } = req.body;
 ```
+
+### 4.6 Convenção de Idioma — Código em Inglês, Schema em Português
+
+**Regra:** todo o código é escrito em **inglês** — nomes de arquivos, classes, funções,
+métodos, variáveis, parâmetros, tipos, interfaces, **entidades de domínio e suas
+propriedades**, chaves do payload do JWT, enums TS, constantes e env vars. A **única
+exceção** é o `schema.prisma`.
+
+```typescript
+// ✅ CORRETO — domínio em inglês
+class Account { readonly displayName: string | null; /* ... */ }
+class Member  { readonly institutionId: string; readonly role: PerfilUsuario; /* ... */ }
+findByAccountId(accountId: string): Promise<Member | null>;
+linkAccount(memberId: string, accountId: string): Promise<Member>;
+```
+
+**O que PERMANECE em português:**
+- O arquivo `schema.prisma` (models, campos, enums e seus valores: `Conta`, `Membro`,
+  `instituicaoId`, `ADMIN_GERAL`, `RASCUNHO`...).
+- **Os nomes gerados pelo Prisma** acessados na fronteira do repositório: o tipo da row
+  (`import type { Conta as ContaRow }`), o acesso ao client (`prisma.membro`, `prisma.conta`)
+  e as colunas em literais (`where: { contaId }`, `data: { nome, perfil }`, `row.instituicaoId`).
+  Isso é inevitável — é a API que o Prisma gera a partir do schema.
+- O **tipo** e os **valores** do enum `PerfilUsuario` (`'MEMBRO'`, `'ADMIN_GERAL'`), por
+  serem gerados pelo Prisma.
+
+**A tradução PT↔EN acontece SÓ no repositório** (`infra/database/repositories`), nos
+métodos `toEntity` (coluna PT → propriedade EN) e `save`/`update` (propriedade EN → coluna PT):
+
+```typescript
+// PrismaMemberRepository
+private static toEntity(row: MembroRow): Member {
+  return Member.restore({
+    accountId:     row.contaId,        // contaId       → accountId
+    institutionId: row.instituicaoId,  // instituicaoId → institutionId
+    name:          row.nome,           // nome          → name
+    role:          row.perfil,         // perfil        → role
+    active:        row.ativo,          // ativo         → active
+    createdAt:     row.criadoEm,       // criadoEm      → createdAt
+    /* ... */
+  });
+}
+```
+
+**Não são identificadores — seguem outra regra:**
+- **Comentários** permanecem em **português**.
+- **Mensagens** (`AppError`, respostas da API ao usuário) permanecem em **português**.
 
 ---
 
@@ -156,8 +203,8 @@ const { instituicaoId } = req.body;
 **Único método de login: Google OAuth 2.0.** Não existe cadastro por e-mail/senha.
 
 ```typescript
-// Middleware auth: valida JWT → injeta req.user = { membroId, instituicaoId, perfil }
-// Middleware rbac: verifica se req.user.perfil está na lista permitida
+// Middleware auth: valida JWT → injeta req.user = { memberId, institutionId, role }
+// Middleware rbac: verifica se req.user.role está na lista permitida
 
 // Exemplos de uso nas rotas:
 router.get('/membros',   auth, rbac('ADMIN_GERAL', 'ADMIN_MINISTERIO'), asyncHandler(...));
@@ -166,7 +213,7 @@ router.get('/minhas-escalas', auth,                                      asyncHa
 
 // Google OAuth flow:
 // GET /auth/google          → redireciona para consent screen
-// GET /auth/google/callback → troca code por tokens → cria/vincula Conta + Membro → JWT
+// GET /auth/google/callback → troca code por tokens → cria/vincula Account + Member → JWT
 ```
 
 ---
@@ -277,7 +324,36 @@ docker compose down         # desce tudo
 
 ---
 
-## 10. O que NUNCA Fazer
+## 10. Disciplina de Commits — Incrementais e Atômicos
+
+O trabalho deve ser commitado em incrementos pequenos e lógicos, à medida que cada
+parte fica pronta e testada — nunca num único commit grande no fim da tarefa.
+
+### Princípios
+- **Um commit = uma unidade lógica.** Cada entidade, repositório, use case + endpoint
+  ou middleware vira seu próprio commit. Não misture mudanças sem relação no mesmo commit.
+- **Cada commit deixa o projeto funcional.** O código deve compilar e rodar após cada
+  commit — nunca commitar um estado que quebra o build.
+- **Commitar progressivamente.** Assim que uma peça estiver pronta e validada, commitar
+  antes de começar a próxima, em vez de acumular tudo.
+- **Mensagem no padrão Conventional Commits**, descrevendo apenas o que aquele commit entrega.
+- **Ordenar por dependência:** entidade → repositório → use case → controller → rota.
+
+### Exemplo — uma feature quebrada em commits
+Em vez de um único `feat(auth): autenticação com Google`, preferir:
+
+```
+feat(auth): adiciona entidades Conta e Membro com factory create()
+feat(auth): implementa repositórios de Conta e Membro
+feat(auth): configura estratégia Google OAuth e rotas de login
+feat(auth): adiciona serviço de geração e verificação de JWT
+feat(auth): implementa middlewares auth, rbac e errorHandler
+chore(auth): atualiza seed com admin geral para teste de login
+```
+
+---
+
+## 11. O que NUNCA Fazer
 
 - Nunca receber `instituicaoId` no body — sempre do JWT (`req.user`)
 - Nunca expor `hashSenha` em nenhuma resposta da API
