@@ -45,12 +45,12 @@
 
 - [ ] Revisar todos os models do schema.prisma e confirmar relações
 - [ ] Confirmar índices: `Alocacao.membroId`, `Indisponibilidade(membroId, inicio, fim)`
-- [ ] Gerar o Prisma Client (`prisma generate`)
-- [ ] Implementar PrismaClient como singleton (`infra/database/prisma.ts`)
+- [x] Gerar o Prisma Client (`prisma generate`)
+- [x] Implementar PrismaClient como singleton (`infra/database/prisma.ts`)
 - [ ] Definir interface base de repositório (contrato genérico de persistência)
-- [ ] Implementar `AppError` com `statusCode` (`shared/errors/`)
-- [ ] Implementar `asyncHandler` (`shared/utils/`)
-- [ ] Implementar helper de resposta padronizada `{ success, data, message }`
+- [x] Implementar `AppError` com `statusCode` (`shared/errors/`)
+- [x] Implementar `asyncHandler` (`shared/utils/`)
+- [x] Implementar helper de resposta padronizada `{ success, data, message }`
 - [ ] Popular o seed com dados de teste mínimos (1 instituição, 1 admin geral, alguns ministérios e funções) para facilitar o desenvolvimento
 
 ---
@@ -58,24 +58,24 @@
 ## Fase 2 — Autenticação (Google OAuth) e Autorização (RBAC) 🔴
 
 ### Autenticação
-- [ ] Instalar Passport.js + passport-google-oauth20 (ou biblioteca equivalente)
-- [ ] Configurar estratégia Google OAuth com Client ID / Secret / callback URL
-- [ ] Implementar `GET /auth/google` (redireciona para a tela de consentimento)
-- [ ] Implementar `GET /auth/google/callback`:
-  - [ ] Trocar o `code` pelos tokens do Google
-  - [ ] Buscar `Conta` pelo `googleSub` (fallback: por e-mail)
-  - [ ] Criar `Conta` (googleSub + email + nomeExibido + fotoUrl) se não existir
-  - [ ] Vincular `Conta` ao `Membro` pelo e-mail, se houver convite pendente
-  - [ ] Emitir JWT com `{ membroId, instituicaoId, perfil }`
-- [ ] Definir geração e assinatura do JWT (secret + expiração via `.env`)
+- [x] Instalar Passport.js + passport-google-oauth20 (ou biblioteca equivalente)
+- [x] Configurar estratégia Google OAuth com Client ID / Secret / callback URL
+- [x] Implementar `GET /auth/google` (redireciona para a tela de consentimento)
+- [x] Implementar `GET /auth/google/callback`:
+  - [x] Trocar o `code` pelos tokens do Google
+  - [x] Buscar `Conta` pelo `googleSub` (fallback: por e-mail)
+  - [x] Criar `Conta` (googleSub + email + nomeExibido + fotoUrl) se não existir
+  - [x] Vincular `Conta` ao `Membro` pelo e-mail, se houver convite pendente
+  - [x] Emitir JWT com `{ memberId, institutionId, role }`
+- [x] Definir geração e assinatura do JWT (secret + expiração via `.env`)
 - [ ] Implementar logout (no front: descartar o token)
-- [ ] Tratar o caso de login com e-mail Google que não corresponde a nenhum membro convidado
+- [x] Tratar o caso de login com e-mail Google que não corresponde a nenhum membro convidado
 
 ### Autorização (RBAC)
-- [ ] Middleware `auth`: validar JWT → injetar `req.user`
-- [ ] Middleware `rbac(...perfis)`: verificar se `req.user.perfil` está autorizado
-- [ ] Middleware global `errorHandler`: capturar `AppError` e formatar resposta
-- [ ] Definir os três perfis no enum: `ADMIN_GERAL`, `ADMIN_MINISTERIO`, `MEMBRO`
+- [x] Middleware `auth`: validar JWT → injetar `req.user`
+- [x] Middleware `rbac(...roles)`: verificar se `req.user.role` está autorizado
+- [x] Middleware global `errorHandler`: capturar `AppError` e formatar resposta
+- [x] Definir os três perfis no enum: `ADMIN_GERAL`, `ADMIN_MINISTERIO`, `MEMBRO`
 - [ ] Garantir que rotas de membro restrinjam acesso apenas aos próprios dados quando aplicável
 
 ---
