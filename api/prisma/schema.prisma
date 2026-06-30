@@ -78,7 +78,7 @@ model Conta {
 
 model Membro {
   id            String        @id @default(cuid())
-  contaId       String
+  contaId       String?       // null = convite pendente (membro ainda não fez login com Google)
   instituicaoId String
   nome          String
   email         String        // email de contato/convite (pode diferir da Conta)
@@ -86,7 +86,7 @@ model Membro {
   ativo         Boolean       @default(true)
   criadoEm     DateTime       @default(now())
 
-  conta       Conta       @relation(fields: [contaId], references: [id])
+  conta       Conta?      @relation(fields: [contaId], references: [id])
   instituicao Instituicao @relation(fields: [instituicaoId], references: [id])
 
   ministerios        MembroMinisterio[]
