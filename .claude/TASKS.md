@@ -84,12 +84,12 @@
 ## Fase 3 — Membros, Ministérios, Funções e Compatibilidade 🔴
 
 ### Membros (RF03)
-- [ ] Entidade `Membro` + `create()` com validações
-- [ ] Use case: criar membro (convite por e-mail)
-- [ ] Use case: listar membros da instituição
-- [ ] Use case: atualizar membro (nome, perfil, ativo)
-- [ ] Use case: desativar/remover membro
-- [ ] Endpoints: `POST /membros`, `GET /membros`, `GET /membros/:id`, `PUT /membros/:id`, `DELETE /membros/:id`
+- [x] Entidade `Membro` + `create()` com validações
+- [x] Use case: criar membro (convite por e-mail)
+- [x] Use case: listar membros da instituição
+- [x] Use case: atualizar membro (nome, perfil, ativo)
+- [x] Use case: desativar/remover membro (soft delete via `ativo`)
+- [x] Endpoints: `POST /membros`, `GET /membros`, `GET /membros/:id`, `PUT /membros/:id`, `DELETE /membros/:id`
 - [ ] Disparar e-mail de convite ao criar membro (integra com Fase 7)
 
 ### Ministérios (RF03)
