@@ -12,6 +12,9 @@ build/
 web/dist/
 api/dist/
 
+# Request
+api/requests/*.http
+
 # Prisma
 api/prisma/*.db
 
