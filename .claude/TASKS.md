@@ -70,7 +70,7 @@
 - [x] Definir geração e assinatura do JWT (secret + expiração via `.env`)
 - [ ] Implementar logout (no front: descartar o token)
 - [x] Tratar o caso de login com e-mail Google que não corresponde a nenhum membro convidado
-- [ ] 🟡 Evitar `Conta` órfã no fluxo 403: criar a `Conta` somente após confirmar o convite (hoje ela é criada antes da checagem, deixando uma conta sem `Membro` vinculado)
+- [x] Evitar `Conta` órfã no fluxo 403: a `Conta` só é criada após confirmar o convite; o login também vincula Contas órfãs pré-existentes ao convite pendente
 
 ### Autorização (RBAC)
 - [x] Middleware `auth`: validar JWT → injetar `req.user`
