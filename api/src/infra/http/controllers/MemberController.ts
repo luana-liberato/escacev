@@ -1,0 +1,97 @@
+import { Request, Response } from 'express';
+import { AuthenticatedUser } from '../middlewares/auth';
+import { AppError } from '../../../shared/errors/AppError';
+import { Member } from '../../../domain/entities/Member';
+import { CreateMemberUseCase } from '../../../domain/use-cases/CreateMemberUseCase';
+import { ListMembersUseCase } from '../../../domain/use-cases/ListMembersUseCase';
+import { GetMemberUseCase } from '../../../domain/use-cases/GetMemberUseCase';
+import { UpdateMemberUseCase } from '../../../domain/use-cases/UpdateMemberUseCase';
+import { DeactivateMemberUseCase } from '../../../domain/use-cases/DeactivateMemberUseCase';
+import { PrismaMemberRepository } from '../../database/repositories/PrismaMemberRepository';
+import { respond } from '../../../shared/utils/respond';
+
+export class MemberController {
+  // POST /membros — cria (convida) um membro. institutionId vem do JWT.
+  create = async (req: Request, res: Response): Promise<void> => {
+    const { institutionId } = MemberController.authUser(req);
+    const { name, email, role } = req.body;
+
+    const useCase = new CreateMemberUseCase(new PrismaMemberRepository());
+    const member = await useCase.execute({ institutionId, name, email, role });
+
+    respond(res, 201, MemberController.serialize(member), 'Membro criado');
+  };
+
+  // GET /membros — lista os membros da instituição do usuário autenticado.
+  list = async (req: Request, res: Response): Promise<void> => {
+    const { institutionId } = MemberController.authUser(req);
+
+    const useCase = new ListMembersUseCase(new PrismaMemberRepository());
+    const members = await useCase.execute({ institutionId });
+
+    respond(res, 200, members.map(MemberController.serialize), 'Membros listados');
+  };
+
+  // GET /membros/:id — busca um membro da própria instituição.
+  show = async (req: Request, res: Response): Promise<void> => {
+    const { institutionId } = MemberController.authUser(req);
+
+    const useCase = new GetMemberUseCase(new PrismaMemberRepository());
+    const member = await useCase.execute({ id: req.params.id, institutionId });
+
+    respond(res, 200, MemberController.serialize(member), 'Membro encontrado');
+  };
+
+  // PUT /membros/:id — atualiza nome, perfil e/ou status ativo.
+  update = async (req: Request, res: Response): Promise<void> => {
+    const { institutionId } = MemberController.authUser(req);
+    const { name, role, active } = req.body;
+
+    const useCase = new UpdateMemberUseCase(new PrismaMemberRepository());
+    const member = await useCase.execute({
+      id: req.params.id,
+      institutionId,
+      name,
+      role,
+      active,
+    });
+
+    respond(res, 200, MemberController.serialize(member), 'Membro atualizado');
+  };
+
+  // DELETE /membros/:id — desativa o membro (soft delete via campo ativo).
+  remove = async (req: Request, res: Response): Promise<void> => {
+    const { institutionId } = MemberController.authUser(req);
+
+    const useCase = new DeactivateMemberUseCase(new PrismaMemberRepository());
+    const member = await useCase.execute({ id: req.params.id, institutionId });
+
+    respond(res, 200, MemberController.serialize(member), 'Membro desativado');
+  };
+
+  /**
+   * Extrai o usuário autenticado injetado pelo middleware auth. O guard mantém
+   * o tipo estreito (sem non-null assertion) e devolve 401 caso a rota seja
+   * montada sem o middleware auth antes do controller.
+   */
+  private static authUser(req: Request): AuthenticatedUser {
+    if (!req.user) throw new AppError('Não autenticado', 401);
+    return req.user;
+  }
+
+  /**
+   * Projeção segura para a resposta da API: expõe apenas campos públicos.
+   * Omite o accountId (FK interna de autenticação) e sinaliza convite pendente.
+   */
+  private static serialize(member: Member) {
+    return {
+      id: member.id,
+      name: member.name,
+      email: member.email,
+      role: member.role,
+      active: member.active,
+      pending: member.isPending,
+      createdAt: member.createdAt,
+    };
+  }
+}
