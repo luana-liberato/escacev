@@ -33,33 +33,32 @@ export class AuthenticateWithGoogleUseCase {
       account = await this.accountRepo.findByEmail(profile.email);
     }
 
-    // 4. Não existe nenhuma Account — cria.
-    let accountJustCreated = false;
-    if (!account) {
-      account = await this.accountRepo.save(
-        Account.create({
-          googleSub: profile.googleSub,
-          email: profile.email,
-          displayName: profile.name,
-          photoUrl: profile.photoUrl,
-        }),
-      );
-      accountJustCreated = true;
-    }
+    // 4. Busca o Member vinculado à Account (quando ela existe).
+    let member = account ? await this.memberRepo.findByAccountId(account.id) : null;
 
-    // 5. Busca o Member vinculado a essa Account. Se a Account acabou de ser criada,
-    //    procura um Member pendente pelo email (convite) e vincula a Account a ele.
-    let member = await this.memberRepo.findByAccountId(account.id);
-    if (!member && accountJustCreated) {
-      const pendingMember = await this.memberRepo.findPendingByEmail(profile.email);
-      if (pendingMember) {
-        member = await this.memberRepo.linkAccount(pendingMember.id, account.id);
-      }
-    }
-
-    // 6. E-mail não convidado — acesso negado.
+    // 5. Sem Member vinculado: procura um convite pendente pelo e-mail. Cobre o
+    //    primeiro login (Account ainda não existe) e também Contas órfãs criadas
+    //    antes desta correção (Account existe, mas nunca foi vinculada).
     if (!member) {
-      throw new AppError('Usuário não autorizado — solicite um convite ao administrador', 403);
+      const pendingMember = await this.memberRepo.findPendingByEmail(profile.email);
+
+      // 6. E-mail não convidado — nega ANTES de criar a Account (evita Conta órfã).
+      if (!pendingMember) {
+        throw new AppError('Usuário não autorizado — solicite um convite ao administrador', 403);
+      }
+
+      if (!account) {
+        account = await this.accountRepo.save(
+          Account.create({
+            googleSub: profile.googleSub,
+            email: profile.email,
+            displayName: profile.name,
+            photoUrl: profile.photoUrl,
+          }),
+        );
+      }
+
+      member = await this.memberRepo.linkAccount(pendingMember.id, account.id);
     }
 
     // 7. Emite o JWT com { memberId, institutionId, role }.
