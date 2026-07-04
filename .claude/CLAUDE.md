@@ -18,10 +18,20 @@ ingresso em um tenant serão suportadas: **convite por e-mail** (admin convida
 uma pessoa específica) e **código de acesso** (admin gera um código compartilhável;
 qualquer pessoa com o código pode entrar no tenant digitando-o na tela de acesso).
 
-**Perfis de usuário:**
-- `ADMIN_GERAL` — gerencia membros, ministérios e calendário da instituição
-- `ADMIN_MINISTERIO` — gerencia escalas e membros do seu ministério
+**Perfis de usuário (papel global):**
+- `ADMIN_GERAL` — gerencia membros, ministérios e calendário da instituição inteira
+- `ADMIN_MINISTERIO` — administra um ou mais ministérios específicos (ver "papel por ministério")
 - `MEMBRO` — visualiza escalas, registra indisponibilidades, participa de trocas
+
+**Papel por ministério:** o vínculo membro↔ministério é a tabela `MembroMinisterio`.
+Existir uma linha nessa tabela significa que o membro **participa** daquele ministério
+(pode ser escalado). A coluna `isAdmin` (boolean) indica se, além de participar, o membro
+também **administra** aquele ministério. Consequências:
+- Um membro pode administrar **vários** ministérios (várias linhas com `isAdmin = true`).
+- Um admin de ministério **também pode ser escalado** (a associação já garante isso).
+- Permissão **escopada**: editar um ministério ou suas escalas exige `isAdmin = true`
+  *naquele* ministério — não basta ter o papel global `ADMIN_MINISTERIO`.
+- O `ADMIN_GERAL` tem poder sobre todos os ministérios pelo papel global.
 
 ---
 
@@ -33,7 +43,7 @@ qualquer pessoa com o código pode entrar no tenant digitando-o na tela de acess
 | Front-end | React 18 + Tailwind CSS |
 | Banco | PostgreSQL 16 |
 | ORM | Prisma |
-| Auth | Google OAuth 2.0 + JWT stateless + bcrypt |
+| Auth | Google OAuth 2.0 + JWT stateless |
 | E-mail | Nodemailer + Mailtrap (dev) / SendGrid (prod) |
 | Deploy | Docker + Docker Compose + nginx + Let's Encrypt |
 | Lint | ESLint + Prettier |
@@ -337,7 +347,19 @@ parte fica pronta e testada — nunca num único commit grande no fim da tarefa.
 - **Commitar progressivamente.** Assim que uma peça estiver pronta e validada, commitar
   antes de começar a próxima, em vez de acumular tudo.
 - **Mensagem no padrão Conventional Commits**, descrevendo apenas o que aquele commit entrega.
-- **Ordenar por dependência:** entidade → repositório → use case → controller → rota.
+
+### Ordem de prioridade dos commits
+Ao concluir uma tarefa que toca várias camadas, separar com `git add` seletivo e
+commitar nesta ordem:
+1. **Schema e migrations primeiro** — mudanças em `schema.prisma` + a migration gerada.
+2. **Documentação em seguida** — CLAUDE.md, TASKS.md, README, comentários relevantes.
+3. **Código por último**, na ordem interna: entidade → repositório → use case → controller → rota.
+
+### Sincronização com a main
+- Antes de iniciar uma tarefa e antes de abrir o PR: `git fetch origin && git rebase origin/main`
+- Resolver conflitos, rodar build e testes, e só então seguir.
+- Se a branch já foi enviada, usar `git push --force-with-lease` (nunca `--force` puro).
+- Alternativa mais segura enquanto pega o jeito: `git merge origin/main` no lugar do rebase.
 
 ### Exemplo — uma feature quebrada em commits
 Em vez de um único `feat(auth): autenticação com Google`, preferir:
@@ -356,7 +378,7 @@ chore(auth): atualiza seed com admin geral para teste de login
 ## 11. O que NUNCA Fazer
 
 - Nunca receber `instituicaoId` no body — sempre do JWT (`req.user`)
-- Nunca expor `hashSenha` em nenhuma resposta da API
+- Nunca implementar login por e-mail/senha — autenticação é exclusivamente via Google OAuth
 - Nunca usar formato de resposta diferente de `{ success, data, message }`
 - Nunca usar construtor público em entidades de domínio
 - Nunca omitir `asyncHandler` em rotas — exceções não tratadas derrubam o servidor

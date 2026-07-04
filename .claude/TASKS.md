@@ -93,20 +93,49 @@
 - [ ] Disparar e-mail de convite ao criar membro (integra com Fase 7)
 
 ### Ministérios (RF03)
-- [ ] Entidade `Ministerio` + `create()`
-- [ ] Use cases: criar, listar, atualizar, remover ministério
-- [ ] Endpoints: `POST /ministerios`, `GET /ministerios`, `GET /ministerios/:id`, `PUT /ministerios/:id`, `DELETE /ministerios/:id`
+> Escrita restrita ao `ADMIN_GERAL` neste bloco. A edição escopada pelo
+> `ADMIN_MINISTERIO` entra no bloco "Permissão escopada" (depende do `isAdmin`).
+- [x] Entidade `Ministry` + `create()`
+- [x] Use cases: criar, listar, atualizar, remover (remoção em cascata — ver item abaixo)
+- [x] Endpoints: `POST /ministerios`, `GET /ministerios`, `GET /ministerios/:id`, `PUT /ministerios/:id`, `DELETE /ministerios/:id`
+- [x] RBAC: criar/editar/remover → `ADMIN_GERAL`; listar/ver → `ADMIN_GERAL`, `ADMIN_MINISTERIO`
+- [x] **Remoção em cascata do ministério:** o `DELETE /ministerios/:id` apaga numa
+      transação o que é **estrutural** do ministério — as funções (junto com as
+      linhas de `CompatibilidadeFuncao` que as referenciam) e os vínculos
+      `MembroMinisterio` (admins e membros deixam de estar ligados ao ministério
+      apagado). **Motivo:** funções e vínculos não são histórico, são parte da
+      estrutura do ministério; exigir a limpeza manual peça a peça tornaria a
+      remoção impraticável na operação real.
+      **O bloqueio (409) permanece apenas para o que é histórico ou compartilhado:**
+      escalas do ministério (registro de quem serviu) e funções já usadas em
+      `VagaEvento` (a vaga pertence ao evento, que é da instituição — apagar junto
+      destruiria dados fora do ministério).
 
 ### Funções (RF03)
 - [ ] Entidade `Funcao` + `create()`
 - [ ] Use cases: criar, listar, atualizar, remover função dentro de um ministério
 - [ ] Endpoints: `POST /ministerios/:id/funcoes`, `GET /ministerios/:id/funcoes`, `PUT /funcoes/:id`, `DELETE /funcoes/:id`
 
-### Associação Membro ↔ Ministério (RF03)
-- [ ] Use case: associar membro a ministério (sem função fixa)
+### Associação Membro ↔ Ministério, com papel de admin (RF03)
+> **Mudança de schema:** adicionar `isAdmin Boolean @default(false)` ao model
+> `MembroMinisterio`. Migration primeiro, depois código (disciplina de commits).
+- [ ] Schema: adicionar `isAdmin Boolean @default(false)` em `MembroMinisterio` + migration
+- [ ] Use case: associar membro a ministério, recebendo `isAdmin` opcional (padrão `false`)
+- [ ] Use case: promover/rebaixar admin do ministério (alternar `isAdmin` numa associação existente)
 - [ ] Use case: remover membro de ministério
-- [ ] Use case: listar ministérios de um membro / membros de um ministério
-- [ ] Endpoints: `POST /ministerios/:id/membros`, `DELETE /ministerios/:id/membros/:membroId`
+- [ ] Use case: listar ministérios de um membro / membros de um ministério (indicando quem é admin)
+- [ ] Endpoints: `POST /ministerios/:id/membros` (body aceita `isAdmin`),
+      `PATCH /ministerios/:id/membros/:membroId/admin` (promover/rebaixar),
+      `DELETE /ministerios/:id/membros/:membroId`
+- [ ] Regra: existir a associação = participa (é escalável); `isAdmin = true` = também administra
+
+### Permissão escopada de edição de ministério (RF03)
+> Fecha a pergunta "o ADMIN_MINISTERIO edita o próprio ministério". Depende do
+> `isAdmin` do bloco anterior — é o "voltar e afinar" da Forma A.
+- [ ] Ajustar RBAC do `PUT /ministerios/:id`: permitir `ADMIN_GERAL` OU
+      `ADMIN_MINISTERIO` com `isAdmin = true` naquele ministério
+- [ ] Criar guarda reutilizável "é admin deste ministério" (usada aqui e nas escalas na Fase 5)
+- [ ] Garantir que um admin não edita ministério em que não tem `isAdmin`
 
 ### Matriz de Compatibilidade de Funções (RN01, RN02)
 - [ ] Entidade `CompatibilidadeFuncao` com regra de armazenamento `funcaoAId < funcaoBId`
@@ -275,7 +304,7 @@
 - [ ] Testar fluxo de autenticação Google de ponta a ponta
 - [ ] Testar regras de negócio RN01–RN08 manualmente com checklist
 - [ ] Revisar tratamento de erros (respostas consistentes, sem vazar stack trace)
-- [ ] Validar que `hashSenha` não existe e que nenhum dado sensível vaza nas respostas
+- [ ] Validar que nenhum dado sensível (tokens, sub do Google) vaza nas respostas da API.
 - [ ] Rodar lint e corrigir todos os warnings antes do deploy
 
 ---
