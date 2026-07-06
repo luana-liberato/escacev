@@ -93,6 +93,8 @@ registro do processo de construção do projeto.
 - **Commit progressivo.** Assim que uma peça é validada, ela é commitada antes do início
   da próxima, em vez de acumular tudo.
 - **Mensagem descreve apenas o que aquele commit entrega**, no padrão Conventional Commits.
+- **Corpo em bullets.** Quando há corpo, ele é uma lista de bullets (`- item`) — nunca
+  parágrafos corridos. O subject vai no imperativo; cada bullet cobre uma mudança do commit.
 - **Ordem por dependência:** entidade → repositório → use case → controller → rota.
 
 ### Exemplo — uma feature quebrada em commits
@@ -105,6 +107,15 @@ feat(auth): configura estratégia Google OAuth e rotas de login
 feat(auth): adiciona serviço de geração e verificação de JWT
 feat(auth): implementa middlewares auth, rbac e errorHandler
 chore(auth): atualiza seed com admin geral para teste de login
+```
+
+Quando um commit precisa de corpo, o formato é subject + bullets:
+
+```
+feat(ministerios): implementa use cases do CRUD de ministérios
+- Create e Update com 409 para nome duplicado na instituição.
+- Get, Update e Delete validam o tenant e respondem 404 para outra instituição.
+- Delete com cascata estrutural e 409 para escalas e funções em uso.
 ```
 
 ---
