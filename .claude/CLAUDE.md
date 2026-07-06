@@ -62,9 +62,11 @@ escacev/
 │   └── src/
 │       ├── domain/
 │       │   ├── entities/        # Entidades com construtor privado + create()
+│       │   ├── repositories/    # Interfaces (contratos) dos repositórios
 │       │   └── use-cases/       # Um arquivo por caso de uso
 │       ├── infra/
-│       │   ├── database/        # PrismaClient singleton, repositórios
+│       │   ├── database/        # PrismaClient singleton
+│       │   │   └── repositories/ # Implementações Prisma (tradução PT↔EN)
 │       │   ├── http/
 │       │   │   ├── controllers/
 │       │   │   ├── middlewares/  # auth.ts, rbac.ts, errorHandler.ts
@@ -347,6 +349,9 @@ parte fica pronta e testada — nunca num único commit grande no fim da tarefa.
 - **Commitar progressivamente.** Assim que uma peça estiver pronta e validada, commitar
   antes de começar a próxima, em vez de acumular tudo.
 - **Mensagem no padrão Conventional Commits**, descrevendo apenas o que aquele commit entrega.
+- **Corpo em bullets.** Quando o commit tem corpo, descrever o que ele entrega em lista
+  de bullets (`- item`), nunca em parágrafos corridos. O subject vai no imperativo; cada
+  bullet cobre uma mudança relevante do commit.
 
 ### Ordem de prioridade dos commits
 Ao concluir uma tarefa que toca várias camadas, separar com `git add` seletivo e
@@ -371,6 +376,15 @@ feat(auth): configura estratégia Google OAuth e rotas de login
 feat(auth): adiciona serviço de geração e verificação de JWT
 feat(auth): implementa middlewares auth, rbac e errorHandler
 chore(auth): atualiza seed com admin geral para teste de login
+```
+
+Quando um commit precisa de corpo, o formato é subject + bullets:
+
+```
+feat(ministerios): implementa use cases do CRUD de ministérios
+- Create e Update com 409 para nome duplicado na instituição.
+- Get, Update e Delete validam o tenant e respondem 404 para outra instituição.
+- Delete com cascata estrutural e 409 para escalas e funções em uso.
 ```
 
 ---
