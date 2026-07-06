@@ -83,6 +83,10 @@
 
 ## Fase 3 — Membros, Ministérios, Funções e Compatibilidade 🔴
 
+> Ordem de execução: Membros → Ministérios → Associação → Permissão escopada → Funções → Matriz.
+> Funções vem depois da associação e da permissão escopada, para já nascer com o RBAC
+> escopado por ministério.
+
 ### Membros (RF03)
 - [x] Entidade `Membro` + `create()` com validações
 - [x] Use case: criar membro (convite por e-mail)
@@ -111,11 +115,6 @@
       `VagaEvento` (a vaga pertence ao evento, que é da instituição — apagar junto
       destruiria dados fora do ministério).
 
-### Funções (RF03)
-- [ ] Entidade `Funcao` + `create()`
-- [ ] Use cases: criar, listar, atualizar, remover função dentro de um ministério
-- [ ] Endpoints: `POST /ministerios/:id/funcoes`, `GET /ministerios/:id/funcoes`, `PUT /funcoes/:id`, `DELETE /funcoes/:id`
-
 ### Associação Membro ↔ Ministério, com papel de admin (RF03)
 > **Mudança de schema:** adicionar `isAdmin Boolean @default(false)` ao model
 > `MembroMinisterio`. Migration primeiro, depois código (disciplina de commits).
@@ -136,6 +135,15 @@
       `ADMIN_MINISTERIO` com `isAdmin = true` naquele ministério
 - [ ] Criar guarda reutilizável "é admin deste ministério" (usada aqui e nas escalas na Fase 5)
 - [ ] Garantir que um admin não edita ministério em que não tem `isAdmin`
+
+### Funções (RF03)
+> Construído depois da associação para já nascer com o RBAC escopado (reusa a guarda "é admin deste ministério").
+> **Atenção ao nome em inglês:** `role` já é o campo de perfil no JWT — não reusar "Role"
+> para a função. Decidir entre `Position` ou `MinistryFunction`.
+- [ ] Entidade da função + `create()` (nome em inglês a decidir — ver nota acima)
+- [ ] Use cases: criar, listar, atualizar, remover função dentro de um ministério
+- [ ] Endpoints: `POST /ministerios/:id/funcoes`, `GET /ministerios/:id/funcoes`, `PUT /funcoes/:id`, `DELETE /funcoes/:id`
+- [ ] RBAC: gerenciar funções → `ADMIN_GERAL` OU admin escopado do ministério (`isAdmin = true`)
 
 ### Matriz de Compatibilidade de Funções (RN01, RN02)
 - [ ] Entidade `CompatibilidadeFuncao` com regra de armazenamento `funcaoAId < funcaoBId`
