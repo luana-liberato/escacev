@@ -127,13 +127,18 @@
       `PATCH /ministerios/:id/membros/:membroId/admin` (promover/rebaixar),
       `DELETE /ministerios/:id/membros/:membroId`
 - [ ] Regra: existir a associação = participa (é escalável); `isAdmin = true` = também administra
+- [ ] Convite escopado por ministério (endpoint POST /ministerios/:id/membros/convite):
+      recebe { name, email, isAdmin? } e faz criar-ou-associar — e-mail novo cria o Membro
+      e associa; e-mail existente fora do ministério só associa; e-mail já no ministério → 409.
+      Reutiliza a criação de membro do bloco Membros (não duplica validação).
+      ADMIN_MINISTERIO nunca cria membro "solto"; ADMIN_GERAL convida no nível da instituição.
 
 ### Permissão escopada de edição de ministério (RF03)
 > Fecha a pergunta "o ADMIN_MINISTERIO edita o próprio ministério". Depende do
 > `isAdmin` do bloco anterior — é o "voltar e afinar" da Forma A.
 - [ ] Ajustar RBAC do `PUT /ministerios/:id`: permitir `ADMIN_GERAL` OU
       `ADMIN_MINISTERIO` com `isAdmin = true` naquele ministério
-- [ ] Criar guarda reutilizável "é admin deste ministério" (usada aqui e nas escalas na Fase 5)
+- [ ] Criar guarda reutilizável "é admin deste ministério" (usada aqui, em funções, em associações e nas escalas na Fase 5)
 - [ ] Garantir que um admin não edita ministério em que não tem `isAdmin`
 
 ### Funções (RF03)
