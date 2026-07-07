@@ -33,6 +33,40 @@ também **administra** aquele ministério. Consequências:
   *naquele* ministério — não basta ter o papel global `ADMIN_MINISTERIO`.
 - O `ADMIN_GERAL` tem poder sobre todos os ministérios pelo papel global.
 
+### Princípio de permissão: escopo de ministério vs. escopo de instituição
+
+O `ADMIN_MINISTERIO` tem **as mesmas capacidades** do `ADMIN_GERAL`, porém **restritas
+aos ministérios onde tem `isAdmin = true`**. O que é da **instituição** (e não de um
+ministério específico) permanece exclusivo do `ADMIN_GERAL`. Toda ação se classifica em
+um de dois escopos:
+
+**Escopo de ministério** — `ADMIN_GERAL` (em qualquer) OU `ADMIN_MINISTERIO` com
+`isAdmin = true` naquele ministério:
+- Criar, editar e remover funções do ministério
+- Associar membros ao ministério e definir o `isAdmin` de cada associação
+- Criar, editar e publicar escalas do ministério
+- Editar o próprio ministério (nome, descrição)
+
+**Escopo de instituição** — somente `ADMIN_GERAL`:
+- Criar e remover ministérios (unidade estrutural da instituição)
+- Configurações da instituição
+- Qualquer ação sobre ministérios que o admin **não** administra
+
+**Convite de membros (regra específica):** convidar pode partir tanto do `ADMIN_GERAL`
+quanto de um `ADMIN_MINISTERIO`. Como `Membro` pertence à **instituição** (não ao
+ministério), o convite se resolve assim:
+- **`ADMIN_MINISTERIO` convida** → é sempre "convidar para o MEU ministério". Se o e-mail
+  ainda não existe na instituição, cria o `Membro` e **já o associa** ao ministério do
+  admin (com `isAdmin = false`). Se já existe, apenas associa. O admin de ministério nunca
+  cria um membro "solto", sem vínculo com o seu ministério.
+- **`ADMIN_GERAL` convida** → pode criar um `Membro` no nível da instituição, com ou sem
+  associação a ministério.
+
+**Guarda única reutilizável:** toda permissão de escopo de ministério passa pelo mesmo
+teste — "esta pessoa pode agir sobre este ministério?" (`ADMIN_GERAL` sempre, ou
+`ADMIN_MINISTERIO` com `isAdmin` naquele ministério). Essa guarda é criada no bloco de
+Permissão Escopada e reutilizada em funções, associações e escalas.
+
 ---
 
 ## 2. Stack
