@@ -163,6 +163,7 @@ model MembroMinisterio {
   id           String   @id @default(cuid())
   membroId     String
   ministerioId String
+  isAdmin      Boolean  @default(false) // true = além de participar, administra este ministério (Seção 1)
   criadoEm    DateTime @default(now())
 
   membro     Membro     @relation(fields: [membroId], references: [id])
