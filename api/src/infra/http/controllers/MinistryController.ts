@@ -7,7 +7,9 @@ import { ListMinistriesUseCase } from '../../../domain/use-cases/ListMinistriesU
 import { GetMinistryUseCase } from '../../../domain/use-cases/GetMinistryUseCase';
 import { UpdateMinistryUseCase } from '../../../domain/use-cases/UpdateMinistryUseCase';
 import { DeleteMinistryUseCase } from '../../../domain/use-cases/DeleteMinistryUseCase';
+import { MinistryAccessPolicy } from '../../../domain/services/MinistryAccessPolicy';
 import { PrismaMinistryRepository } from '../../database/repositories/PrismaMinistryRepository';
+import { PrismaMinistryMembershipRepository } from '../../database/repositories/PrismaMinistryMembershipRepository';
 import { respond } from '../../../shared/utils/respond';
 
 export class MinistryController {
@@ -44,13 +46,17 @@ export class MinistryController {
 
   // PUT /ministerios/:id — atualiza nome e/ou descrição.
   update = async (req: Request, res: Response): Promise<void> => {
-    const { institutionId } = MinistryController.authUser(req);
+    const { institutionId, memberId, role } = MinistryController.authUser(req);
     const { name, description } = req.body;
 
-    const useCase = new UpdateMinistryUseCase(new PrismaMinistryRepository());
+    const useCase = new UpdateMinistryUseCase(
+      new PrismaMinistryRepository(),
+      new MinistryAccessPolicy(new PrismaMinistryMembershipRepository()),
+    );
     const ministry = await useCase.execute({
       id: req.params.id,
       institutionId,
+      actor: { memberId, role },
       name,
       description,
     });
