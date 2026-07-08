@@ -3,12 +3,14 @@ import { MinistryMembership } from '../entities/MinistryMembership';
 import { MemberRepository } from '../repositories/MemberRepository';
 import { MinistryRepository } from '../repositories/MinistryRepository';
 import { MinistryMembershipRepository } from '../repositories/MinistryMembershipRepository';
+import { Actor, MinistryAccessPolicy } from '../services/MinistryAccessPolicy';
 import { CreateMemberUseCase } from './CreateMemberUseCase';
 import { AppError } from '../../shared/errors/AppError';
 
 /** institutionId vem do JWT (req.user), nunca do body. */
 export interface InviteMemberToMinistryDTO {
   institutionId: string;
+  actor: Actor;
   ministryId: string;
   name: string;
   email: string;
@@ -39,6 +41,7 @@ export class InviteMemberToMinistryUseCase {
     private readonly ministryRepo: MinistryRepository,
     private readonly memberRepo: MemberRepository,
     private readonly createMember: CreateMemberUseCase,
+    private readonly accessPolicy: MinistryAccessPolicy,
   ) {}
 
   async execute(dto: InviteMemberToMinistryDTO): Promise<InviteMemberToMinistryResult> {
@@ -46,6 +49,12 @@ export class InviteMemberToMinistryUseCase {
     if (!ministry || ministry.institutionId !== dto.institutionId) {
       throw new AppError('Ministério não encontrado', 404);
     }
+
+    await this.accessPolicy.ensureCanManage(dto.actor, ministry.id);
+
+    // Definir admin do vínculo é exclusivo do ADMIN_GERAL: o ADMIN_MINISTERIO só
+    // convida participantes (isAdmin = false) para o seu próprio ministério.
+    const isAdmin = dto.actor.role === 'ADMIN_GERAL' ? dto.isAdmin ?? false : false;
 
     // Normaliza o e-mail pela própria entidade antes de procurar na instituição.
     const email = Member.create({
@@ -77,7 +86,7 @@ export class InviteMemberToMinistryUseCase {
       MinistryMembership.create({
         memberId: member.id,
         ministryId: ministry.id,
-        isAdmin: dto.isAdmin,
+        isAdmin,
       }),
     );
 

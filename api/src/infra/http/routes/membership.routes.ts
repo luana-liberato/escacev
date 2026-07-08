@@ -7,44 +7,43 @@ import { MinistryMembershipController } from '../controllers/MinistryMembershipC
 /**
  * Vínculo Membro↔Ministério (associação, convite, papel de admin escopado).
  *
- * RBAC deste bloco: toda ESCRITA (associar, convidar, promover/rebaixar, remover)
- * fica restrita ao ADMIN_GERAL por enquanto. A permissão escopada do
- * ADMIN_MINISTERIO (agir sobre o ministério onde tem isAdmin) entra no Bloco 4,
- * pela guarda reutilizável "é admin deste ministério" — os endpoints de escrita
- * abaixo serão então abertos ao ADMIN_MINISTERIO.
+ * RBAC deste bloco: o rbac libera ADMIN_GERAL e ADMIN_MINISTERIO (filtro grosso,
+ * bloqueia MEMBRO) e a guarda reutilizável MinistryAccessPolicy faz a checagem
+ * fina no use case — o ADMIN_MINISTERIO só age no ministério onde tem isAdmin,
+ * respondendo 403 caso contrário.
  */
 export const membershipRoutes = Router();
 const controller = new MinistryMembershipController();
 
-// Associar membro existente — escrita: apenas ADMIN_GERAL (ver nota / Bloco 4).
+// Associar membro existente — ADMIN_GERAL ou admin escopado (guarda no use case).
 membershipRoutes.post(
   '/ministerios/:id/membros',
   auth,
-  rbac('ADMIN_GERAL'),
+  rbac('ADMIN_GERAL', 'ADMIN_MINISTERIO'),
   asyncHandler(controller.associate),
 );
 
-// Convidar (criar-ou-associar) — escrita: apenas ADMIN_GERAL (ver nota / Bloco 4).
+// Convidar (criar-ou-associar) — ADMIN_GERAL ou admin escopado (guarda no use case).
 membershipRoutes.post(
   '/ministerios/:id/membros/convite',
   auth,
-  rbac('ADMIN_GERAL'),
+  rbac('ADMIN_GERAL', 'ADMIN_MINISTERIO'),
   asyncHandler(controller.invite),
 );
 
-// Promover/rebaixar admin do ministério — escrita: apenas ADMIN_GERAL (ver nota / Bloco 4).
+// Promover/rebaixar admin do ministério — ADMIN_GERAL ou admin escopado (guarda no use case).
 membershipRoutes.patch(
   '/ministerios/:id/membros/:membroId/admin',
   auth,
-  rbac('ADMIN_GERAL'),
+  rbac('ADMIN_GERAL', 'ADMIN_MINISTERIO'),
   asyncHandler(controller.setAdmin),
 );
 
-// Remover associação — escrita: apenas ADMIN_GERAL (ver nota / Bloco 4).
+// Remover associação — ADMIN_GERAL ou admin escopado (guarda no use case).
 membershipRoutes.delete(
   '/ministerios/:id/membros/:membroId',
   auth,
-  rbac('ADMIN_GERAL'),
+  rbac('ADMIN_GERAL', 'ADMIN_MINISTERIO'),
   asyncHandler(controller.remove),
 );
 

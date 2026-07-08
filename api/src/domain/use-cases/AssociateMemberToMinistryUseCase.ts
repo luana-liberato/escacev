@@ -2,11 +2,13 @@ import { MinistryMembership } from '../entities/MinistryMembership';
 import { MemberRepository } from '../repositories/MemberRepository';
 import { MinistryRepository } from '../repositories/MinistryRepository';
 import { MinistryMembershipRepository } from '../repositories/MinistryMembershipRepository';
+import { Actor, MinistryAccessPolicy } from '../services/MinistryAccessPolicy';
 import { AppError } from '../../shared/errors/AppError';
 
 /** institutionId vem do JWT (req.user), nunca do body. */
 export interface AssociateMemberToMinistryDTO {
   institutionId: string;
+  actor: Actor;
   ministryId: string;
   memberId: string;
   isAdmin?: boolean;
@@ -15,7 +17,8 @@ export interface AssociateMemberToMinistryDTO {
 /**
  * Associa um membro JÁ EXISTENTE a um ministério (o membro passa a participar;
  * isAdmin = true = também administra). Valida que ministério e membro pertencem
- * à instituição do usuário e impede associação duplicada (409).
+ * à instituição do usuário, que o ator administra o ministério (Permissão
+ * Escopada) e impede associação duplicada (409).
  * Dependências injetadas via construtor (Seção 4.2).
  */
 export class AssociateMemberToMinistryUseCase {
@@ -23,6 +26,7 @@ export class AssociateMemberToMinistryUseCase {
     private readonly membershipRepo: MinistryMembershipRepository,
     private readonly ministryRepo: MinistryRepository,
     private readonly memberRepo: MemberRepository,
+    private readonly accessPolicy: MinistryAccessPolicy,
   ) {}
 
   async execute(dto: AssociateMemberToMinistryDTO): Promise<MinistryMembership> {
@@ -30,6 +34,8 @@ export class AssociateMemberToMinistryUseCase {
     if (!ministry || ministry.institutionId !== dto.institutionId) {
       throw new AppError('Ministério não encontrado', 404);
     }
+
+    await this.accessPolicy.ensureCanManage(dto.actor, ministry.id);
 
     const member = await this.memberRepo.findById(dto.memberId);
     if (!member || member.institutionId !== dto.institutionId) {
