@@ -86,7 +86,7 @@ model Membro {
   ativo         Boolean       @default(true)
   criadoEm     DateTime       @default(now())
 
-  conta       Conta?      @relation(fields: [contaId], references: [id])
+  conta       Conta?      @relation(fields: [contaId], references: [id], onDelete: SetNull) // deletar a Conta volta o Membro a convite pendente (contaId null)
   instituicao Instituicao @relation(fields: [instituicaoId], references: [id])
 
   ministerios        MembroMinisterio[]
@@ -163,6 +163,7 @@ model MembroMinisterio {
   id           String   @id @default(cuid())
   membroId     String
   ministerioId String
+  isAdmin      Boolean  @default(false) // true = além de participar, administra este ministério (Seção 1)
   criadoEm    DateTime @default(now())
 
   membro     Membro     @relation(fields: [membroId], references: [id])
