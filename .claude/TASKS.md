@@ -51,7 +51,7 @@
 - [x] Implementar `AppError` com `statusCode` (`shared/errors/`)
 - [x] Implementar `asyncHandler` (`shared/utils/`)
 - [x] Implementar helper de resposta padronizada `{ success, data, message }`
-- [ ] Popular o seed com dados de teste mínimos (1 instituição, 1 admin geral, alguns ministérios e funções) para facilitar o desenvolvimento
+- [x] Popular o seed com dados de teste mínimos (1 instituição, 1 admin geral, alguns ministérios e funções) para facilitar o desenvolvimento
 
 ---
 
@@ -118,16 +118,16 @@
 ### Associação Membro ↔ Ministério, com papel de admin (RF03)
 > **Mudança de schema:** adicionar `isAdmin Boolean @default(false)` ao model
 > `MembroMinisterio`. Migration primeiro, depois código (disciplina de commits).
-- [ ] Schema: adicionar `isAdmin Boolean @default(false)` em `MembroMinisterio` + migration
-- [ ] Use case: associar membro a ministério, recebendo `isAdmin` opcional (padrão `false`)
-- [ ] Use case: promover/rebaixar admin do ministério (alternar `isAdmin` numa associação existente)
-- [ ] Use case: remover membro de ministério
-- [ ] Use case: listar ministérios de um membro / membros de um ministério (indicando quem é admin)
-- [ ] Endpoints: `POST /ministerios/:id/membros` (body aceita `isAdmin`),
+- [x] Schema: adicionar `isAdmin Boolean @default(false)` em `MembroMinisterio` + migration
+- [x] Use case: associar membro a ministério, recebendo `isAdmin` opcional (padrão `false`)
+- [x] Use case: promover/rebaixar admin do ministério (alternar `isAdmin` numa associação existente)
+- [x] Use case: remover membro de ministério
+- [x] Use case: listar ministérios de um membro / membros de um ministério (indicando quem é admin)
+- [x] Endpoints: `POST /ministerios/:id/membros` (body aceita `isAdmin`),
       `PATCH /ministerios/:id/membros/:membroId/admin` (promover/rebaixar),
       `DELETE /ministerios/:id/membros/:membroId`
-- [ ] Regra: existir a associação = participa (é escalável); `isAdmin = true` = também administra
-- [ ] Convite escopado por ministério (endpoint POST /ministerios/:id/membros/convite):
+- [x] Regra: existir a associação = participa (é escalável); `isAdmin = true` = também administra
+- [x] Convite escopado por ministério (endpoint POST /ministerios/:id/membros/convite):
       recebe { name, email, isAdmin? } e faz criar-ou-associar — e-mail novo cria o Membro
       e associa; e-mail existente fora do ministério só associa; e-mail já no ministério → 409.
       Reutiliza a criação de membro do bloco Membros (não duplica validação).
