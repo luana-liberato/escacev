@@ -15,6 +15,9 @@ api/dist/
 # Request
 api/requests/*.http
 
+# Scripts locais de teste (não versionados)
+api/scripts/
+
 # Prisma
 api/prisma/*.db
 
