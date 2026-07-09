@@ -198,15 +198,33 @@
 - [ ] Endpoints: `POST /escalas/:id/alocacoes`, `DELETE /alocacoes/:id`
 
 ### Motor de Conflito (RN01, RN02, RN03, RN07) — coração do TCC
+> **Preparação da Fase 3 já pronta:** a peça de compatibilidade
+> (`CheckPositionCompatibilityUseCase`, assinatura `(positionAId, positionBId) → boolean`)
+> já existe e foi desenhada para ser **injetada** aqui — o motor consome, não reimplementa.
+> O schema também já suporta a varredura: `Alocacao.membroId` indexado e o caminho
+> `Alocacao → VagaEvento → Evento` (horário) + `VagaEvento → Funcao` (função).
+>
+> **Cenário-guia:** o admin do Ministério A monta a escala, mas o membro pode já estar
+> escalado no Ministério B em horário sobreposto. Por isso a varredura é no **tenant
+> inteiro** (todos os ministérios), não só no ministério do admin — e é também o motivo de
+> a matriz de compatibilidade ser institucional (`ADMIN_GERAL`), já que um par pode ligar
+> funções de ministérios diferentes.
 - [ ] Implementar serviço de detecção de conflito centrado no membro:
   - [ ] Dado um membro, buscar **todas** as suas alocações (em todos os ministérios)
   - [ ] Detectar sobreposição de horário: `novo.inicio < existente.fim AND novo.fim > existente.inicio`
-  - [ ] Para cada sobreposição, checar a matriz de compatibilidade das funções envolvidas
+  - [ ] Para cada sobreposição, checar a compatibilidade via o `CheckPositionCompatibilityUseCase` (Fase 3, já pronto) — não reimplementar
   - [ ] Marcar conflito apenas quando as funções são incompatíveis (RN02)
+  - [ ] Tratar **mesma função sobreposta** (mesmo `funcaoId`) como conflito — o `Check` devolve `false` para ids iguais (não existe linha canônica para par igual; ninguém em dois lugares ao mesmo tempo)
   - [ ] Retornar detalhes claros: qual evento, qual escala, qual função conflita
+- [ ] **DECISÃO DE PRODUTO pendente — visibilidade cross-ministério:** quando o conflito de
+      X estiver numa alocação de um ministério que o admin **não** administra, definir quanto
+      detalhe expor ("X indisponível neste horário" vs. "X está como Baterista no culto tal do
+      Ministério B"). Não é bloqueio técnico; é escolha de privacidade/UX a decidir antes da UI.
 - [ ] Aplicar prioridade por publicação: escala publicada primeiro tem precedência (RN07)
 - [ ] Permitir que o admin confirme a alocação mesmo com conflito (RN03)
 - [ ] Registrar a sobrescrita: `alocacao.conflito = true`
+- [ ] **Nota operacional (RN02):** matriz vazia = todo par sobreposto vira conflito; a matriz
+      precisa ser populada pelo `ADMIN_GERAL` para o motor ser útil (é o default, não bug)
 - [ ] Cobrir o motor de conflito com testes (Fase 10)
 
 ### Publicação de Escala (RN04)
