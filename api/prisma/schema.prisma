@@ -144,14 +144,16 @@ model Funcao {
 // Ausência de registro = incompatível por padrão
 // Regra de armazenamento: sempre funcaoAId < funcaoBId (evita duplicatas)
 model CompatibilidadeFuncao {
-  id        String @id @default(cuid())
+  id        String   @id @default(cuid())
   funcaoAId String
   funcaoBId String
+  criadoEm  DateTime @default(now())
 
   funcaoA Funcao @relation("FuncaoA", fields: [funcaoAId], references: [id])
   funcaoB Funcao @relation("FuncaoB", fields: [funcaoBId], references: [id])
 
   @@unique([funcaoAId, funcaoBId])
+  @@index([funcaoBId]) // lookup reverso do motor de conflito (par guardado só como A<B, RN02)
   @@map("compatibilidade_funcoes")
 }
 
