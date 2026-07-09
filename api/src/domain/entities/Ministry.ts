@@ -69,13 +69,20 @@ export class Ministry {
   }
 
   private static normalizeName(name?: string): string {
-    if (!name?.trim()) throw new AppError('Nome é obrigatório', 400);
+    // Checa o tipo antes de trim: um valor não-string (número, lista) no body
+    // vira 400 tratado, em vez de estourar TypeError → 500.
+    if (typeof name !== 'string' || !name.trim()) {
+      throw new AppError('Nome é obrigatório', 400);
+    }
     return name.trim();
   }
 
   /** Descrição em branco vira null (coluna opcional no schema). */
   private static normalizeDescription(description?: string | null): string | null {
-    const value = description?.trim();
+    // Ausente/null → null; se vier valor, exige string (não-string vira 400, não 500).
+    if (description === undefined || description === null) return null;
+    if (typeof description !== 'string') throw new AppError('Descrição inválida', 400);
+    const value = description.trim();
     return value ? value : null;
   }
 }

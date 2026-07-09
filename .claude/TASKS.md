@@ -144,11 +144,14 @@
 ### Funções (RF03)
 > Construído depois da associação para já nascer com o RBAC escopado (reusa a guarda "é admin deste ministério").
 > **Atenção ao nome em inglês:** `role` já é o campo de perfil no JWT — não reusar "Role"
-> para a função. Decidir entre `Position` ou `MinistryFunction`.
-- [ ] Entidade da função + `create()` (nome em inglês a decidir — ver nota acima)
-- [ ] Use cases: criar, listar, atualizar, remover função dentro de um ministério
-- [ ] Endpoints: `POST /ministerios/:id/funcoes`, `GET /ministerios/:id/funcoes`, `PUT /funcoes/:id`, `DELETE /funcoes/:id`
-- [ ] RBAC: gerenciar funções → `ADMIN_GERAL` OU admin escopado do ministério (`isAdmin = true`)
+> para a função. Decidido: **`Position`** (mapeia o model `Funcao` do Prisma).
+- [x] Entidade da função + `create()` (nome em inglês: `Position`)
+- [x] Use cases: criar, listar, atualizar, remover função dentro de um ministério
+- [x] Endpoints: `POST /ministerios/:id/funcoes`, `GET /ministerios/:id/funcoes`, `PUT /funcoes/:id`, `DELETE /funcoes/:id`
+- [x] RBAC: gerenciar funções → `ADMIN_GERAL` OU admin escopado do ministério (`isAdmin = true`)
+- [ ] Resolver código órfão: `GetPositionUseCase` existe mas nenhuma rota o usa.
+      Decidir entre expor `GET /funcoes/:id` (provável necessidade do frontend) ou
+      remover o use case. (achado O1 da auditoria)
 
 ### Matriz de Compatibilidade de Funções (RN01, RN02)
 - [ ] Entidade `CompatibilidadeFuncao` com regra de armazenamento `funcaoAId < funcaoBId`
@@ -374,6 +377,12 @@
 - [ ] 🔵 Isolamento de dados real entre tenants (testes de segurança multitenant)
 - [ ] 🔵 Billing / planos (se o produto for monetizado)
 - [ ] 🔵 Suporte cross-institution (RF01.3)
+- [ ] 🔵 Endurecer contra concorrência (dívida técnica adiada do MVP):
+      • Adicionar `@@unique([ministerioId, nome])` ao model `Funcao` e a constraint
+        equivalente de nome único ao model `Ministerio` — hoje a unicidade é só no
+        código (use case), com janela de corrida teórica. (achado F2 de Funções, idêntico ao de Ministérios)
+      • Tornar atômica a checagem-e-remoção no delete de `Funcao` (e revisar casos
+        similares) para eliminar a race teórica que hoje poderia resultar em 500. (achado F3)
 
 ---
 

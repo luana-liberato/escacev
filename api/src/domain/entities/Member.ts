@@ -109,12 +109,18 @@ export class Member {
   }
 
   private static normalizeName(name?: string): string {
-    if (!name?.trim()) throw new AppError('Nome é obrigatório', 400);
+    // Checa o tipo antes de trim: um valor não-string (número, lista) no body
+    // vira 400 tratado, em vez de estourar TypeError → 500.
+    if (typeof name !== 'string' || !name.trim()) {
+      throw new AppError('Nome é obrigatório', 400);
+    }
     return name.trim();
   }
 
   private static normalizeEmail(email?: string): string {
-    const value = email?.trim().toLowerCase();
+    // Tipo antes de trim: e-mail não-string no body vira 400, não TypeError → 500.
+    if (typeof email !== 'string') throw new AppError('E-mail é obrigatório', 400);
+    const value = email.trim().toLowerCase();
     if (!value) throw new AppError('E-mail é obrigatório', 400);
     if (!EMAIL_REGEX.test(value)) throw new AppError('E-mail inválido', 400);
     return value;
