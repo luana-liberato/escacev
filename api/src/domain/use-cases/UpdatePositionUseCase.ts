@@ -1,25 +1,29 @@
 import { Position } from '../entities/Position';
 import { PositionRepository } from '../repositories/PositionRepository';
 import { MinistryRepository } from '../repositories/MinistryRepository';
+import { Actor, MinistryAccessPolicy } from '../services/MinistryAccessPolicy';
 import { AppError } from '../../shared/errors/AppError';
 
 /** institutionId vem do JWT (req.user), nunca do body. */
 export interface UpdatePositionDTO {
   institutionId: string;
+  actor: Actor;
   id: string;
   name?: string;
 }
 
 /**
  * Atualiza o nome de uma função, garantindo que ela pertence a um ministério da
- * instituição do usuário (tenant) e mantendo a invariante de nome único dentro
- * do ministério. A validação do novo nome fica na entidade (Position.update).
+ * instituição do usuário (tenant), que o ator administra esse ministério
+ * (Permissão Escopada) e mantendo a invariante de nome único dentro do
+ * ministério. A validação do novo nome fica na entidade (Position.update).
  * Dependências injetadas via construtor (Seção 4.2).
  */
 export class UpdatePositionUseCase {
   constructor(
     private readonly positionRepo: PositionRepository,
     private readonly ministryRepo: MinistryRepository,
+    private readonly accessPolicy: MinistryAccessPolicy,
   ) {}
 
   async execute(dto: UpdatePositionDTO): Promise<Position> {
@@ -32,6 +36,8 @@ export class UpdatePositionUseCase {
     if (!ministry || ministry.institutionId !== dto.institutionId) {
       throw new AppError('Função não encontrada', 404);
     }
+
+    await this.accessPolicy.ensureCanManage(dto.actor, ministry.id);
 
     const updated = position.update({ name: dto.name });
 

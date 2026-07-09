@@ -1,10 +1,12 @@
 import { PositionRepository } from '../repositories/PositionRepository';
 import { MinistryRepository } from '../repositories/MinistryRepository';
+import { Actor, MinistryAccessPolicy } from '../services/MinistryAccessPolicy';
 import { AppError } from '../../shared/errors/AppError';
 
 /** institutionId vem do JWT (req.user), nunca do body. */
 export interface DeletePositionDTO {
   institutionId: string;
+  actor: Actor;
   id: string;
 }
 
@@ -23,6 +25,7 @@ export class DeletePositionUseCase {
   constructor(
     private readonly positionRepo: PositionRepository,
     private readonly ministryRepo: MinistryRepository,
+    private readonly accessPolicy: MinistryAccessPolicy,
   ) {}
 
   async execute(dto: DeletePositionDTO): Promise<void> {
@@ -35,6 +38,8 @@ export class DeletePositionUseCase {
     if (!ministry || ministry.institutionId !== dto.institutionId) {
       throw new AppError('Função não encontrada', 404);
     }
+
+    await this.accessPolicy.ensureCanManage(dto.actor, ministry.id);
 
     const usage = await this.positionRepo.countEventSlotUsage(position.id);
     if (usage > 0) {
