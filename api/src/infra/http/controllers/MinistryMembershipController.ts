@@ -14,6 +14,7 @@ import { SetMembershipAdminUseCase } from '../../../domain/use-cases/SetMembersh
 import { RemoveMemberFromMinistryUseCase } from '../../../domain/use-cases/RemoveMemberFromMinistryUseCase';
 import { ListMembershipsUseCase } from '../../../domain/use-cases/ListMembershipsUseCase';
 import { CreateMemberUseCase } from '../../../domain/use-cases/CreateMemberUseCase';
+import { MinistryAccessPolicy } from '../../../domain/services/MinistryAccessPolicy';
 import { PrismaMinistryMembershipRepository } from '../../database/repositories/PrismaMinistryMembershipRepository';
 import { PrismaMinistryRepository } from '../../database/repositories/PrismaMinistryRepository';
 import { PrismaMemberRepository } from '../../database/repositories/PrismaMemberRepository';
@@ -22,7 +23,7 @@ import { respond } from '../../../shared/utils/respond';
 export class MinistryMembershipController {
   // POST /ministerios/:id/membros — associa um membro existente. institutionId vem do JWT.
   associate = async (req: Request, res: Response): Promise<void> => {
-    const { institutionId } = MinistryMembershipController.authUser(req);
+    const { institutionId, memberId: actorId, role } = MinistryMembershipController.authUser(req);
     const { memberId } = req.body;
     const isAdmin = MinistryMembershipController.optionalBoolean(req.body.isAdmin, 'isAdmin');
 
@@ -30,9 +31,11 @@ export class MinistryMembershipController {
       new PrismaMinistryMembershipRepository(),
       new PrismaMinistryRepository(),
       new PrismaMemberRepository(),
+      MinistryMembershipController.accessPolicy(),
     );
     const membership = await useCase.execute({
       institutionId,
+      actor: { memberId: actorId, role },
       ministryId: req.params.id,
       memberId,
       isAdmin,
@@ -48,7 +51,7 @@ export class MinistryMembershipController {
 
   // POST /ministerios/:id/membros/convite — convida (criar-ou-associar). institutionId vem do JWT.
   invite = async (req: Request, res: Response): Promise<void> => {
-    const { institutionId } = MinistryMembershipController.authUser(req);
+    const { institutionId, memberId: actorId, role } = MinistryMembershipController.authUser(req);
     const { name, email } = req.body;
     const isAdmin = MinistryMembershipController.optionalBoolean(req.body.isAdmin, 'isAdmin');
 
@@ -58,9 +61,11 @@ export class MinistryMembershipController {
       new PrismaMinistryRepository(),
       memberRepo,
       new CreateMemberUseCase(memberRepo),
+      MinistryMembershipController.accessPolicy(),
     );
     const result = await useCase.execute({
       institutionId,
+      actor: { memberId: actorId, role },
       ministryId: req.params.id,
       name,
       email,
@@ -83,15 +88,17 @@ export class MinistryMembershipController {
 
   // PATCH /ministerios/:id/membros/:membroId/admin — promove/rebaixa admin do ministério.
   setAdmin = async (req: Request, res: Response): Promise<void> => {
-    const { institutionId } = MinistryMembershipController.authUser(req);
+    const { institutionId, memberId: actorId, role } = MinistryMembershipController.authUser(req);
     const isAdmin = MinistryMembershipController.requiredBoolean(req.body.isAdmin, 'isAdmin');
 
     const useCase = new SetMembershipAdminUseCase(
       new PrismaMinistryMembershipRepository(),
       new PrismaMinistryRepository(),
+      MinistryMembershipController.accessPolicy(),
     );
     const membership = await useCase.execute({
       institutionId,
+      actor: { memberId: actorId, role },
       ministryId: req.params.id,
       memberId: req.params.membroId,
       isAdmin,
@@ -107,14 +114,16 @@ export class MinistryMembershipController {
 
   // DELETE /ministerios/:id/membros/:membroId — remove a associação.
   remove = async (req: Request, res: Response): Promise<void> => {
-    const { institutionId } = MinistryMembershipController.authUser(req);
+    const { institutionId, memberId: actorId, role } = MinistryMembershipController.authUser(req);
 
     const useCase = new RemoveMemberFromMinistryUseCase(
       new PrismaMinistryMembershipRepository(),
       new PrismaMinistryRepository(),
+      MinistryMembershipController.accessPolicy(),
     );
     await useCase.execute({
       institutionId,
+      actor: { memberId: actorId, role },
       ministryId: req.params.id,
       memberId: req.params.membroId,
     });
@@ -158,6 +167,11 @@ export class MinistryMembershipController {
       new PrismaMinistryRepository(),
       new PrismaMemberRepository(),
     );
+  }
+
+  /** Guarda de escopo de ministério (ADMIN_GERAL ou admin com isAdmin no ministério). */
+  private static accessPolicy(): MinistryAccessPolicy {
+    return new MinistryAccessPolicy(new PrismaMinistryMembershipRepository());
   }
 
   /**

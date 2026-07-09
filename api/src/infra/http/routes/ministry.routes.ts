@@ -31,12 +31,13 @@ ministryRoutes.get(
   asyncHandler(controller.show),
 );
 
-// Atualizar ministério — apenas ADMIN_GERAL.
-// A edição escopada pelo ADMIN_MINISTERIO (isAdmin no vínculo) entra num bloco futuro.
+// Atualizar ministério — ADMIN_GERAL ou ADMIN_MINISTERIO com isAdmin naquele
+// ministério. O rbac é o filtro grosso (bloqueia MEMBRO); a guarda escopada
+// (MinistryAccessPolicy) faz a checagem fina no use case e responde 403.
 ministryRoutes.put(
   '/ministerios/:id',
   auth,
-  rbac('ADMIN_GERAL'),
+  rbac('ADMIN_GERAL', 'ADMIN_MINISTERIO'),
   asyncHandler(controller.update),
 );
 

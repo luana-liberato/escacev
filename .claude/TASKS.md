@@ -136,10 +136,10 @@
 ### Permissão escopada de edição de ministério (RF03)
 > Fecha a pergunta "o ADMIN_MINISTERIO edita o próprio ministério". Depende do
 > `isAdmin` do bloco anterior — é o "voltar e afinar" da Forma A.
-- [ ] Ajustar RBAC do `PUT /ministerios/:id`: permitir `ADMIN_GERAL` OU
+- [x] Ajustar RBAC do `PUT /ministerios/:id`: permitir `ADMIN_GERAL` OU
       `ADMIN_MINISTERIO` com `isAdmin = true` naquele ministério
-- [ ] Criar guarda reutilizável "é admin deste ministério" (usada aqui, em funções, em associações e nas escalas na Fase 5)
-- [ ] Garantir que um admin não edita ministério em que não tem `isAdmin`
+- [x] Criar guarda reutilizável "é admin deste ministério" (usada aqui, em funções, em associações e nas escalas na Fase 5)
+- [x] Garantir que um admin não edita ministério em que não tem `isAdmin`
 
 ### Funções (RF03)
 > Construído depois da associação para já nascer com o RBAC escopado (reusa a guarda "é admin deste ministério").
