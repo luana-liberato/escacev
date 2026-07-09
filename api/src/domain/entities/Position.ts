@@ -56,7 +56,11 @@ export class Position {
   }
 
   private static normalizeName(name?: string): string {
-    if (!name?.trim()) throw new AppError('Nome é obrigatório', 400);
+    // Checa o tipo antes de trim: um valor não-string (número, lista) no body
+    // vira 400 tratado, em vez de estourar TypeError → 500.
+    if (typeof name !== 'string' || !name.trim()) {
+      throw new AppError('Nome é obrigatório', 400);
+    }
     return name.trim();
   }
 }
