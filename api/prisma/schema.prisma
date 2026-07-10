@@ -131,7 +131,7 @@ model Funcao {
   criadoEm    DateTime @default(now())
 
   ministerio  Ministerio @relation(fields: [ministerioId], references: [id])
-  vagas       VagaEvento[]
+  alocacoes   Alocacao[]
 
   // Matriz de compatibilidade — sempre armazenar com funcaoAId < funcaoBId (RN02)
   compatibilidadesComoA CompatibilidadeFuncao[] @relation("FuncaoA")
@@ -189,25 +189,9 @@ model Evento {
   criadoEm     DateTime @default(now())
 
   instituicao Instituicao  @relation(fields: [instituicaoId], references: [id])
-  vagas       VagaEvento[]
   escalas     Escala[]
 
   @@map("eventos")
-}
-
-// Vaga por função em um evento (ex: 1 baterista, 2 vocais)
-model VagaEvento {
-  id         String @id @default(cuid())
-  eventoId   String
-  funcaoId   String
-  quantidade Int    @default(1)
-
-  evento    Evento     @relation(fields: [eventoId], references: [id])
-  funcao    Funcao     @relation(fields: [funcaoId], references: [id])
-  alocacoes Alocacao[]
-
-  @@unique([eventoId, funcaoId])
-  @@map("vagas_evento")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -230,24 +214,26 @@ model Escala {
   @@map("escalas")
 }
 
-// Alocação de um membro em uma vaga da escala
+// Alocação DIRETA: um membro exercendo uma função dentro da escala de um
+// ministério. Não há mais "vaga" abstrata — a escala aponta pessoa + função
+// diretamente (modelo de alocação direta).
 // conflito = true quando admin confirmou sabendo do conflito (RN03)
 model Alocacao {
   id       String   @id @default(cuid())
   escalaId String
-  vagaId   String
   membroId String
+  funcaoId String
   conflito Boolean  @default(false) // RN03: sobrescrita ciente do conflito
   criadoEm DateTime @default(now())
 
-  escala Escala     @relation(fields: [escalaId], references: [id])
-  vaga   VagaEvento @relation(fields: [vagaId], references: [id])
-  membro Membro     @relation(fields: [membroId], references: [id])
+  escala Escala @relation(fields: [escalaId], references: [id])
+  membro Membro @relation(fields: [membroId], references: [id])
+  funcao Funcao @relation(fields: [funcaoId], references: [id])
 
   trocasOrigem Troca[] @relation("TrocaOrigem")
 
-  @@unique([escalaId, vagaId, membroId])
-  @@index([membroId]) // motor de conflito varre por membroId — index importante
+  @@unique([escalaId, membroId, funcaoId]) // mesma pessoa não repete a mesma função na mesma escala
+  @@index([membroId]) // motor de conflito varre por membroId — index importante (RN01)
   @@map("alocacoes")
 }
 

@@ -110,10 +110,9 @@
       apagado). **Motivo:** funções e vínculos não são histórico, são parte da
       estrutura do ministério; exigir a limpeza manual peça a peça tornaria a
       remoção impraticável na operação real.
-      **O bloqueio (409) permanece apenas para o que é histórico ou compartilhado:**
-      escalas do ministério (registro de quem serviu) e funções já usadas em
-      `VagaEvento` (a vaga pertence ao evento, que é da instituição — apagar junto
-      destruiria dados fora do ministério).
+      **O bloqueio (409) permanece apenas para o que é histórico:**
+      escalas do ministério (registro de quem serviu) e funções já em uso em alguma
+      `Alocacao` (alguém escalado nelas — apagar junto destruiria dado de escala).
 
 ### Associação Membro ↔ Ministério, com papel de admin (RF03)
 > **Mudança de schema:** adicionar `isAdmin Boolean @default(false)` ao model
@@ -171,6 +170,11 @@
 
 ## Fase 4 — Eventos e Calendário 🔴
 
+> **Modelo de alocação direta:** o evento é da **instituição** e não tem "vagas"
+> abstratas — quem indica pessoa + função é a escala de cada ministério (Fase 5).
+> Qualquer admin (**`ADMIN_GERAL`** ou **`ADMIN_MINISTERIO`**) pode criar eventos.
+> O planejamento de vagas em aberto virou item DESEJÁVEL (ver Fase 9).
+
 ### Eventos (RF04)
 - [ ] Entidade `Evento` + `create()` (validar `fim > inicio`)
 - [ ] Use cases: criar, listar (com filtro por período), atualizar, remover evento
@@ -178,29 +182,31 @@
 - [ ] Suportar eventos simultâneos no calendário
 - [ ] Endpoints: `POST /eventos`, `GET /eventos` (com query de período), `GET /eventos/:id`, `PUT /eventos/:id`, `DELETE /eventos/:id`
 
-### Vagas por Evento (RF04)
-- [ ] Entidade `VagaEvento` (funcaoId + quantidade)
-- [ ] Use case: definir vagas por função em um evento (ex: 1 baterista, 2 vocais)
-- [ ] Use case: listar e remover vagas de um evento
-- [ ] Endpoints: `POST /eventos/:id/vagas`, `GET /eventos/:id/vagas`, `DELETE /vagas/:id`
-
 ---
 
 ## Fase 5 — Escalas e Motor de Conflito (NÚCLEO) 🔴
 
+> **Modelo de alocação direta:** cada ministério monta a **sua** escala para um
+> evento, indicando **pessoa + função diretamente** — não há vaga abstrata. A escrita
+> de escala/alocação segue a **Permissão Escopada** (`ADMIN_GERAL`, ou `ADMIN_MINISTERIO`
+> com `isAdmin` no ministério da escala) — reusa a `MinistryAccessPolicy`.
+
 ### Escalas (RF05)
 - [ ] Entidade `Escala` + `create()` (status inicial RASCUNHO)
+- [ ] Escala = de um ministério para um evento (`@@unique([ministerioId, eventoId])`: cada ministério tem a SUA escala por evento)
 - [ ] Use case: criar escala (ministério + evento)
 - [ ] Use case: buscar escala com suas alocações
 - [ ] Use case: listar escalas (por evento, por ministério)
+- [ ] RBAC das escritas: `ADMIN_GERAL` ou admin escopado do ministério da escala (reusa a `MinistryAccessPolicy`)
 - [ ] Endpoints: `POST /escalas`, `GET /escalas`, `GET /escalas/:id`
 
 ### Alocações (RF05)
-- [ ] Entidade `Alocacao` (escala + vaga + membro + flag conflito)
-- [ ] Use case: alocar membro em uma vaga da escala
+- [ ] Entidade `Alocacao` = **membro + função + escala, direto** (referencia `funcaoId`, sem vaga) + flag conflito (RN03)
+- [ ] Use case: alocar membro numa função da escala (pessoa + função direto)
 - [ ] Use case: remover alocação
 - [ ] Validar que o membro pertence ao ministério da escala
-- [ ] Validar que a vaga pertence ao evento da escala
+- [ ] Validar que a função pertence ao ministério da escala
+- [ ] RBAC das escritas: `ADMIN_GERAL` ou admin escopado do ministério da escala (reusa a `MinistryAccessPolicy`)
 - [ ] Endpoints: `POST /escalas/:id/alocacoes`, `DELETE /alocacoes/:id`
 
 ### Motor de Conflito (RN01, RN02, RN03, RN07) — coração do TCC
@@ -208,7 +214,7 @@
 > (`CheckPositionCompatibilityUseCase`, assinatura `(positionAId, positionBId) → boolean`)
 > já existe e foi desenhada para ser **injetada** aqui — o motor consome, não reimplementa.
 > O schema também já suporta a varredura: `Alocacao.membroId` indexado e o caminho
-> `Alocacao → VagaEvento → Evento` (horário) + `VagaEvento → Funcao` (função).
+> `Alocacao → Escala → Evento` (horário) + `Alocacao → Funcao` (função, direto).
 >
 > **Cenário-guia:** o admin do Ministério A monta a escala, mas o membro pode já estar
 > escalado no Ministério B em horário sobreposto. Por isso a varredura é no **tenant
@@ -237,6 +243,9 @@
 - [ ] Use case: publicar escala → `status = PUBLICADA` + preencher `publicadaEm`
 - [ ] Garantir que escala RASCUNHO seja invisível ao membro
 - [ ] Use case: listar "minhas escalas" (apenas as PUBLICADAS onde o membro está alocado)
+- [ ] **Visão do membro agregada por período (semana/dia/mês):** puxar todas as alocações
+      do membro no intervalo, de **todos os ministérios** (só PUBLICADAS, RN04). A **visão
+      mensal é a principal** forma de consumo do membro.
 - [ ] Endpoints: `PATCH /escalas/:id/publicar`, `GET /minhas-escalas`
 - [ ] Disparar notificação ao publicar (integra com Fase 7)
 
@@ -298,11 +307,11 @@
 - [ ] Listagem e CRUD de **membros** (com envio de convite)
 - [ ] Tela de associação de membros a ministérios
 - [ ] Tela da **matriz de compatibilidade** de funções
-- [ ] Listagem e CRUD de **eventos** com definição de vagas por função
+- [ ] Listagem e CRUD de **eventos** (calendário da instituição)
 - [ ] **Calendário** de eventos (visualização mensal/semanal ou lista)
 
 ### Telas de Escala
-- [ ] Tela de **geração de escala**: selecionar evento, ministério, alocar membros nas vagas
+- [ ] Tela de **geração de escala**: selecionar evento, ministério, alocar membros (pessoa + função)
 - [ ] Indicadores visuais de **conflito** e **indisponibilidade** na alocação
 - [ ] Confirmação de alocação com conflito (sobrescrita ciente)
 - [ ] Botão de **publicar** escala
@@ -316,6 +325,18 @@
 ---
 
 ## Fase 9 — Funcionalidades Desejáveis 🟡
+
+### Planejamento de vagas em aberto (🟡 — o antigo `VagaEvento`, agora opcional)
+> No modelo essencial a alocação é direta (pessoa + função). Planejar vaga em aberto
+> — declarar a necessidade antes de ter a pessoa — passa a ser um recurso desejável.
+- [ ] 🟡 Permitir que uma escala **declare necessidade por função** antes de ter as pessoas
+      (ex: "faltam 2 vocais"), sobre o modelo de alocação direta.
+- [ ] 🟡 Preencher a vaga em aberto alocando a pessoa (converte a necessidade em `Alocacao`).
+
+### Pedido de ajuda cross-ministério (🟡)
+- [ ] 🟡 Admin de um ministério X solicita a alocação de alguém de um ministério Y para um
+      evento (ex: culto infantil pedindo uma pessoa da recepção).
+- [ ] 🟡 Fluxo de solicitação → aceite (pela pessoa e/ou pelo admin do ministério Y) → alocação.
 
 ### Trocas e Substituições (RF09, RN08)
 - [ ] Entidade `Troca` (proponente, alvo, alocação de origem, tipo, status)

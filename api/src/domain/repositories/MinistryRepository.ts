@@ -2,10 +2,9 @@ import { Ministry } from '../entities/Ministry';
 
 /**
  * Contagem das dependências que BLOQUEIAM a remoção de um ministério:
- * escalas (histórico de quem serviu) e funções já usadas em vagas de eventos
- * (a vaga pertence ao evento da instituição, fora do ministério).
- * As demais dependências (funções livres, compatibilidades e vínculos de
- * membros) são estruturais e caem em cascata no delete.
+ * escalas (histórico de quem serviu) e funções já em uso em alguma Alocacao
+ * (alguém escalado nelas). As demais dependências (funções livres,
+ * compatibilidades e vínculos de membros) são estruturais e caem em cascata.
  */
 export interface MinistryBlockingDependencies {
   schedules: number;
@@ -36,6 +35,6 @@ export interface MinistryRepository {
    * O use case bloqueia antes se houver dependências históricas/compartilhadas.
    */
   delete(id: string): Promise<void>;
-  /** Conta escalas e funções em uso em vagas de eventos (bloqueiam a remoção). */
+  /** Conta escalas e funções em uso em alocações (bloqueiam a remoção). */
   countBlockingDependencies(ministryId: string): Promise<MinistryBlockingDependencies>;
 }

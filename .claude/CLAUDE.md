@@ -279,7 +279,7 @@ router.get('/minhas-escalas', auth,                                      asyncHa
 
 **Lógica do motor de conflito (RN01):**
 ```
-Para cada nova alocacao(membroId, vagaId):
+Para cada nova alocacao(membroId, funcaoId):
   1. Buscar todas as alocacoes existentes do membro
   2. Para cada alocacao_existente:
      - Checar sobreposição: evento_novo.inicio < alocacao_existente.evento.fim

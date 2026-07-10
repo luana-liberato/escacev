@@ -66,7 +66,7 @@ export class PositionController {
     respond(res, 200, PositionController.serialize(position), 'Função atualizada');
   };
 
-  // DELETE /funcoes/:id — remove a função (409 se em uso por vaga de evento).
+  // DELETE /funcoes/:id — remove a função (409 se em uso em escalas/alocações).
   remove = async (req: Request, res: Response): Promise<void> => {
     const { institutionId, memberId, role } = PositionController.authUser(req);
 
