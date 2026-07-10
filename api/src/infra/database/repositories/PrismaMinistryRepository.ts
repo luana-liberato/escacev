@@ -75,7 +75,7 @@ export class PrismaMinistryRepository implements MinistryRepository {
   async countBlockingDependencies(ministryId: string): Promise<MinistryBlockingDependencies> {
     const [schedules, functionsInUse] = await prisma.$transaction([
       prisma.escala.count({ where: { ministerioId: ministryId } }),
-      prisma.vagaEvento.count({ where: { funcao: { ministerioId: ministryId } } }),
+      prisma.alocacao.count({ where: { funcao: { ministerioId: ministryId } } }),
     ]);
     return { schedules, functionsInUse };
   }

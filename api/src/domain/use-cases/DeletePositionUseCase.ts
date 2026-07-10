@@ -15,11 +15,11 @@ export interface DeletePositionDTO {
  * do usuário (tenant).
  *
  * Estratégia de remoção (espelha a de ministérios): o que é HISTÓRICO/de escala
- * bloqueia — se a função já foi usada em alguma VagaEvento, a remoção é negada
- * com 409 (a vaga pertence a um evento da instituição; apagar a função
- * destruiria dado de escala). O que é ESTRUTURAL da função cai em cascata: as
- * linhas de CompatibilidadeFuncao que a referenciam são apagadas junto, na
- * transação do repositório. Dependências injetadas via construtor (Seção 4.2).
+ * bloqueia — se a função já está em uso em alguma Alocacao (alguém escalado
+ * nela), a remoção é negada com 409 (apagar a função destruiria dado de escala).
+ * O que é ESTRUTURAL da função cai em cascata: as linhas de CompatibilidadeFuncao
+ * que a referenciam são apagadas junto, na transação do repositório. Dependências
+ * injetadas via construtor (Seção 4.2).
  */
 export class DeletePositionUseCase {
   constructor(
@@ -44,7 +44,7 @@ export class DeletePositionUseCase {
     const usage = await this.positionRepo.countEventSlotUsage(position.id);
     if (usage > 0) {
       throw new AppError(
-        'Não é possível remover: esta função está em uso em vagas de eventos. Remova antes essas vagas',
+        'Não é possível remover: esta função está em uso em escalas. Remova antes as alocações que a utilizam',
         409,
       );
     }

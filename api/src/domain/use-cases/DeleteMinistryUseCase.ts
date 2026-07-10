@@ -10,8 +10,8 @@ import { AppError } from '../../shared/errors/AppError';
  * referenciam) e vínculos MembroMinisterio, de modo que admins e membros
  * deixam de estar ligados ao ministério apagado. O que é HISTÓRICO ou
  * COMPARTILHADO bloqueia a remoção (409): escalas do ministério (registro de
- * quem serviu) e funções já usadas em vagas de eventos (a vaga pertence ao
- * evento da instituição — apagá-la destruiria dados fora do ministério).
+ * quem serviu) e funções já em uso em alguma Alocacao (alguém escalado nelas —
+ * apagá-las destruiria dado de escala).
  */
 export class DeleteMinistryUseCase {
   constructor(private readonly ministryRepo: MinistryRepository) {}
@@ -31,7 +31,7 @@ export class DeleteMinistryUseCase {
     }
     if (blocking.functionsInUse > 0) {
       throw new AppError(
-        'Não é possível remover: há funções deste ministério em uso por vagas de eventos. Remova antes essas vagas',
+        'Não é possível remover: há funções deste ministério em uso em escalas. Remova antes as alocações que as utilizam',
         409,
       );
     }

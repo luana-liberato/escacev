@@ -18,6 +18,6 @@ export interface PositionRepository {
   update(position: Position): Promise<Position>;
   /** Remove a função (com cascata das compatibilidades — ver implementação). */
   delete(id: string): Promise<void>;
-  /** Quantas vagas de evento usam esta função (bloqueio de remoção). */
+  /** Quantas alocações usam esta função (bloqueio de remoção). */
   countEventSlotUsage(id: string): Promise<number>;
 }

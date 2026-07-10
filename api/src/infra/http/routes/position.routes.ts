@@ -39,7 +39,7 @@ positionRoutes.put(
   asyncHandler(controller.update),
 );
 
-// Remover função — ADMIN_GERAL ou admin escopado; 409 se em uso por vaga de evento.
+// Remover função — ADMIN_GERAL ou admin escopado; 409 se em uso em escalas/alocações.
 positionRoutes.delete(
   '/funcoes/:id',
   auth,

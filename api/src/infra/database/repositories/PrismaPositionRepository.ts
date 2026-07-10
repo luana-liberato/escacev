@@ -53,8 +53,8 @@ export class PrismaPositionRepository implements PositionRepository {
   async delete(id: string): Promise<void> {
     // Cascata estrutural: as compatibilidades que referenciam esta função (em
     // qualquer dos lados) são apagadas junto, numa transação — a compatibilidade
-    // é estrutura da função, não histórico. As vagas de evento NÃO caem aqui: o
-    // use case bloqueia a remoção quando há uso (countEventSlotUsage).
+    // é estrutura da função, não histórico. As alocações NÃO caem aqui: o use
+    // case bloqueia a remoção quando a função está em uso (countEventSlotUsage).
     await prisma.$transaction([
       prisma.compatibilidadeFuncao.deleteMany({
         where: { OR: [{ funcaoAId: id }, { funcaoBId: id }] },
@@ -64,7 +64,9 @@ export class PrismaPositionRepository implements PositionRepository {
   }
 
   async countEventSlotUsage(id: string): Promise<number> {
-    return prisma.vagaEvento.count({ where: { funcaoId: id } });
+    // Modelo de alocação direta: "em uso" = há alocações nesta função (alguém
+    // escalado nela). Bloqueia a remoção da função (ver DeletePositionUseCase).
+    return prisma.alocacao.count({ where: { funcaoId: id } });
   }
 
   // Coluna em português (schema.prisma) → propriedade em inglês.
