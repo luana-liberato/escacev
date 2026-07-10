@@ -21,5 +21,11 @@
       { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }
     ]
   },
+  "overrides": [
+    {
+      "files": ["**/*.test.ts"],
+      "env": { "jest": true }
+    }
+  ],
   "ignorePatterns": ["dist", "node_modules", "prisma/migrations"]
 }
