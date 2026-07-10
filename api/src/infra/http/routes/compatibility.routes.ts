@@ -1,0 +1,43 @@
+import { Router } from 'express';
+import { asyncHandler } from '../../../shared/utils/asyncHandler';
+import { auth } from '../middlewares/auth';
+import { rbac } from '../middlewares/rbac';
+import { PositionCompatibilityController } from '../controllers/PositionCompatibilityController';
+
+/**
+ * Matriz de compatibilidade entre funções (RN01/RN02).
+ *
+ * RBAC: escrita E leitura são de escopo de INSTITUIÇÃO — restritas ao ADMIN_GERAL
+ * (a matriz pode ligar funções de ministérios diferentes; ver a discussão de
+ * permissão no SetPositionCompatibilityUseCase). Sem MinistryAccessPolicy aqui.
+ *
+ * ATENÇÃO À ORDEM: estas rotas precisam ser montadas ANTES de `positionRoutes` no
+ * index.ts. Caso contrário, `DELETE /funcoes/compatibilidade` seria capturado por
+ * `DELETE /funcoes/:id` (com :id = "compatibilidade").
+ */
+export const compatibilityRoutes = Router();
+const controller = new PositionCompatibilityController();
+
+// Marcar par como compatível — body { positionAId, positionBId }.
+compatibilityRoutes.post(
+  '/funcoes/compatibilidade',
+  auth,
+  rbac('ADMIN_GERAL'),
+  asyncHandler(controller.create),
+);
+
+// Remover a compatibilidade de um par — query ?positionAId=..&positionBId=..
+compatibilityRoutes.delete(
+  '/funcoes/compatibilidade',
+  auth,
+  rbac('ADMIN_GERAL'),
+  asyncHandler(controller.remove),
+);
+
+// Listar os pares compatíveis da instituição.
+compatibilityRoutes.get(
+  '/funcoes/compatibilidade',
+  auth,
+  rbac('ADMIN_GERAL'),
+  asyncHandler(controller.list),
+);
