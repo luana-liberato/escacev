@@ -154,12 +154,18 @@
       remover o use case. (achado O1 da auditoria)
 
 ### Matriz de Compatibilidade de Funções (RN01, RN02)
-- [ ] Entidade `CompatibilidadeFuncao` com regra de armazenamento `funcaoAId < funcaoBId`
-- [ ] Use case: marcar par de funções como compatível
-- [ ] Use case: remover compatibilidade (volta a ser incompatível por padrão)
-- [ ] Use case: consultar compatibilidade entre duas funções
-- [ ] Endpoints: `POST /funcoes/compatibilidade`, `DELETE /funcoes/compatibilidade`, `GET /funcoes/compatibilidade`
-- [ ] Garantir o default: ausência de registro = funções incompatíveis
+> Entidade em inglês `PositionCompatibility` (mapeia o model `CompatibilidadeFuncao`).
+> Escrita E leitura restritas ao `ADMIN_GERAL` (matriz é escopo de instituição, sem
+> MinistryAccessPolicy — um par pode ligar funções de ministérios diferentes).
+> Verificado de ponta a ponta na API real (13/13 cenários: forma canônica, idempotência,
+> tenant, RBAC).
+- [x] Entidade `PositionCompatibility` com regra de armazenamento `funcaoAId < funcaoBId` (forma canônica)
+- [x] Use case: marcar par de funções como compatível (`Set`, idempotente em duplicata)
+- [x] Use case: remover compatibilidade (`Remove`, idempotente; volta a ser incompatível por padrão)
+- [x] Use case: consultar compatibilidade entre duas funções (`Check`, dois ids → boolean, para injetar no motor de conflito da Fase 5)
+- [x] Use case extra: listar os pares da instituição (`List`, insumo para a tela de matriz)
+- [x] Endpoints: `POST /funcoes/compatibilidade`, `DELETE /funcoes/compatibilidade` (ids na query), `GET /funcoes/compatibilidade`
+- [x] Garantir o default: ausência de registro = funções incompatíveis
 
 ---
 
