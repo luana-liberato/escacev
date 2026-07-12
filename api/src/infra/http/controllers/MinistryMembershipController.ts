@@ -8,12 +8,12 @@ import {
   MemberMinistryView,
   MinistryMemberView,
 } from '../../../domain/repositories/MinistryMembershipRepository';
-import { AssociateMemberToMinistryUseCase } from '../../../domain/use-cases/AssociateMemberToMinistryUseCase';
-import { InviteMemberToMinistryUseCase } from '../../../domain/use-cases/InviteMemberToMinistryUseCase';
-import { SetMembershipAdminUseCase } from '../../../domain/use-cases/SetMembershipAdminUseCase';
-import { RemoveMemberFromMinistryUseCase } from '../../../domain/use-cases/RemoveMemberFromMinistryUseCase';
-import { ListMembershipsUseCase } from '../../../domain/use-cases/ListMembershipsUseCase';
-import { CreateMemberUseCase } from '../../../domain/use-cases/CreateMemberUseCase';
+import { AssociateMemberToMinistryUseCase } from '../../../domain/use-cases/memberships/AssociateMemberToMinistryUseCase';
+import { InviteMemberToMinistryUseCase } from '../../../domain/use-cases/memberships/InviteMemberToMinistryUseCase';
+import { SetMembershipAdminUseCase } from '../../../domain/use-cases/memberships/SetMembershipAdminUseCase';
+import { RemoveMemberFromMinistryUseCase } from '../../../domain/use-cases/memberships/RemoveMemberFromMinistryUseCase';
+import { ListMembershipsUseCase } from '../../../domain/use-cases/memberships/ListMembershipsUseCase';
+import { CreateMemberUseCase } from '../../../domain/use-cases/members/CreateMemberUseCase';
 import { MinistryAccessPolicy } from '../../../domain/services/MinistryAccessPolicy';
 import { PrismaMinistryMembershipRepository } from '../../database/repositories/PrismaMinistryMembershipRepository';
 import { PrismaMinistryRepository } from '../../database/repositories/PrismaMinistryRepository';

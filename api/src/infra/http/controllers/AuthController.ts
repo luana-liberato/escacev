@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import type { Profile } from 'passport-google-oauth20';
-import { AuthenticateWithGoogleUseCase } from '../../../domain/use-cases/AuthenticateWithGoogleUseCase';
+import { AuthenticateWithGoogleUseCase } from '../../../domain/use-cases/auth/AuthenticateWithGoogleUseCase';
 import { PrismaAccountRepository } from '../../database/repositories/PrismaAccountRepository';
 import { PrismaMemberRepository } from '../../database/repositories/PrismaMemberRepository';
 import { JwtService } from '../../services/jwt';

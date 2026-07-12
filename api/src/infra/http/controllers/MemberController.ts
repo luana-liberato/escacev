@@ -2,11 +2,11 @@ import { Request, Response } from 'express';
 import { AuthenticatedUser } from '../middlewares/auth';
 import { AppError } from '../../../shared/errors/AppError';
 import { Member } from '../../../domain/entities/Member';
-import { CreateMemberUseCase } from '../../../domain/use-cases/CreateMemberUseCase';
-import { ListMembersUseCase } from '../../../domain/use-cases/ListMembersUseCase';
-import { GetMemberUseCase } from '../../../domain/use-cases/GetMemberUseCase';
-import { UpdateMemberUseCase } from '../../../domain/use-cases/UpdateMemberUseCase';
-import { DeactivateMemberUseCase } from '../../../domain/use-cases/DeactivateMemberUseCase';
+import { CreateMemberUseCase } from '../../../domain/use-cases/members/CreateMemberUseCase';
+import { ListMembersUseCase } from '../../../domain/use-cases/members/ListMembersUseCase';
+import { GetMemberUseCase } from '../../../domain/use-cases/members/GetMemberUseCase';
+import { UpdateMemberUseCase } from '../../../domain/use-cases/members/UpdateMemberUseCase';
+import { DeactivateMemberUseCase } from '../../../domain/use-cases/members/DeactivateMemberUseCase';
 import { PrismaMemberRepository } from '../../database/repositories/PrismaMemberRepository';
 import { respond } from '../../../shared/utils/respond';
 
