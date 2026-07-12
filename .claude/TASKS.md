@@ -176,11 +176,11 @@
 > O planejamento de vagas em aberto virou item DESEJÁVEL (ver Fase 9).
 
 ### Eventos (RF04)
-- [ ] Entidade `Evento` + `create()` (validar `fim > inicio`)
-- [ ] Use cases: criar, listar (com filtro por período), atualizar, remover evento
-- [ ] Permitir criação por `ADMIN_GERAL` e `ADMIN_MINISTERIO`
-- [ ] Suportar eventos simultâneos no calendário
-- [ ] Endpoints: `POST /eventos`, `GET /eventos` (com query de período), `GET /eventos/:id`, `PUT /eventos/:id`, `DELETE /eventos/:id`
+- [x] Entidade `Evento` + `create()` (validar `fim > inicio`)
+- [x] Use cases: criar, listar (com filtro por período), atualizar, remover evento
+- [x] Permitir criação por `ADMIN_GERAL` e `ADMIN_MINISTERIO`
+- [x] Suportar eventos simultâneos no calendário
+- [x] Endpoints: `POST /eventos`, `GET /eventos` (com query de período), `GET /eventos/:id`, `PUT /eventos/:id`, `DELETE /eventos/:id`
 
 ---
 
@@ -359,10 +359,10 @@
 ## Fase 10 — Testes e Qualidade 🔴
 
 - [ ] Testes unitários do **motor de conflito** (cenários: sem conflito, sobreposição compatível, sobreposição incompatível, prioridade por publicação)
-- [ ] Testes unitários das entidades (validações de `create()`)
-- [ ] Testes de integração dos principais fluxos (criar escala → alocar → publicar)
-- [ ] Testar RBAC: cada perfil acessa apenas o que pode
-- [ ] Testar fluxo de autenticação Google de ponta a ponta
+- [x] Testes unitários das entidades (validações de `create()`) — 7/7 entidades com suíte dedicada (Parte A)
+- [ ] Testes de integração dos principais fluxos (criar escala → alocar → publicar) — depende da Fase 5
+- [ ] Testar RBAC: cada perfil acessa apenas o que pode — Fases 2–4 cobertas nos testes de rota; endpoints da Fase 5 pendentes
+- [ ] Testar fluxo de autenticação Google de ponta a ponta — coberto no unit (`AuthenticateWithGoogle`) + smoke do redirect; E2E real com o Google pendente
 - [ ] Testar regras de negócio RN01–RN08 manualmente com checklist
 - [ ] Revisar tratamento de erros (respostas consistentes, sem vazar stack trace)
 - [ ] Validar que nenhum dado sensível (tokens, sub do Google) vaza nas respostas da API.

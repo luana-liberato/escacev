@@ -2,11 +2,11 @@ import { Request, Response } from 'express';
 import { AuthenticatedUser } from '../middlewares/auth';
 import { AppError } from '../../../shared/errors/AppError';
 import { Event } from '../../../domain/entities/Event';
-import { CreateEventUseCase } from '../../../domain/use-cases/CreateEventUseCase';
-import { ListEventsUseCase } from '../../../domain/use-cases/ListEventsUseCase';
-import { GetEventUseCase } from '../../../domain/use-cases/GetEventUseCase';
-import { UpdateEventUseCase } from '../../../domain/use-cases/UpdateEventUseCase';
-import { DeleteEventUseCase } from '../../../domain/use-cases/DeleteEventUseCase';
+import { CreateEventUseCase } from '../../../domain/use-cases/events/CreateEventUseCase';
+import { ListEventsUseCase } from '../../../domain/use-cases/events/ListEventsUseCase';
+import { GetEventUseCase } from '../../../domain/use-cases/events/GetEventUseCase';
+import { UpdateEventUseCase } from '../../../domain/use-cases/events/UpdateEventUseCase';
+import { DeleteEventUseCase } from '../../../domain/use-cases/events/DeleteEventUseCase';
 import { PrismaEventRepository } from '../../database/repositories/PrismaEventRepository';
 import { respond } from '../../../shared/utils/respond';
 

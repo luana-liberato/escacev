@@ -97,7 +97,16 @@ escacev/
 │       ├── domain/
 │       │   ├── entities/        # Entidades com construtor privado + create()
 │       │   ├── repositories/    # Interfaces (contratos) dos repositórios
-│       │   └── use-cases/       # Um arquivo por caso de uso
+│       │   ├── services/        # Serviços de domínio (ex: MinistryAccessPolicy — guarda escopada)
+│       │   └── use-cases/       # Um arquivo por caso de uso, agrupados por categoria:
+│       │       ├── auth/                     # AuthenticateWithGoogle
+│       │       ├── members/                  # CRUD de membros
+│       │       ├── ministries/               # CRUD de ministérios
+│       │       ├── memberships/              # associação/convite/admin membro↔ministério
+│       │       ├── positions/                # CRUD de funções
+│       │       ├── position-compatibilities/ # matriz de compatibilidade (RN01/RN02)
+│       │       └── events/                   # CRUD de eventos
+│       │           #  cada categoria tem seu __tests__/ ao lado (unitários com fakes)
 │       ├── infra/
 │       │   ├── database/        # PrismaClient singleton
 │       │   │   └── repositories/ # Implementações Prisma (tradução PT↔EN)
@@ -117,6 +126,12 @@ escacev/
 │       └── services/            # Chamadas axios à API
 └── docker-compose.yml
 ```
+
+> **Organização dos use-cases:** cada caso de uso mora na subpasta da sua categoria
+> (`members`, `ministries`, `memberships`, `positions`, `position-compatibilities`,
+> `events`, `auth`). Um novo use case entra na categoria correspondente — e as novas
+> categorias das próximas fases (ex: `schedules`, `allocations`, `availabilities`,
+> `notifications`) seguem o mesmo padrão. Os testes ficam em `__tests__/` dentro de cada categoria.
 
 ---
 
