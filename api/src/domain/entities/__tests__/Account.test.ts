@@ -1,5 +1,4 @@
 import { Account } from '../Account';
-import { AppError } from '../../../shared/errors/AppError';
 
 const base = { googleSub: 'google-123', email: 'user@example.com' };
 
@@ -37,6 +36,6 @@ describe('Account.create', () => {
   });
 
   it('rejeita e-mail ausente', () => {
-    expect(() => Account.create({ ...base, email: '' })).toThrow(AppError);
+    expect(() => Account.create({ ...base, email: '' })).toThrow('E-mail é obrigatório');
   });
 });
