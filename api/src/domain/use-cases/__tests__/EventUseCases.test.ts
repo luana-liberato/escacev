@@ -5,7 +5,6 @@ import { ListEventsUseCase } from '../ListEventsUseCase';
 import { GetEventUseCase } from '../GetEventUseCase';
 import { UpdateEventUseCase } from '../UpdateEventUseCase';
 import { DeleteEventUseCase } from '../DeleteEventUseCase';
-import { AppError } from '../../../shared/errors/AppError';
 
 /**
  * Fake em memória do EventRepository — não toca o banco. Cobre entidade e
@@ -89,7 +88,7 @@ describe('CreateEventUseCase', () => {
         startsAt: d('2026-07-12T18:00:00Z'),
         endsAt: d('2026-07-12T18:00:00Z'), // igual
       }),
-    ).rejects.toBeInstanceOf(AppError);
+    ).rejects.toMatchObject({ statusCode: 400, message: expect.stringContaining('O término do evento deve ser depois do início') });
 
     expect(repo.events).toHaveLength(0);
   });
