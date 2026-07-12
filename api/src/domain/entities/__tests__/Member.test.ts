@@ -1,5 +1,4 @@
 import { Member } from '../Member';
-import { AppError } from '../../../shared/errors/AppError';
 
 const base = { institutionId: 'i1', name: 'João Silva', email: 'joao@example.com' };
 
@@ -29,13 +28,13 @@ describe('Member.create', () => {
   });
 
   it('rejeita instituição ausente', () => {
-    expect(() => Member.create({ ...base, institutionId: '  ' })).toThrow(AppError);
+    expect(() => Member.create({ ...base, institutionId: '  ' })).toThrow('Instituição é obrigatória');
   });
 
   it('rejeita nome vazio ou não-string', () => {
     expect(() => Member.create({ ...base, name: '   ' })).toThrow('Nome é obrigatório');
     // valor não-string vira 400 tratado, não TypeError → 500
-    expect(() => Member.create({ ...base, name: 123 as unknown as string })).toThrow(AppError);
+    expect(() => Member.create({ ...base, name: 123 as unknown as string })).toThrow('Nome é obrigatório');
   });
 
   it('rejeita e-mail em formato inválido', () => {

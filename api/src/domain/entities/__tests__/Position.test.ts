@@ -1,5 +1,4 @@
 import { Position } from '../Position';
-import { AppError } from '../../../shared/errors/AppError';
 
 const base = { name: 'Baterista', ministryId: 'min1' };
 
@@ -22,7 +21,7 @@ describe('Position.create', () => {
 
   it('rejeita nome vazio ou não-string', () => {
     expect(() => Position.create({ ...base, name: '   ' })).toThrow('Nome é obrigatório');
-    expect(() => Position.create({ ...base, name: 7 as unknown as string })).toThrow(AppError);
+    expect(() => Position.create({ ...base, name: 7 as unknown as string })).toThrow('Nome é obrigatório');
   });
 });
 

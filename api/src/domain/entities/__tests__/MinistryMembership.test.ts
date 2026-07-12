@@ -1,5 +1,4 @@
 import { MinistryMembership } from '../MinistryMembership';
-import { AppError } from '../../../shared/errors/AppError';
 
 const base = { memberId: 'mb1', ministryId: 'min1' };
 
@@ -24,7 +23,7 @@ describe('MinistryMembership.create', () => {
   });
 
   it('rejeita ministério ausente', () => {
-    expect(() => MinistryMembership.create({ ...base, ministryId: '' })).toThrow(AppError);
+    expect(() => MinistryMembership.create({ ...base, ministryId: '' })).toThrow('Ministério é obrigatório');
   });
 });
 

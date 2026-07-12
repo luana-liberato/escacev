@@ -1,5 +1,4 @@
 import { PositionCompatibility } from '../PositionCompatibility';
-import { AppError } from '../../../shared/errors/AppError';
 
 describe('PositionCompatibility.create', () => {
   it('guarda o par na forma canônica (menor id = A, maior id = B)', () => {
@@ -26,7 +25,7 @@ describe('PositionCompatibility.create', () => {
 
   it('rejeita ids vazios ou não-string', () => {
     expect(() => PositionCompatibility.create({ positionAId: 'fa', positionBId: '  ' })).toThrow(
-      AppError,
+      'duas funções válidas',
     );
     expect(() =>
       PositionCompatibility.create({ positionAId: 1 as unknown as string, positionBId: 'fb' }),

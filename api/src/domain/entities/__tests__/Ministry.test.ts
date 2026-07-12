@@ -1,5 +1,4 @@
 import { Ministry } from '../Ministry';
-import { AppError } from '../../../shared/errors/AppError';
 
 const base = { institutionId: 'i1', name: 'Louvor' };
 
@@ -20,12 +19,12 @@ describe('Ministry.create', () => {
   });
 
   it('rejeita instituição ausente', () => {
-    expect(() => Ministry.create({ ...base, institutionId: '' })).toThrow(AppError);
+    expect(() => Ministry.create({ ...base, institutionId: '' })).toThrow('Instituição é obrigatória');
   });
 
   it('rejeita nome vazio ou não-string', () => {
     expect(() => Ministry.create({ ...base, name: '   ' })).toThrow('Nome é obrigatório');
-    expect(() => Ministry.create({ ...base, name: 42 as unknown as string })).toThrow(AppError);
+    expect(() => Ministry.create({ ...base, name: 42 as unknown as string })).toThrow('Nome é obrigatório');
   });
 
   it('rejeita descrição não-string', () => {
