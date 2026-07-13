@@ -45,7 +45,7 @@ describe('Assignment.create', () => {
 });
 
 describe('Assignment.update', () => {
-  it('troca memberId e/ou positionId sem mutar a original; scheduleId/conflict/createdAt imutáveis', () => {
+  it('troca memberId e/ou positionId sem mutar a original; scheduleId/id/createdAt imutáveis', () => {
     const assignment = Assignment.create(base);
 
     const onlyMember = assignment.update({ memberId: 'mb2' });
@@ -64,12 +64,23 @@ describe('Assignment.update', () => {
     expect(assignment.positionId).toBe('ps1');
   });
 
-  it('campos omitidos permanecem inalterados', () => {
-    const assignment = Assignment.create(base);
+  it('campos omitidos permanecem inalterados (inclusive conflict)', () => {
+    const assignment = Assignment.create({ ...base, conflict: true });
     const updated = assignment.update({});
 
     expect(updated.memberId).toBe('mb1');
     expect(updated.positionId).toBe('ps1');
+    expect(updated.conflict).toBe(true); // omitido -> mantém
+  });
+
+  it('recalcula conflict explicitamente nos dois sentidos (RN03)', () => {
+    const wasConflicting = Assignment.create({ ...base, conflict: true });
+    const resolved = wasConflicting.update({ conflict: false });
+    expect(resolved.conflict).toBe(false); // conflito que some -> false
+
+    const wasClean = Assignment.create({ ...base, conflict: false });
+    const nowConflicting = wasClean.update({ conflict: true });
+    expect(nowConflicting.conflict).toBe(true); // conflito novo confirmado -> true
   });
 
   it('rejeita memberId/positionId vazios quando informados', () => {

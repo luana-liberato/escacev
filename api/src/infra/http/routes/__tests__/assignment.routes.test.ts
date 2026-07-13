@@ -21,6 +21,7 @@ const MEMBER_2_ID = 'test-assign-mb2';
 const OUTSIDER_ID = 'test-assign-outsider'; // existe na instituição, mas fora do ministério
 const POSITION_1_ID = 'test-assign-ps1';
 const POSITION_2_ID = 'test-assign-ps2';
+const POSITION_3_ID = 'test-assign-ps3';
 
 let adminGeralToken: string;
 let adminScopedToken: string;
@@ -33,6 +34,10 @@ async function cleanupFixtures() {
   await prisma.alocacao.deleteMany({ where: { escalaId: { in: scheduleIds } } });
   await prisma.escala.deleteMany({ where: { ministerioId: MINISTRY_ID } });
   await prisma.evento.deleteMany({ where: { instituicaoId: INST_ID } });
+  // A compatibilidade referencia as funções por FK (sem cascade) — remove antes.
+  await prisma.compatibilidadeFuncao.deleteMany({
+    where: { OR: [{ funcaoAId: POSITION_1_ID }, { funcaoBId: POSITION_1_ID }, { funcaoAId: POSITION_2_ID }, { funcaoBId: POSITION_2_ID }] },
+  });
   await prisma.funcao.deleteMany({ where: { ministerioId: MINISTRY_ID } });
   await prisma.membroMinisterio.deleteMany({ where: { ministerioId: MINISTRY_ID } });
   await prisma.ministerio.deleteMany({ where: { id: MINISTRY_ID } });
@@ -86,10 +91,19 @@ beforeAll(async () => {
   await prisma.membroMinisterio.create({ data: { membroId: MEMBER_2_ID, ministerioId: MINISTRY_ID } });
   await prisma.funcao.create({ data: { id: POSITION_1_ID, ministerioId: MINISTRY_ID, nome: 'Vocal' } });
   await prisma.funcao.create({ data: { id: POSITION_2_ID, ministerioId: MINISTRY_ID, nome: 'Violão' } });
+  await prisma.funcao.create({ data: { id: POSITION_3_ID, ministerioId: MINISTRY_ID, nome: 'Bateria' } });
 
   adminGeralToken = signTestToken({ memberId: ADMIN_GERAL_ID, institutionId: INST_ID, role: 'ADMIN_GERAL' });
   adminScopedToken = signTestToken({ memberId: ADMIN_SCOPED_ID, institutionId: INST_ID, role: 'ADMIN_MINISTERIO' });
   adminUnscopedToken = signTestToken({ memberId: ADMIN_UNSCOPED_ID, institutionId: INST_ID, role: 'ADMIN_MINISTERIO' });
+
+  // POSITION_1_ID/POSITION_2_ID compatíveis entre si (para os testes de PATCH
+  // com conflito poderem alocar as duas limpas no setup); POSITION_3_ID fica
+  // de propósito incompatível com ambas — é o que gera o conflito no teste.
+  await request(app)
+    .post('/funcoes/compatibilidade')
+    .set('Authorization', `Bearer ${adminGeralToken}`)
+    .send({ positionAId: POSITION_1_ID, positionBId: POSITION_2_ID });
 });
 
 afterAll(async () => {
@@ -225,6 +239,56 @@ describe('PATCH /alocacoes/:id', () => {
       .send({ positionId: POSITION_2_ID });
 
     expect(res.status).toBe(404);
+  });
+
+  it('edição que gera conflito SEM confirmConflict: retorna needs_confirmation (200), não aplica', async () => {
+    const scheduleId = await newSchedule();
+    const created = await request(app)
+      .post(`/escalas/${scheduleId}/alocacoes`)
+      .set('Authorization', `Bearer ${adminGeralToken}`)
+      .send([
+        { memberId: MEMBER_1_ID, positionId: POSITION_1_ID },
+        { memberId: MEMBER_1_ID, positionId: POSITION_2_ID },
+      ]);
+    const [first, second] = created.body.data.created;
+
+    // Edita a primeira para POSITION_3_ID: MEMBER_1_ID já está na segunda
+    // (POSITION_2_ID) na MESMA escala (mesmo horário) -> sobrepõe -> conflito.
+    const res = await request(app)
+      .patch(`/alocacoes/${first.id}`)
+      .set('Authorization', `Bearer ${adminGeralToken}`)
+      .send({ positionId: POSITION_3_ID });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.status).toBe('needs_confirmation');
+    expect(res.body.data.conflicts).toHaveLength(1);
+    expect(res.body.data.conflicts[0].positionId).toBe(second.positionId);
+
+    // não aplicou: continua com a função original.
+    const stillFirst = await prisma.alocacao.findUnique({ where: { id: first.id } });
+    expect(stillFirst?.funcaoId).toBe(POSITION_1_ID);
+  });
+
+  it('edição que gera conflito COM confirmConflict=true: aplica (200) com conflict=true', async () => {
+    const scheduleId = await newSchedule();
+    const created = await request(app)
+      .post(`/escalas/${scheduleId}/alocacoes`)
+      .set('Authorization', `Bearer ${adminGeralToken}`)
+      .send([
+        { memberId: MEMBER_1_ID, positionId: POSITION_1_ID },
+        { memberId: MEMBER_1_ID, positionId: POSITION_2_ID },
+      ]);
+    const [first] = created.body.data.created;
+
+    const res = await request(app)
+      .patch(`/alocacoes/${first.id}`)
+      .set('Authorization', `Bearer ${adminGeralToken}`)
+      .send({ positionId: POSITION_3_ID, confirmConflict: true });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.status).toBe('applied');
+    expect(res.body.data.positionId).toBe(POSITION_3_ID);
+    expect(res.body.data.conflict).toBe(true);
   });
 });
 

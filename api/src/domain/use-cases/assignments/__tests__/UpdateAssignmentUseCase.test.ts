@@ -1,10 +1,13 @@
 import { Assignment } from '../../../entities/Assignment';
+import { Event } from '../../../entities/Event';
 import { Member } from '../../../entities/Member';
 import { Ministry } from '../../../entities/Ministry';
 import { MinistryMembership } from '../../../entities/MinistryMembership';
 import { Position } from '../../../entities/Position';
+import { PositionCompatibility } from '../../../entities/PositionCompatibility';
 import { Schedule } from '../../../entities/Schedule';
 import { AssignmentDetail, AssignmentRepository, MemberAssignmentContext } from '../../../repositories/AssignmentRepository';
+import { EventRepository, EventDateRange } from '../../../repositories/EventRepository';
 import { MemberRepository } from '../../../repositories/MemberRepository';
 import {
   MinistryRepository,
@@ -15,11 +18,16 @@ import {
   MinistryMemberView,
   MemberMinistryView,
 } from '../../../repositories/MinistryMembershipRepository';
+import { PositionCompatibilityRepository } from '../../../repositories/PositionCompatibilityRepository';
 import { PositionRepository } from '../../../repositories/PositionRepository';
 import { ScheduleRepository } from '../../../repositories/ScheduleRepository';
 import { Actor, MinistryAccessPolicy } from '../../../services/MinistryAccessPolicy';
 import { AssignmentEligibility } from '../../../services/AssignmentEligibility';
-import { UpdateAssignmentUseCase } from '../UpdateAssignmentUseCase';
+import { ConflictDetectionService } from '../../../services/ConflictDetectionService';
+import { CheckPositionCompatibilityUseCase } from '../../position-compatibilities/CheckPositionCompatibilityUseCase';
+import { UpdateAssignmentUseCase, UpdateAssignmentResult } from '../UpdateAssignmentUseCase';
+
+const d = (s: string) => new Date(s);
 
 // --- Fakes em memória (nível unitário, sem banco) ---
 
@@ -72,6 +80,49 @@ class FakeScheduleRepository implements ScheduleRepository {
     return s;
   }
   async delete(): Promise<void> {}
+}
+
+class FakeEventRepository implements EventRepository {
+  events: Event[] = [];
+  async findById(id: string): Promise<Event | null> {
+    return this.events.find((e) => e.id === id) ?? null;
+  }
+  async findByInstitution(institutionId: string, _range?: EventDateRange): Promise<Event[]> {
+    return this.events.filter((e) => e.institutionId === institutionId);
+  }
+  async save(e: Event): Promise<Event> {
+    this.events.push(e);
+    return e;
+  }
+  async update(e: Event): Promise<Event> {
+    return e;
+  }
+  async delete(): Promise<void> {}
+  async countSchedules(): Promise<number> {
+    return 0;
+  }
+}
+
+/** Fake do repo de compatibilidade — mesmo padrão de ConflictDetectionService.test.ts. */
+class FakeCompatibilityRepository implements PositionCompatibilityRepository {
+  rows: PositionCompatibility[] = [];
+  async findByPair(id1: string, id2: string): Promise<PositionCompatibility | null> {
+    const [a, b] = PositionCompatibility.orderPair(id1, id2);
+    return this.rows.find((r) => r.positionAId === a && r.positionBId === b) ?? null;
+  }
+  async save(compatibility: PositionCompatibility): Promise<PositionCompatibility> {
+    this.rows.push(compatibility);
+    return compatibility;
+  }
+  async delete(id1: string, id2: string): Promise<boolean> {
+    const [a, b] = PositionCompatibility.orderPair(id1, id2);
+    const before = this.rows.length;
+    this.rows = this.rows.filter((r) => !(r.positionAId === a && r.positionBId === b));
+    return this.rows.length < before;
+  }
+  async listByInstitution(): Promise<PositionCompatibility[]> {
+    return this.rows;
+  }
 }
 
 class FakeMemberRepository implements MemberRepository {
@@ -150,6 +201,12 @@ class FakeMembershipRepository implements MinistryMembershipRepository {
 
 class FakeAssignmentRepository implements AssignmentRepository {
   assignments: Assignment[] = [];
+
+  constructor(
+    private readonly scheduleRepo: FakeScheduleRepository,
+    private readonly eventRepo: FakeEventRepository,
+  ) {}
+
   async findById(id: string): Promise<Assignment | null> {
     return this.assignments.find((a) => a.id === id) ?? null;
   }
@@ -176,31 +233,67 @@ class FakeAssignmentRepository implements AssignmentRepository {
   async findByScheduleWithDetails(): Promise<AssignmentDetail[]> {
     return []; // não exercitado neste arquivo
   }
-  async findByMemberWithContext(): Promise<MemberAssignmentContext[]> {
-    return []; // não exercitado neste arquivo
+  async findByMemberWithContext(memberId: string): Promise<MemberAssignmentContext[]> {
+    return this.assignments
+      .filter((a) => a.memberId === memberId)
+      .map((a) => {
+        const schedule = this.scheduleRepo.schedules.find((s) => s.id === a.scheduleId)!;
+        const event = this.eventRepo.events.find((e) => e.id === schedule.eventId)!;
+        return {
+          assignmentId: a.id,
+          scheduleId: a.scheduleId,
+          ministryId: schedule.ministryId,
+          eventId: schedule.eventId,
+          eventName: event.name,
+          positionId: a.positionId,
+          startsAt: event.startsAt,
+          endsAt: event.endsAt,
+        };
+      });
   }
 }
 
 const INST = 'i1';
 const ADMIN_GERAL: Actor = { memberId: 'ag', role: 'ADMIN_GERAL' };
 
+/** Extrai a alocação de um resultado 'applied'; falha o teste se vier 'needs_confirmation'. */
+function expectApplied(result: UpdateAssignmentResult): Assignment {
+  if (result.status !== 'applied') {
+    throw new Error(`esperava status 'applied', recebeu '${result.status}'`);
+  }
+  return result.assignment;
+}
+
 /**
- * Instituição padrão: 1 ministério, 1 escala, 2 membros e 2 funções pertencentes
- * a ele (para poder trocar pessoa/função por outra válida), + 1 alocação inicial.
+ * Instituição padrão: 1 ministério, 1 evento, 1 escala, 2 membros e 2 funções
+ * pertencentes a ele (para poder trocar pessoa/função por outra válida), + 1
+ * alocação inicial. O ConflictDetectionService é o REAL (com fakes por baixo).
  */
 async function scenario() {
   const ministryRepo = new FakeMinistryRepository();
   const scheduleRepo = new FakeScheduleRepository();
+  const eventRepo = new FakeEventRepository();
   const memberRepo = new FakeMemberRepository();
   const positionRepo = new FakePositionRepository();
   const membershipRepo = new FakeMembershipRepository();
-  const assignmentRepo = new FakeAssignmentRepository();
+  const compatibilityRepo = new FakeCompatibilityRepository();
+  const assignmentRepo = new FakeAssignmentRepository(scheduleRepo, eventRepo);
   const policy = new MinistryAccessPolicy(membershipRepo);
   const eligibility = new AssignmentEligibility(memberRepo, positionRepo, membershipRepo);
+  const checkCompatibility = new CheckPositionCompatibilityUseCase(compatibilityRepo);
+  const conflictDetection = new ConflictDetectionService(assignmentRepo, checkCompatibility);
 
   const ministry = Ministry.create({ institutionId: INST, name: 'Louvor' });
   await ministryRepo.save(ministry);
-  const schedule = Schedule.create({ ministryId: ministry.id, eventId: 'ev1' });
+  const event = Event.create({
+    institutionId: INST,
+    name: 'Culto de Domingo',
+    type: 'SERVICE',
+    startsAt: d('2026-07-12T18:00:00Z'),
+    endsAt: d('2026-07-12T20:00:00Z'),
+  });
+  await eventRepo.save(event);
+  const schedule = Schedule.create({ ministryId: ministry.id, eventId: event.id });
   await scheduleRepo.save(schedule);
 
   const member = Member.create({ institutionId: INST, name: 'João', email: 'joao@example.com' });
@@ -222,13 +315,16 @@ async function scenario() {
     assignmentRepo,
     scheduleRepo,
     ministryRepo,
+    eventRepo,
     eligibility,
     policy,
+    conflictDetection,
   );
 
   return {
-    ministryRepo, scheduleRepo, memberRepo, positionRepo, membershipRepo, assignmentRepo,
-    ministry, schedule, member, member2, position, position2, assignment, useCase,
+    ministryRepo, scheduleRepo, eventRepo, memberRepo, positionRepo, membershipRepo,
+    compatibilityRepo, assignmentRepo, policy, eligibility, conflictDetection,
+    ministry, event, schedule, member, member2, position, position2, assignment, useCase,
   };
 }
 
@@ -236,9 +332,10 @@ describe('UpdateAssignmentUseCase', () => {
   it('troca a função da pessoa (mesma pessoa, nova função válida do ministério)', async () => {
     const s = await scenario();
 
-    const updated = await s.useCase.execute({
+    const result = await s.useCase.execute({
       institutionId: INST, actor: ADMIN_GERAL, id: s.assignment.id, positionId: s.position2.id,
     });
+    const updated = expectApplied(result);
 
     expect(updated.memberId).toBe(s.member.id);
     expect(updated.positionId).toBe(s.position2.id);
@@ -247,9 +344,10 @@ describe('UpdateAssignmentUseCase', () => {
   it('troca a pessoa da função (nova pessoa válida do ministério, mesma função)', async () => {
     const s = await scenario();
 
-    const updated = await s.useCase.execute({
+    const result = await s.useCase.execute({
       institutionId: INST, actor: ADMIN_GERAL, id: s.assignment.id, memberId: s.member2.id,
     });
+    const updated = expectApplied(result);
 
     expect(updated.memberId).toBe(s.member2.id);
     expect(updated.positionId).toBe(s.position.id);
@@ -258,20 +356,22 @@ describe('UpdateAssignmentUseCase', () => {
   it('troca ambos (pessoa e função)', async () => {
     const s = await scenario();
 
-    const updated = await s.useCase.execute({
+    const result = await s.useCase.execute({
       institutionId: INST, actor: ADMIN_GERAL, id: s.assignment.id,
       memberId: s.member2.id, positionId: s.position2.id,
     });
+    const updated = expectApplied(result);
 
     expect(updated.memberId).toBe(s.member2.id);
     expect(updated.positionId).toBe(s.position2.id);
   });
 
-  it('conflict permanece inalterado após a edição', async () => {
+  it('editar SEM gerar conflito: aplica com conflict=false', async () => {
     const s = await scenario();
-    const updated = await s.useCase.execute({
+    const result = await s.useCase.execute({
       institutionId: INST, actor: ADMIN_GERAL, id: s.assignment.id, positionId: s.position2.id,
     });
+    const updated = expectApplied(result);
     expect(updated.conflict).toBe(false);
   });
 
@@ -312,13 +412,14 @@ describe('UpdateAssignmentUseCase', () => {
     ).rejects.toMatchObject({ statusCode: 409, message: 'Esta pessoa já está alocada nesta função nesta escala' });
   });
 
-  it('não colide consigo mesma quando nada muda (mesmo par)', async () => {
+  it('não colide consigo mesma quando nada muda (auto-exclusão via excludeAssignmentId)', async () => {
     const s = await scenario();
 
-    const updated = await s.useCase.execute({
+    const result = await s.useCase.execute({
       institutionId: INST, actor: ADMIN_GERAL, id: s.assignment.id,
       memberId: s.member.id, positionId: s.position.id,
     });
+    const updated = expectApplied(result);
 
     expect(updated.memberId).toBe(s.member.id);
     expect(updated.positionId).toBe(s.position.id);
@@ -351,13 +452,13 @@ describe('UpdateAssignmentUseCase', () => {
       MinistryMembership.create({ memberId: 'am', ministryId: s.ministry.id, isAdmin: true }),
     );
 
-    const updated = await s.useCase.execute({
+    const result = await s.useCase.execute({
       institutionId: INST,
       actor: { memberId: 'am', role: 'ADMIN_MINISTERIO' },
       id: s.assignment.id,
       positionId: s.position2.id,
     });
-    expect(updated.positionId).toBe(s.position2.id);
+    expect(expectApplied(result).positionId).toBe(s.position2.id);
   });
 
   it('404 quando a alocação não existe', async () => {
@@ -374,5 +475,68 @@ describe('UpdateAssignmentUseCase', () => {
     await expect(
       s.useCase.execute({ institutionId: 'i2', actor: ADMIN_GERAL, id: s.assignment.id, positionId: s.position2.id }),
     ).rejects.toMatchObject({ statusCode: 404 });
+  });
+});
+
+describe('UpdateAssignmentUseCase — integração com o motor de conflito (RN01/RN03)', () => {
+  it('editar gerando conflito, SEM confirmConflict: needs_confirmation, NÃO aplica, com os detalhes', async () => {
+    const s = await scenario();
+    // member já tem outra alocação nesta escala (position2); a edição para
+    // position3 sobrepõe 100% (mesmo evento) e não há compatibilidade registrada.
+    await s.assignmentRepo.save(
+      Assignment.create({ scheduleId: s.schedule.id, memberId: s.member.id, positionId: s.position2.id }),
+    );
+    const position3 = Position.create({ name: 'Bateria', ministryId: s.ministry.id });
+    await s.positionRepo.save(position3);
+
+    const result = await s.useCase.execute({
+      institutionId: INST, actor: ADMIN_GERAL, id: s.assignment.id, positionId: position3.id,
+    });
+
+    expect(result.status).toBe('needs_confirmation');
+    if (result.status === 'needs_confirmation') {
+      expect(result.conflicts).toHaveLength(1);
+      expect(result.conflicts[0].positionId).toBe(s.position2.id);
+    }
+    // não aplicou: a alocação original continua com a função antiga.
+    const stillOriginal = await s.assignmentRepo.findById(s.assignment.id);
+    expect(stillOriginal!.positionId).toBe(s.position.id);
+  });
+
+  it('editar gerando conflito, COM confirmConflict=true: aplica com conflict=true', async () => {
+    const s = await scenario();
+    await s.assignmentRepo.save(
+      Assignment.create({ scheduleId: s.schedule.id, memberId: s.member.id, positionId: s.position2.id }),
+    );
+    const position3 = Position.create({ name: 'Bateria', ministryId: s.ministry.id });
+    await s.positionRepo.save(position3);
+
+    const result = await s.useCase.execute({
+      institutionId: INST, actor: ADMIN_GERAL, id: s.assignment.id, positionId: position3.id, confirmConflict: true,
+    });
+    const updated = expectApplied(result);
+
+    expect(updated.positionId).toBe(position3.id);
+    expect(updated.conflict).toBe(true);
+  });
+
+  it('editar uma alocação que ERA conflituosa (conflict=true) para valores que NÃO conflitam: recalcula para false', async () => {
+    const s = await scenario();
+    // Alocação própria de member2/position2 (não colide com a s.assignment
+    // padrão, que já ocupa scheduleId+member+position) — simula que nasceu
+    // conflituosa via confirmação ciente numa alocação anterior.
+    const conflicting = Assignment.create({
+      scheduleId: s.schedule.id, memberId: s.member2.id, positionId: s.position2.id, conflict: true,
+    });
+    await s.assignmentRepo.save(conflicting);
+
+    // member2 não tem mais nenhuma outra alocação sobreposta: com
+    // excludeAssignmentId, o motor não encontra conflito algum agora.
+    const result = await s.useCase.execute({
+      institutionId: INST, actor: ADMIN_GERAL, id: conflicting.id, positionId: s.position2.id,
+    });
+    const updated = expectApplied(result);
+
+    expect(updated.conflict).toBe(false); // conflito que some -> false
   });
 });
