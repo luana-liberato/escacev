@@ -105,7 +105,8 @@ escacev/
 │       │       ├── memberships/              # associação/convite/admin membro↔ministério
 │       │       ├── positions/                # CRUD de funções
 │       │       ├── position-compatibilities/ # matriz de compatibilidade (RN01/RN02)
-│       │       └── events/                   # CRUD de eventos
+│       │       ├── events/                   # CRUD de eventos
+│       │       └── schedules/                # CRUD de escalas (casca; alocações depois)
 │       │           #  cada categoria tem seu __tests__/ ao lado (unitários com fakes)
 │       ├── infra/
 │       │   ├── database/        # PrismaClient singleton
@@ -128,10 +129,10 @@ escacev/
 ```
 
 > **Organização dos use-cases:** cada caso de uso mora na subpasta da sua categoria
-> (`members`, `ministries`, `memberships`, `positions`, `position-compatibilities`,
-> `events`, `auth`). Um novo use case entra na categoria correspondente — e as novas
-> categorias das próximas fases (ex: `schedules`, `allocations`, `availabilities`,
-> `notifications`) seguem o mesmo padrão. Os testes ficam em `__tests__/` dentro de cada categoria.
+> (`auth`, `members`, `ministries`, `memberships`, `positions`, `position-compatibilities`,
+> `events`, `schedules`). Um novo use case entra na categoria correspondente — e as novas
+> categorias das próximas fases (ex: `allocations`, `availabilities`, `notifications`)
+> seguem o mesmo padrão. Os testes ficam em `__tests__/` dentro de cada categoria.
 
 ---
 
@@ -269,7 +270,9 @@ private static toEntity(row: MembroRow): Member {
 
 // Exemplos de uso nas rotas:
 router.get('/membros',   auth, rbac('ADMIN_GERAL', 'ADMIN_MINISTERIO'), asyncHandler(...));
-router.post('/escalas',  auth, rbac('ADMIN_MINISTERIO'),                 asyncHandler(...));
+// Escrita de escala é escopo de ministério: rbac libera os dois admins (filtro grosso)
+// e a MinistryAccessPolicy.ensureCanManage faz a checagem fina no use case (403 se não admin daquele ministério).
+router.post('/escalas',  auth, rbac('ADMIN_GERAL', 'ADMIN_MINISTERIO'), asyncHandler(...));
 router.get('/minhas-escalas', auth,                                      asyncHandler(...));
 
 // Google OAuth flow:
