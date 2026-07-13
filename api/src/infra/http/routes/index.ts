@@ -7,6 +7,7 @@ import { membershipRoutes } from './membership.routes';
 import { compatibilityRoutes } from './compatibility.routes';
 import { positionRoutes } from './position.routes';
 import { eventRoutes } from './event.routes';
+import { scheduleRoutes } from './schedule.routes';
 
 export const routes = Router();
 
@@ -19,3 +20,4 @@ routes.use(membershipRoutes);
 routes.use(compatibilityRoutes);
 routes.use(positionRoutes);
 routes.use(eventRoutes);
+routes.use(scheduleRoutes);

@@ -191,14 +191,19 @@
 > de escala/alocação segue a **Permissão Escopada** (`ADMIN_GERAL`, ou `ADMIN_MINISTERIO`
 > com `isAdmin` no ministério da escala) — reusa a `MinistryAccessPolicy`.
 
-### Escalas (RF05)
-- [ ] Entidade `Escala` + `create()` (status inicial RASCUNHO)
-- [ ] Escala = de um ministério para um evento (`@@unique([ministerioId, eventoId])`: cada ministério tem a SUA escala por evento)
-- [ ] Use case: criar escala (ministério + evento)
-- [ ] Use case: buscar escala com suas alocações
-- [ ] Use case: listar escalas (por evento, por ministério)
-- [ ] RBAC das escritas: `ADMIN_GERAL` ou admin escopado do ministério da escala (reusa a `MinistryAccessPolicy`)
-- [ ] Endpoints: `POST /escalas`, `GET /escalas`, `GET /escalas/:id`
+### Escalas (RF05) — casca (sem alocações)
+- [x] Entidade `Schedule` (model `Escala`) + `create()` (status inicial RASCUNHO)
+- [x] Escala = de um ministério para um evento, com **rótulo/`nome` opcional**
+      (`@@unique([ministerioId, eventoId, nome])`): um ministério pode ter **VÁRIAS**
+      escalas por evento distinguidas pelo nome (ex: infantil com "Berçário", "Sala 1",
+      "Sala 2"); `nome = ""` é a escala única padrão. Duplicata de nome é case-insensitive.
+- [x] Use case: criar escala (ministério + evento + nome opcional); 409 na duplicata do trio
+- [ ] Use case: buscar escala com suas alocações — **casca pronta** (`GetSchedule`); falta agregar as alocações (bloco Alocações)
+- [x] Use case: listar escalas (por evento, por ministério, ambos → todas as salas, ou todas da instituição)
+- [x] Use case: remover escala (casca; delete simples hoje — cascata das alocações quando existirem)
+- [x] RBAC das escritas: `ADMIN_GERAL` ou admin escopado do ministério da escala (reusa a `MinistryAccessPolicy`); leitura aberta a admins
+- [x] Endpoints: `POST /escalas`, `GET /escalas` (filtros `?eventId`/`?ministryId`), `GET /escalas/:id`, `DELETE /escalas/:id`
+- [x] Testes: entidade, use cases (unit) e endpoints (supertest) — inclui salas por evento e caixa diferente
 
 ### Alocações (RF05)
 - [ ] Entidade `Alocacao` = **membro + função + escala, direto** (referencia `funcaoId`, sem vaga) + flag conflito (RN03)
