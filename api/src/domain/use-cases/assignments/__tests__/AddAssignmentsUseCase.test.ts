@@ -4,7 +4,7 @@ import { Ministry } from '../../../entities/Ministry';
 import { MinistryMembership } from '../../../entities/MinistryMembership';
 import { Position } from '../../../entities/Position';
 import { Schedule } from '../../../entities/Schedule';
-import { AssignmentDetail, AssignmentRepository } from '../../../repositories/AssignmentRepository';
+import { AssignmentDetail, AssignmentRepository, MemberAssignmentContext } from '../../../repositories/AssignmentRepository';
 import { MemberRepository } from '../../../repositories/MemberRepository';
 import {
   MinistryRepository,
@@ -182,6 +182,9 @@ class FakeAssignmentRepository implements AssignmentRepository {
   }
   async findByScheduleWithDetails(): Promise<AssignmentDetail[]> {
     return []; // não exercitado neste arquivo (ver GetScheduleUseCase)
+  }
+  async findByMemberWithContext(): Promise<MemberAssignmentContext[]> {
+    return []; // não exercitado neste arquivo
   }
 }
 

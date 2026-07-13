@@ -16,7 +16,7 @@ import {
   MinistryMemberView,
   MemberMinistryView,
 } from '../../../repositories/MinistryMembershipRepository';
-import { AssignmentDetail, AssignmentRepository } from '../../../repositories/AssignmentRepository';
+import { AssignmentDetail, AssignmentRepository, MemberAssignmentContext } from '../../../repositories/AssignmentRepository';
 import { MinistryAccessPolicy, Actor } from '../../../services/MinistryAccessPolicy';
 import { CreateScheduleUseCase } from '../CreateScheduleUseCase';
 import { GetScheduleUseCase } from '../GetScheduleUseCase';
@@ -43,6 +43,9 @@ class FakeAssignmentRepository implements AssignmentRepository {
         member: this.members.find((m) => m.id === assignment.memberId)!,
         position: this.positions.find((p) => p.id === assignment.positionId)!,
       }));
+  }
+  async findByMemberWithContext(): Promise<MemberAssignmentContext[]> {
+    return []; // não exercitado neste arquivo
   }
   async save(assignment: Assignment): Promise<Assignment> {
     this.assignments.push(assignment);

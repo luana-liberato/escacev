@@ -2,7 +2,11 @@ import type { Alocacao as AlocacaoRow, Membro as MembroRow, Funcao as FuncaoRow 
 import { Assignment } from '../../../domain/entities/Assignment';
 import { Member } from '../../../domain/entities/Member';
 import { Position } from '../../../domain/entities/Position';
-import { AssignmentDetail, AssignmentRepository } from '../../../domain/repositories/AssignmentRepository';
+import {
+  AssignmentDetail,
+  AssignmentRepository,
+  MemberAssignmentContext,
+} from '../../../domain/repositories/AssignmentRepository';
 import { prisma } from '../prisma';
 
 export class PrismaAssignmentRepository implements AssignmentRepository {
@@ -22,6 +26,24 @@ export class PrismaAssignmentRepository implements AssignmentRepository {
       assignment: PrismaAssignmentRepository.toEntity(row),
       member: PrismaAssignmentRepository.memberToEntity(row.membro),
       position: PrismaAssignmentRepository.positionToEntity(row.funcao),
+    }));
+  }
+
+  async findByMemberWithContext(memberId: string): Promise<MemberAssignmentContext[]> {
+    // Uma única consulta com join (evita N+1): Alocacao -> Escala -> Evento.
+    const rows = await prisma.alocacao.findMany({
+      where: { membroId: memberId },
+      include: { escala: { include: { evento: true } } },
+    });
+    return rows.map((row) => ({
+      assignmentId: row.id,
+      scheduleId: row.escalaId,
+      ministryId: row.escala.ministerioId,
+      eventId: row.escala.eventoId,
+      eventName: row.escala.evento.nome,
+      positionId: row.funcaoId,
+      startsAt: row.escala.evento.inicio,
+      endsAt: row.escala.evento.fim,
     }));
   }
 
