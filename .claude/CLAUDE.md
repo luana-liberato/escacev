@@ -294,6 +294,7 @@ router.get('/minhas-escalas', auth,                                      asyncHa
 | RN06 | Sobrecarga: membro ultrapassa N escalas no mês (N configurável pela instituição) |
 | RN07 | Em conflito entre escalas, prevalece a com `publicadaEm` mais antiga |
 | RN08 | Troca/cobertura só válida entre membros do mesmo ministério + confirmação do admin |
+| RN09 | Um ministério pode ter **múltiplas escalas por evento**, distinguidas por um nome opcional (`nome = ""` é a escala padrão única). `@@unique([ministerioId, eventoId, nome])` |
 
 **Lógica do motor de conflito (RN01):**
 ```
@@ -305,6 +306,11 @@ Para cada nova alocacao(membroId, funcaoId):
      - Se sobrepõe: checar compatibilidade de funcoes
      - Se funções incompatíveis: conflito detectado → retornar alerta com detalhes
 ```
+> **Escalas do mesmo ministério NÃO são isentas (RN09):** a varredura é centrada no
+> **membro**, across **todas** as escalas de **todos** os ministérios — inclusive
+> múltiplas escalas do mesmo ministério no mesmo evento. Se a mesma pessoa está em
+> "Berçário" e "Sala 1" (mesmo culto, horário sobreposto), isso também é avaliado pelo
+> motor: é conflito, salvo se as funções forem compatíveis (RN02).
 
 ---
 
