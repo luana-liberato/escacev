@@ -30,18 +30,27 @@ export class PrismaAssignmentRepository implements AssignmentRepository {
   }
 
   async findByMemberWithContext(memberId: string): Promise<MemberAssignmentContext[]> {
-    // Uma única consulta com join (evita N+1): Alocacao -> Escala -> Evento.
+    // Uma única consulta com join (evita N+1): Alocacao -> Membro/Funcao e
+    // Escala -> Evento/Ministerio. Traz os nomes legíveis (incremento 3a)
+    // desde a origem, sem consulta adicional por conflito.
     const rows = await prisma.alocacao.findMany({
       where: { membroId: memberId },
-      include: { escala: { include: { evento: true } } },
+      include: {
+        membro: true,
+        funcao: true,
+        escala: { include: { evento: true, ministerio: true } },
+      },
     });
     return rows.map((row) => ({
       assignmentId: row.id,
+      memberName: row.membro.nome,
       scheduleId: row.escalaId,
       ministryId: row.escala.ministerioId,
+      ministryName: row.escala.ministerio.nome,
       eventId: row.escala.eventoId,
       eventName: row.escala.evento.nome,
       positionId: row.funcaoId,
+      positionName: row.funcao.nome,
       startsAt: row.escala.evento.inicio,
       endsAt: row.escala.evento.fim,
     }));
