@@ -1,12 +1,28 @@
-import type { Alocacao as AlocacaoRow } from '@prisma/client';
+import type { Alocacao as AlocacaoRow, Membro as MembroRow, Funcao as FuncaoRow } from '@prisma/client';
 import { Assignment } from '../../../domain/entities/Assignment';
-import { AssignmentRepository } from '../../../domain/repositories/AssignmentRepository';
+import { Member } from '../../../domain/entities/Member';
+import { Position } from '../../../domain/entities/Position';
+import { AssignmentDetail, AssignmentRepository } from '../../../domain/repositories/AssignmentRepository';
 import { prisma } from '../prisma';
 
 export class PrismaAssignmentRepository implements AssignmentRepository {
   async findById(id: string): Promise<Assignment | null> {
     const row = await prisma.alocacao.findUnique({ where: { id } });
     return row ? PrismaAssignmentRepository.toEntity(row) : null;
+  }
+
+  async findByScheduleWithDetails(scheduleId: string): Promise<AssignmentDetail[]> {
+    // Uma única consulta com join (evita N+1 de buscar membro/função por alocação).
+    const rows = await prisma.alocacao.findMany({
+      where: { escalaId: scheduleId },
+      include: { membro: true, funcao: true },
+      orderBy: { criadoEm: 'asc' },
+    });
+    return rows.map((row) => ({
+      assignment: PrismaAssignmentRepository.toEntity(row),
+      member: PrismaAssignmentRepository.memberToEntity(row.membro),
+      position: PrismaAssignmentRepository.positionToEntity(row.funcao),
+    }));
   }
 
   async save(assignment: Assignment): Promise<Assignment> {
@@ -65,6 +81,30 @@ export class PrismaAssignmentRepository implements AssignmentRepository {
       memberId: row.membroId,
       positionId: row.funcaoId,
       conflict: row.conflito,
+      createdAt: row.criadoEm,
+    });
+  }
+
+  // Réplica do mapeamento de PrismaMemberRepository — só o necessário para o join.
+  private static memberToEntity(row: MembroRow): Member {
+    return Member.restore({
+      id: row.id,
+      accountId: row.contaId,
+      institutionId: row.instituicaoId,
+      name: row.nome,
+      email: row.email,
+      role: row.perfil,
+      active: row.ativo,
+      createdAt: row.criadoEm,
+    });
+  }
+
+  // Réplica do mapeamento de PrismaPositionRepository — só o necessário para o join.
+  private static positionToEntity(row: FuncaoRow): Position {
+    return Position.restore({
+      id: row.id,
+      name: row.nome,
+      ministryId: row.ministerioId,
       createdAt: row.criadoEm,
     });
   }
