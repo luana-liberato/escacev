@@ -63,12 +63,15 @@ export class PrismaAssignmentRepository implements AssignmentRepository {
   }
 
   async update(assignment: Assignment): Promise<Assignment> {
-    // Escala e conflict não são mutáveis por aqui (conflict é do motor de conflito).
+    // Escala não é mutável por aqui. conflict É persistido: o
+    // UpdateAssignmentUseCase recalcula a flag a cada edição (RN01/RN03) e
+    // espera que o valor recalculado seja gravado, não apenas retornado.
     const row = await prisma.alocacao.update({
       where: { id: assignment.id },
       data: {
         membroId: assignment.memberId,
         funcaoId: assignment.positionId,
+        conflito: assignment.conflict,
       },
     });
     return PrismaAssignmentRepository.toEntity(row);
