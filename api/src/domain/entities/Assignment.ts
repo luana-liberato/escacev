@@ -7,8 +7,9 @@ import { AppError } from '../../shared/errors/AppError';
  * abstrata. O membro e a função devem pertencer ao mesmo ministério da escala —
  * essa checagem é feita no use case (AddAssignmentsUseCase), não aqui.
  *
- * `conflict` nasce sempre `false`; vira `true` só quando o admin confirma uma
- * alocação sabendo do conflito (RN03, motor de conflito — fora deste bloco).
+ * `conflict` nasce `false` por padrão; vira `true` só quando o admin confirma
+ * cientemente uma alocação conflituosa (RN03 — AddAssignmentsUseCase, que
+ * integra o ConflictDetectionService).
  *
  * Nome do campo `positionId` (não `functionId`) para manter coerência com a
  * entidade `Position`, que já mapeia o model `Funcao` (Seção 4.6). Construtor
@@ -26,16 +27,22 @@ export class Assignment {
   ) {}
 
   /**
-   * Cria uma nova alocação (conflict sempre false — RN03 é responsabilidade do
-   * motor de conflito, fora deste bloco). A existência e o pertencimento de
+   * Cria uma nova alocação. `conflict` é opcional (default `false`); só nasce
+   * `true` quando o admin confirma cientemente uma alocação conflituosa (RN03
+   * — ver AddAssignmentsUseCase). A existência e o pertencimento de
    * escala/membro/função ao mesmo ministério são validados no use case.
    */
-  static create(props: { scheduleId: string; memberId: string; positionId: string }): Assignment {
+  static create(props: {
+    scheduleId: string;
+    memberId: string;
+    positionId: string;
+    conflict?: boolean;
+  }): Assignment {
     const scheduleId = Assignment.requireId(props.scheduleId, 'Escala é obrigatória');
     const memberId = Assignment.requireId(props.memberId, 'Membro é obrigatório');
     const positionId = Assignment.requireId(props.positionId, 'Função é obrigatória');
 
-    return new Assignment(cuid(), scheduleId, memberId, positionId, false, new Date());
+    return new Assignment(cuid(), scheduleId, memberId, positionId, props.conflict ?? false, new Date());
   }
 
   /**

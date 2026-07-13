@@ -3,7 +3,7 @@ import { Assignment } from '../Assignment';
 const base = { scheduleId: 'sc1', memberId: 'mb1', positionId: 'ps1' };
 
 describe('Assignment.create', () => {
-  it('cria uma alocação válida com conflict sempre false', () => {
+  it('cria uma alocação válida com conflict false por padrão (omitido)', () => {
     const assignment = Assignment.create(base);
 
     expect(assignment.id).toBeTruthy();
@@ -12,6 +12,14 @@ describe('Assignment.create', () => {
     expect(assignment.positionId).toBe('ps1');
     expect(assignment.conflict).toBe(false);
     expect(assignment.createdAt).toBeInstanceOf(Date);
+  });
+
+  it('aceita conflict=true explícito (confirmação ciente de conflito, RN03)', () => {
+    expect(Assignment.create({ ...base, conflict: true }).conflict).toBe(true);
+  });
+
+  it('conflict=false explícito continua false', () => {
+    expect(Assignment.create({ ...base, conflict: false }).conflict).toBe(false);
   });
 
   it('rejeita escala ausente ou não-string', () => {
