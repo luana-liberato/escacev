@@ -15,14 +15,22 @@ export interface ConflictCheckInput {
   excludeAssignmentId?: string;
 }
 
-/** Detalhe de UMA alocação existente que conflita com a nova. */
+/**
+ * Detalhe de UMA alocação existente que conflita com a nova — inclui os nomes
+ * legíveis (membro/função/ministério/evento) para o admin entender o conflito
+ * sem o front precisar resolver ids (incremento 3a). Transparência total: sem
+ * filtragem por papel, mesmo para ministério que o admin não administra.
+ */
 export interface ConflictDetail {
   assignmentId: string;
+  memberName: string;
   scheduleId: string;
   ministryId: string;
+  ministryName: string;
   eventId: string;
   eventName: string;
   positionId: string;
+  positionName: string;
   startsAt: Date;
   endsAt: Date;
 }
@@ -75,11 +83,14 @@ export class ConflictDetectionService {
 
       conflicts.push({
         assignmentId: existing.assignmentId,
+        memberName: existing.memberName,
         scheduleId: existing.scheduleId,
         ministryId: existing.ministryId,
+        ministryName: existing.ministryName,
         eventId: existing.eventId,
         eventName: existing.eventName,
         positionId: existing.positionId,
+        positionName: existing.positionName,
         startsAt: existing.startsAt,
         endsAt: existing.endsAt,
       });
