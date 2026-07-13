@@ -2,10 +2,8 @@ import { Assignment } from '../../entities/Assignment';
 import { AssignmentRepository } from '../../repositories/AssignmentRepository';
 import { ScheduleRepository } from '../../repositories/ScheduleRepository';
 import { MinistryRepository } from '../../repositories/MinistryRepository';
-import { MemberRepository } from '../../repositories/MemberRepository';
-import { PositionRepository } from '../../repositories/PositionRepository';
-import { MinistryMembershipRepository } from '../../repositories/MinistryMembershipRepository';
 import { Actor, MinistryAccessPolicy } from '../../services/MinistryAccessPolicy';
+import { AssignmentEligibility } from '../../services/AssignmentEligibility';
 import { AppError } from '../../../shared/errors/AppError';
 
 /** Um item do lote: a pessoa e a função que ela vai exercer na escala. */
@@ -45,8 +43,9 @@ export interface AddAssignmentsResult {
  *    MinistryAccessPolicy.ensureCanManage).
  *
  * VALIDAÇÃO POR ITEM (parcial — um item inválido não derruba os demais):
- *  - o membro existe e pertence ao ministério da escala (via MembroMinisterio);
- *  - a função existe e pertence ao mesmo ministério da escala;
+ *  - o membro existe e pertence ao ministério da escala; a função existe e
+ *    pertence ao mesmo ministério — checagem compartilhada com o
+ *    UpdateAssignmentUseCase via AssignmentEligibility (não duplica a regra);
  *  - não é duplicata (nem já existente na escala, nem repetida dentro do próprio lote).
  *
  * PERSISTÊNCIA: processamento SEQUENCIAL, um save() por item — sem envolver o
@@ -62,9 +61,7 @@ export class AddAssignmentsUseCase {
     private readonly assignmentRepo: AssignmentRepository,
     private readonly scheduleRepo: ScheduleRepository,
     private readonly ministryRepo: MinistryRepository,
-    private readonly memberRepo: MemberRepository,
-    private readonly positionRepo: PositionRepository,
-    private readonly membershipRepo: MinistryMembershipRepository,
+    private readonly eligibility: AssignmentEligibility,
     private readonly accessPolicy: MinistryAccessPolicy,
   ) {}
 
@@ -124,18 +121,11 @@ export class AddAssignmentsUseCase {
       return 'Esta pessoa já está alocada nesta função nesta escala';
     }
 
-    const member = await this.memberRepo.findById(item.memberId);
-    if (!member) return 'Membro não encontrado';
+    const memberFailure = await this.eligibility.checkMember(item.memberId, ministryId);
+    if (memberFailure) return memberFailure.reason;
 
-    const membership = await this.membershipRepo.findByMemberAndMinistry(
-      item.memberId,
-      ministryId,
-    );
-    if (!membership) return 'Membro não pertence a este ministério';
-
-    const position = await this.positionRepo.findById(item.positionId);
-    if (!position) return 'Função não encontrada';
-    if (position.ministryId !== ministryId) return 'Função não pertence a este ministério';
+    const positionFailure = await this.eligibility.checkPosition(item.positionId, ministryId);
+    if (positionFailure) return positionFailure.reason;
 
     const exists = await this.assignmentRepo.existsByScheduleMemberPosition(
       scheduleId,

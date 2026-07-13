@@ -18,6 +18,7 @@ import {
 import { PositionRepository } from '../../../repositories/PositionRepository';
 import { ScheduleRepository } from '../../../repositories/ScheduleRepository';
 import { Actor, MinistryAccessPolicy } from '../../../services/MinistryAccessPolicy';
+import { AssignmentEligibility } from '../../../services/AssignmentEligibility';
 import { AddAssignmentsUseCase } from '../AddAssignmentsUseCase';
 
 // --- Fakes em memória (nível unitário, sem banco) ---
@@ -152,6 +153,9 @@ class FakeAssignmentRepository implements AssignmentRepository {
   /** Quando setado, o próximo save() lança — simula a corrida do @@unique. */
   throwOnNextSave = false;
 
+  async findById(id: string): Promise<Assignment | null> {
+    return this.assignments.find((a) => a.id === id) ?? null;
+  }
   async save(assignment: Assignment): Promise<Assignment> {
     if (this.throwOnNextSave) {
       this.throwOnNextSave = false;
@@ -159,6 +163,13 @@ class FakeAssignmentRepository implements AssignmentRepository {
     }
     this.assignments.push(assignment);
     return assignment;
+  }
+  async update(assignment: Assignment): Promise<Assignment> {
+    this.assignments = this.assignments.map((a) => (a.id === assignment.id ? assignment : a));
+    return assignment;
+  }
+  async delete(id: string): Promise<void> {
+    this.assignments = this.assignments.filter((a) => a.id !== id);
   }
   async existsByScheduleMemberPosition(
     scheduleId: string,
@@ -183,6 +194,7 @@ async function scenario() {
   const membershipRepo = new FakeMembershipRepository();
   const assignmentRepo = new FakeAssignmentRepository();
   const policy = new MinistryAccessPolicy(membershipRepo);
+  const eligibility = new AssignmentEligibility(memberRepo, positionRepo, membershipRepo);
 
   const ministry = Ministry.create({ institutionId: INST, name: 'Louvor' });
   await ministryRepo.save(ministry);
@@ -200,15 +212,13 @@ async function scenario() {
     assignmentRepo,
     scheduleRepo,
     ministryRepo,
-    memberRepo,
-    positionRepo,
-    membershipRepo,
+    eligibility,
     policy,
   );
 
   return {
     ministryRepo, scheduleRepo, memberRepo, positionRepo, membershipRepo, assignmentRepo, policy,
-    ministry, schedule, member, position, useCase,
+    eligibility, ministry, schedule, member, position, useCase,
   };
 }
 
