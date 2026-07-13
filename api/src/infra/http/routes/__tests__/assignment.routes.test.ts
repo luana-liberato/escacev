@@ -176,6 +176,30 @@ describe('POST /escalas/:id/alocacoes', () => {
       .send([{ memberId: MEMBER_1_ID, positionId: POSITION_1_ID }]);
     expect(res.status).toBe(401);
   });
+
+  it('item que gera conflito SEM confirmConflict: needsConfirmation (201) com os nomes legíveis', async () => {
+    const scheduleId = await newSchedule();
+    // MEMBER_1_ID já está alocado nesta escala em POSITION_2_ID; o segundo
+    // item do lote (POSITION_3_ID, incompatível com POSITION_2_ID) sobrepõe.
+    await request(app)
+      .post(`/escalas/${scheduleId}/alocacoes`)
+      .set('Authorization', `Bearer ${adminGeralToken}`)
+      .send([{ memberId: MEMBER_1_ID, positionId: POSITION_2_ID }]);
+
+    const res = await request(app)
+      .post(`/escalas/${scheduleId}/alocacoes`)
+      .set('Authorization', `Bearer ${adminGeralToken}`)
+      .send([{ memberId: MEMBER_1_ID, positionId: POSITION_3_ID }]);
+
+    expect(res.status).toBe(201);
+    expect(res.body.data.needsConfirmation).toHaveLength(1);
+    const [conflict] = res.body.data.needsConfirmation[0].conflicts;
+    expect(conflict.positionId).toBe(POSITION_2_ID);
+    // nomes legíveis (incremento 3a) — front monta a mensagem sem resolver ids.
+    expect(conflict.memberName).toBe('Membro 1');
+    expect(conflict.positionName).toBe('Violão');
+    expect(conflict.ministryName).toBe('Louvor');
+  });
 });
 
 describe('PATCH /alocacoes/:id', () => {
@@ -263,6 +287,10 @@ describe('PATCH /alocacoes/:id', () => {
     expect(res.body.data.status).toBe('needs_confirmation');
     expect(res.body.data.conflicts).toHaveLength(1);
     expect(res.body.data.conflicts[0].positionId).toBe(second.positionId);
+    // nomes legíveis (incremento 3a) — front monta a mensagem sem resolver ids.
+    expect(res.body.data.conflicts[0].memberName).toBe('Membro 1');
+    expect(res.body.data.conflicts[0].positionName).toBe('Violão');
+    expect(res.body.data.conflicts[0].ministryName).toBe('Louvor');
 
     // não aplicou: continua com a função original.
     const stillFirst = await prisma.alocacao.findUnique({ where: { id: first.id } });

@@ -68,11 +68,14 @@ const d = (s: string) => new Date(s);
 function existingCtx(overrides: Partial<MemberAssignmentContext> = {}): MemberAssignmentContext {
   return {
     assignmentId: 'existing-1',
+    memberName: 'Membro Existente',
     scheduleId: 'sch-1',
     ministryId: 'min-1',
+    ministryName: 'Ministério Existente',
     eventId: 'ev-1',
     eventName: 'Culto Existente',
     positionId: 'psExisting',
+    positionName: 'Função Existente',
     startsAt: d('2026-07-12T18:00:00Z'),
     endsAt: d('2026-07-12T20:00:00Z'),
     ...overrides,
@@ -230,14 +233,17 @@ describe('ConflictDetectionService — fronteiras de sobreposição', () => {
 });
 
 describe('ConflictDetectionService — varredura institution-wide e cross-ministério (RN09)', () => {
-  it('13. alocação existente em OUTRO ministério também é avaliada', async () => {
+  it('13. alocação existente em OUTRO ministério também é avaliada, com o nome desse ministério (transparência total)', async () => {
     const { assignmentRepo, service } = build();
-    assignmentRepo.contexts = [existingCtx({ ministryId: 'ministerio-diferente' })];
+    assignmentRepo.contexts = [
+      existingCtx({ ministryId: 'ministerio-diferente', ministryName: 'Recepção' }),
+    ];
 
     const result = await service.check(newInput()); // mesmo horário, funções incompatíveis
 
     expect(result.hasConflict).toBe(true);
     expect(result.conflicts[0].ministryId).toBe('ministerio-diferente');
+    expect(result.conflicts[0].ministryName).toBe('Recepção'); // sem filtragem por papel
   });
 
   it('14. múltiplas escalas do MESMO ministério e MESMO evento (ex.: "Berçário" e "Sala 1") não são isentas entre si', async () => {
@@ -302,28 +308,36 @@ describe('ConflictDetectionService — múltiplos conflitos e detalhes', () => {
     expect(result.conflicts[0].assignmentId).toBe('conflita');
   });
 
-  it('detalhe do conflito expõe evento, escala, ministério e função para o admin decidir', async () => {
+  it('detalhe do conflito expõe evento, escala, ministério e função (ids E nomes legíveis) para o admin decidir', async () => {
     const { assignmentRepo, service } = build();
     assignmentRepo.contexts = [
       existingCtx({
         assignmentId: 'a1',
+        memberName: 'Maria',
         scheduleId: 'sch-x',
         ministryId: 'min-x',
+        ministryName: 'Recepção',
         eventId: 'ev-x',
-        eventName: 'Culto de Domingo',
+        eventName: 'Culto da Manhã',
         positionId: 'psExisting',
+        positionName: 'Recepcionista',
       }),
     ];
 
     const result = await service.check(newInput());
 
+    // "Maria já está como Recepcionista no Culto da Manhã (Recepção), 18h-20h"
+    // — o front monta essa frase direto da resposta, sem consultas extras.
     expect(result.conflicts[0]).toEqual({
       assignmentId: 'a1',
+      memberName: 'Maria',
       scheduleId: 'sch-x',
       ministryId: 'min-x',
+      ministryName: 'Recepção',
       eventId: 'ev-x',
-      eventName: 'Culto de Domingo',
+      eventName: 'Culto da Manhã',
       positionId: 'psExisting',
+      positionName: 'Recepcionista',
       startsAt: d('2026-07-12T18:00:00Z'),
       endsAt: d('2026-07-12T20:00:00Z'),
     });

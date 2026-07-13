@@ -205,6 +205,9 @@ class FakeAssignmentRepository implements AssignmentRepository {
   constructor(
     private readonly scheduleRepo: FakeScheduleRepository,
     private readonly eventRepo: FakeEventRepository,
+    private readonly ministryRepo: FakeMinistryRepository,
+    private readonly memberRepo: FakeMemberRepository,
+    private readonly positionRepo: FakePositionRepository,
   ) {}
 
   async findById(id: string): Promise<Assignment | null> {
@@ -239,13 +242,19 @@ class FakeAssignmentRepository implements AssignmentRepository {
       .map((a) => {
         const schedule = this.scheduleRepo.schedules.find((s) => s.id === a.scheduleId)!;
         const event = this.eventRepo.events.find((e) => e.id === schedule.eventId)!;
+        const ministry = this.ministryRepo.ministries.find((m) => m.id === schedule.ministryId)!;
+        const member = this.memberRepo.members.find((m) => m.id === a.memberId)!;
+        const position = this.positionRepo.positions.find((p) => p.id === a.positionId)!;
         return {
           assignmentId: a.id,
+          memberName: member.name,
           scheduleId: a.scheduleId,
           ministryId: schedule.ministryId,
+          ministryName: ministry.name,
           eventId: schedule.eventId,
           eventName: event.name,
           positionId: a.positionId,
+          positionName: position.name,
           startsAt: event.startsAt,
           endsAt: event.endsAt,
         };
@@ -277,7 +286,7 @@ async function scenario() {
   const positionRepo = new FakePositionRepository();
   const membershipRepo = new FakeMembershipRepository();
   const compatibilityRepo = new FakeCompatibilityRepository();
-  const assignmentRepo = new FakeAssignmentRepository(scheduleRepo, eventRepo);
+  const assignmentRepo = new FakeAssignmentRepository(scheduleRepo, eventRepo, ministryRepo, memberRepo, positionRepo);
   const policy = new MinistryAccessPolicy(membershipRepo);
   const eligibility = new AssignmentEligibility(memberRepo, positionRepo, membershipRepo);
   const checkCompatibility = new CheckPositionCompatibilityUseCase(compatibilityRepo);
@@ -497,6 +506,10 @@ describe('UpdateAssignmentUseCase — integração com o motor de conflito (RN01
     if (result.status === 'needs_confirmation') {
       expect(result.conflicts).toHaveLength(1);
       expect(result.conflicts[0].positionId).toBe(s.position2.id);
+      // nomes legíveis (incremento 3a) — o front monta a mensagem sem resolver ids.
+      expect(result.conflicts[0].memberName).toBe(s.member.name);
+      expect(result.conflicts[0].positionName).toBe(s.position2.name);
+      expect(result.conflicts[0].ministryName).toBe(s.ministry.name);
     }
     // não aplicou: a alocação original continua com a função antiga.
     const stillOriginal = await s.assignmentRepo.findById(s.assignment.id);
