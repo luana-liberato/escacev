@@ -10,11 +10,15 @@ import { UpdateAssignmentUseCase } from '../../../domain/use-cases/assignments/U
 import { RemoveAssignmentUseCase } from '../../../domain/use-cases/assignments/RemoveAssignmentUseCase';
 import { MinistryAccessPolicy } from '../../../domain/services/MinistryAccessPolicy';
 import { AssignmentEligibility } from '../../../domain/services/AssignmentEligibility';
+import { ConflictDetectionService } from '../../../domain/services/ConflictDetectionService';
+import { CheckPositionCompatibilityUseCase } from '../../../domain/use-cases/position-compatibilities/CheckPositionCompatibilityUseCase';
 import { PrismaAssignmentRepository } from '../../database/repositories/PrismaAssignmentRepository';
 import { PrismaScheduleRepository } from '../../database/repositories/PrismaScheduleRepository';
 import { PrismaMinistryRepository } from '../../database/repositories/PrismaMinistryRepository';
+import { PrismaEventRepository } from '../../database/repositories/PrismaEventRepository';
 import { PrismaMemberRepository } from '../../database/repositories/PrismaMemberRepository';
 import { PrismaPositionRepository } from '../../database/repositories/PrismaPositionRepository';
+import { PrismaPositionCompatibilityRepository } from '../../database/repositories/PrismaPositionCompatibilityRepository';
 import { PrismaMinistryMembershipRepository } from '../../database/repositories/PrismaMinistryMembershipRepository';
 import { respond } from '../../../shared/utils/respond';
 
@@ -26,7 +30,8 @@ import { respond } from '../../../shared/utils/respond';
  * reimplementa essa guarda. institutionId sempre do JWT (req.user).
  */
 export class AssignmentController {
-  // POST /escalas/:id/alocacoes — adiciona um lote (array) de { memberId, positionId }.
+  // POST /escalas/:id/alocacoes — adiciona um lote (array) de
+  // { memberId, positionId, confirmConflict? }.
   add = async (req: Request, res: Response): Promise<void> => {
     const { institutionId, memberId, role } = AssignmentController.authUser(req);
     const items = AssignmentController.parseItems(req.body);
@@ -35,8 +40,10 @@ export class AssignmentController {
       new PrismaAssignmentRepository(),
       new PrismaScheduleRepository(),
       new PrismaMinistryRepository(),
+      new PrismaEventRepository(),
       AssignmentController.eligibility(),
       AssignmentController.accessPolicy(),
+      AssignmentController.conflictDetection(),
     );
     const result = await useCase.execute({
       institutionId,
@@ -46,16 +53,24 @@ export class AssignmentController {
     });
 
     // Sempre 201 quando o use case não lança (pré-condições ok): o resultado
-    // por item é dado, não erro HTTP — preserva os motivos de failed no corpo
-    // mesmo quando nenhum item foi criado (um status >= 400 zeraria data).
+    // por item é dado, não erro HTTP — preserva os motivos de failed/os
+    // detalhes de needsConfirmation no corpo mesmo quando nada foi criado (um
+    // status >= 400 zeraria data). needsConfirmation NÃO é erro: é um estado
+    // de "aguardando decisão do admin" — o item pode ser reenviado com
+    // confirmConflict=true.
     respond(
       res,
       201,
       {
         created: result.created.map(AssignmentController.serialize),
         failed: result.failed,
+        needsConfirmation: result.needsConfirmation,
       },
-      AssignmentController.batchMessage(result.created.length, result.failed.length),
+      AssignmentController.batchMessage(
+        result.created.length,
+        result.failed.length,
+        result.needsConfirmation.length,
+      ),
     );
   };
 
@@ -111,6 +126,14 @@ export class AssignmentController {
     );
   }
 
+  /** Motor de detecção de conflito (RN01) — reusa o Check de compatibilidade já existente. */
+  private static conflictDetection(): ConflictDetectionService {
+    return new ConflictDetectionService(
+      new PrismaAssignmentRepository(),
+      new CheckPositionCompatibilityUseCase(new PrismaPositionCompatibilityRepository()),
+    );
+  }
+
   /**
    * Extrai o usuário autenticado injetado pelo middleware auth. O guard mantém
    * o tipo estreito e devolve 401 caso a rota seja montada sem o auth antes.
@@ -122,10 +145,11 @@ export class AssignmentController {
 
   /**
    * Valida a forma do corpo do POST (fronteira HTTP, não regra de negócio):
-   * precisa ser um array não-vazio de { memberId, positionId } com strings
-   * não-vazias. Barra aqui evita que um item malformado escape para dentro do
-   * use case e seja rotulado incorretamente como duplicata (o try/catch do
-   * AddAssignmentsUseCase é só o backstop de corrida do @@unique).
+   * precisa ser um array não-vazio de { memberId, positionId, confirmConflict? }
+   * com ids string não-vazias e confirmConflict booleano quando presente. Barra
+   * aqui evita que um item malformado escape para dentro do use case e seja
+   * rotulado incorretamente como duplicata (o try/catch do AddAssignmentsUseCase
+   * é só o backstop de corrida do @@unique).
    */
   private static parseItems(body: unknown): AssignmentItem[] {
     if (!Array.isArray(body) || body.length === 0) {
@@ -142,18 +166,31 @@ export class AssignmentController {
       ) {
         throw new AppError(`Item ${index}: informe memberId e positionId (strings)`, 400);
       }
+      const confirmConflict = (item as { confirmConflict?: unknown }).confirmConflict;
+      if (confirmConflict !== undefined && typeof confirmConflict !== 'boolean') {
+        throw new AppError(`Item ${index}: confirmConflict deve ser um booleano`, 400);
+      }
       return {
         memberId: (item as { memberId: string }).memberId,
         positionId: (item as { positionId: string }).positionId,
+        confirmConflict,
       };
     });
   }
 
-  /** Mensagem do lote: distingue tudo/parcial/nada criado para o usuário. */
-  private static batchMessage(createdCount: number, failedCount: number): string {
-    if (failedCount === 0) return 'Todas as alocações foram criadas';
-    if (createdCount === 0) return 'Nenhuma alocação pôde ser criada';
-    return `${createdCount} alocação(ões) criada(s), ${failedCount} falharam`;
+  /** Mensagem do lote: distingue os quatro grupos (criado limpo/confirmado, falho, pendente). */
+  private static batchMessage(
+    createdCount: number,
+    failedCount: number,
+    needsConfirmationCount: number,
+  ): string {
+    if (failedCount === 0 && needsConfirmationCount === 0) return 'Todas as alocações foram criadas';
+
+    const parts: string[] = [];
+    if (createdCount > 0) parts.push(`${createdCount} criada(s)`);
+    if (failedCount > 0) parts.push(`${failedCount} falharam`);
+    if (needsConfirmationCount > 0) parts.push(`${needsConfirmationCount} aguardando confirmação de conflito`);
+    return parts.join(', ');
   }
 
   /** Projeção para a resposta da API. */

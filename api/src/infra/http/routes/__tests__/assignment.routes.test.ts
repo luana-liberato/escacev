@@ -40,7 +40,14 @@ async function cleanupFixtures() {
   await prisma.instituicao.deleteMany({ where: { id: INST_ID } });
 }
 
-/** Cria uma escala vazia nova (evento novo, id único) para isolar cada teste. */
+/**
+ * Cria uma escala vazia nova (evento novo, id único, horário próprio) para
+ * isolar cada teste. Cada chamada usa um DIA diferente (offset por `suffix`):
+ * com o motor de conflito agora integrado ao Add real, escalas com o mesmo
+ * horário fariam MEMBER_1_ID/POSITION_1_ID (reaproveitados entre testes)
+ * colidirem entre si de verdade (RN01/RN09) — o que quebraria testes que só
+ * querem uma escala "limpa" de setup, sem relação com o teste de conflito.
+ */
 async function newSchedule(): Promise<string> {
   const suffix = scheduleSeq++;
   const event = await prisma.evento.create({
@@ -49,8 +56,8 @@ async function newSchedule(): Promise<string> {
       instituicaoId: INST_ID,
       nome: 'Culto',
       tipo: 'culto',
-      inicio: new Date('2026-07-12T18:00:00Z'),
-      fim: new Date('2026-07-12T20:00:00Z'),
+      inicio: new Date(Date.UTC(2026, 6, 12 + suffix, 18, 0, 0)),
+      fim: new Date(Date.UTC(2026, 6, 12 + suffix, 20, 0, 0)),
     },
   });
   const schedule = await prisma.escala.create({
