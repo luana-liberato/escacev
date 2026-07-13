@@ -4,6 +4,11 @@ import { AssignmentRepository } from '../../../domain/repositories/AssignmentRep
 import { prisma } from '../prisma';
 
 export class PrismaAssignmentRepository implements AssignmentRepository {
+  async findById(id: string): Promise<Assignment | null> {
+    const row = await prisma.alocacao.findUnique({ where: { id } });
+    return row ? PrismaAssignmentRepository.toEntity(row) : null;
+  }
+
   async save(assignment: Assignment): Promise<Assignment> {
     // Entidade em inglês → colunas em português (espelham o schema.prisma).
     const row = await prisma.alocacao.create({
@@ -17,6 +22,22 @@ export class PrismaAssignmentRepository implements AssignmentRepository {
       },
     });
     return PrismaAssignmentRepository.toEntity(row);
+  }
+
+  async update(assignment: Assignment): Promise<Assignment> {
+    // Escala e conflict não são mutáveis por aqui (conflict é do motor de conflito).
+    const row = await prisma.alocacao.update({
+      where: { id: assignment.id },
+      data: {
+        membroId: assignment.memberId,
+        funcaoId: assignment.positionId,
+      },
+    });
+    return PrismaAssignmentRepository.toEntity(row);
+  }
+
+  async delete(id: string): Promise<void> {
+    await prisma.alocacao.delete({ where: { id } });
   }
 
   async existsByScheduleMemberPosition(
