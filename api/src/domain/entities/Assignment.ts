@@ -31,17 +31,31 @@ export class Assignment {
    * escala/membro/função ao mesmo ministério são validados no use case.
    */
   static create(props: { scheduleId: string; memberId: string; positionId: string }): Assignment {
-    if (typeof props.scheduleId !== 'string' || !props.scheduleId.trim()) {
-      throw new AppError('Escala é obrigatória', 400);
-    }
-    if (typeof props.memberId !== 'string' || !props.memberId.trim()) {
-      throw new AppError('Membro é obrigatório', 400);
-    }
-    if (typeof props.positionId !== 'string' || !props.positionId.trim()) {
-      throw new AppError('Função é obrigatória', 400);
-    }
+    const scheduleId = Assignment.requireId(props.scheduleId, 'Escala é obrigatória');
+    const memberId = Assignment.requireId(props.memberId, 'Membro é obrigatório');
+    const positionId = Assignment.requireId(props.positionId, 'Função é obrigatória');
 
-    return new Assignment(cuid(), props.scheduleId, props.memberId, props.positionId, false, new Date());
+    return new Assignment(cuid(), scheduleId, memberId, positionId, false, new Date());
+  }
+
+  /**
+   * Retorna uma cópia com memberId e/ou positionId atualizados (troca a pessoa,
+   * a função, ou ambos). scheduleId, conflict e createdAt são imutáveis — a
+   * revalidação de pertencimento ao ministério da escala e a checagem de
+   * duplicata ficam no use case (UpdateAssignmentUseCase). Entidade imutável:
+   * valida os campos presentes e devolve nova instância (não muta a original).
+   */
+  update(props: { memberId?: string; positionId?: string }): Assignment {
+    const memberId =
+      props.memberId !== undefined
+        ? Assignment.requireId(props.memberId, 'Membro é obrigatório')
+        : this.memberId;
+    const positionId =
+      props.positionId !== undefined
+        ? Assignment.requireId(props.positionId, 'Função é obrigatória')
+        : this.positionId;
+
+    return new Assignment(this.id, this.scheduleId, memberId, positionId, this.conflict, this.createdAt);
   }
 
   /** Reconstrói a entidade a partir de uma linha persistida (uso do repositório). */
@@ -61,5 +75,13 @@ export class Assignment {
       props.conflict,
       props.createdAt,
     );
+  }
+
+  /** Exige uma string não-vazia; não-string ou vazia vira 400 tratado, não TypeError → 500. */
+  private static requireId(value: unknown, message: string): string {
+    if (typeof value !== 'string' || !value.trim()) {
+      throw new AppError(message, 400);
+    }
+    return value;
   }
 }
