@@ -3,13 +3,14 @@ import { AuthenticatedUser } from '../middlewares/auth';
 import { AppError } from '../../../shared/errors/AppError';
 import { Schedule } from '../../../domain/entities/Schedule';
 import { CreateScheduleUseCase } from '../../../domain/use-cases/schedules/CreateScheduleUseCase';
-import { GetScheduleUseCase } from '../../../domain/use-cases/schedules/GetScheduleUseCase';
+import { GetScheduleUseCase, ScheduleWithAssignments } from '../../../domain/use-cases/schedules/GetScheduleUseCase';
 import { ListSchedulesUseCase } from '../../../domain/use-cases/schedules/ListSchedulesUseCase';
 import { DeleteScheduleUseCase } from '../../../domain/use-cases/schedules/DeleteScheduleUseCase';
 import { MinistryAccessPolicy } from '../../../domain/services/MinistryAccessPolicy';
 import { PrismaScheduleRepository } from '../../database/repositories/PrismaScheduleRepository';
 import { PrismaMinistryRepository } from '../../database/repositories/PrismaMinistryRepository';
 import { PrismaEventRepository } from '../../database/repositories/PrismaEventRepository';
+import { PrismaAssignmentRepository } from '../../database/repositories/PrismaAssignmentRepository';
 import { PrismaMinistryMembershipRepository } from '../../database/repositories/PrismaMinistryMembershipRepository';
 import { respond } from '../../../shared/utils/respond';
 
@@ -59,17 +60,18 @@ export class ScheduleController {
     respond(res, 200, schedules.map(ScheduleController.serialize), 'Escalas listadas');
   };
 
-  // GET /escalas/:id — busca uma escala da própria instituição.
+  // GET /escalas/:id — busca uma escala da própria instituição, com suas alocações.
   show = async (req: Request, res: Response): Promise<void> => {
     const { institutionId } = ScheduleController.authUser(req);
 
     const useCase = new GetScheduleUseCase(
       new PrismaScheduleRepository(),
       new PrismaMinistryRepository(),
+      new PrismaAssignmentRepository(),
     );
-    const schedule = await useCase.execute({ id: req.params.id, institutionId });
+    const result = await useCase.execute({ id: req.params.id, institutionId });
 
-    respond(res, 200, ScheduleController.serialize(schedule), 'Escala encontrada');
+    respond(res, 200, ScheduleController.serializeWithAssignments(result), 'Escala encontrada');
   };
 
   // DELETE /escalas/:id — remove a escala (escopo de ministério).
@@ -120,6 +122,21 @@ export class ScheduleController {
       status: schedule.status,
       publishedAt: schedule.publishedAt,
       createdAt: schedule.createdAt,
+    };
+  }
+
+  /** Projeção do detalhe (GET /:id): a escala + suas alocações com nomes resolvidos. */
+  private static serializeWithAssignments(result: ScheduleWithAssignments) {
+    return {
+      ...ScheduleController.serialize(result.schedule),
+      assignments: result.assignments.map((detail) => ({
+        id: detail.assignment.id,
+        positionId: detail.assignment.positionId,
+        conflict: detail.assignment.conflict,
+        createdAt: detail.assignment.createdAt,
+        member: { id: detail.member.id, name: detail.member.name },
+        position: { id: detail.position.id, name: detail.position.name },
+      })),
     };
   }
 }

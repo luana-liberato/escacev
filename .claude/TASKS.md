@@ -198,7 +198,7 @@
       escalas por evento distinguidas pelo nome (ex: infantil com "Berçário", "Sala 1",
       "Sala 2"); `nome = ""` é a escala única padrão. Duplicata de nome é case-insensitive.
 - [x] Use case: criar escala (ministério + evento + nome opcional); 409 na duplicata do trio
-- [ ] Use case: buscar escala com suas alocações — **casca pronta** (`GetSchedule`); falta agregar as alocações (bloco Alocações)
+- [x] Use case: buscar escala com suas alocações (`GetSchedule` retorna `{ schedule, assignments }`, com membro e função resolvidos numa única consulta — sem N+1)
 - [x] Use case: listar escalas (por evento, por ministério, ambos → todas as salas, ou todas da instituição)
 - [x] Use case: remover escala (casca; delete simples hoje — cascata das alocações quando existirem)
 - [x] RBAC das escritas: `ADMIN_GERAL` ou admin escopado do ministério da escala (reusa a `MinistryAccessPolicy`); leitura aberta a admins
@@ -206,13 +206,16 @@
 - [x] Testes: entidade, use cases (unit) e endpoints (supertest) — inclui salas por evento e caixa diferente
 
 ### Alocações (RF05)
-- [ ] Entidade `Alocacao` = **membro + função + escala, direto** (referencia `funcaoId`, sem vaga) + flag conflito (RN03)
-- [ ] Use case: alocar membro numa função da escala (pessoa + função direto)
-- [ ] Use case: remover alocação
-- [ ] Validar que o membro pertence ao ministério da escala
-- [ ] Validar que a função pertence ao ministério da escala
-- [ ] RBAC das escritas: `ADMIN_GERAL` ou admin escopado do ministério da escala (reusa a `MinistryAccessPolicy`)
-- [ ] Endpoints: `POST /escalas/:id/alocacoes`, `DELETE /alocacoes/:id`
+- [x] Entidade `Assignment` (model `Alocacao`) = **membro + função + escala, direto** (`positionId`, sem vaga) + `conflict` (sempre `false` aqui — RN03 é do motor de conflito)
+- [x] Use case: alocar membro numa função da escala — em **lote** (`AddAssignmentsUseCase`): itens válidos são criados, inválidos são reportados com o motivo (`created`/`failed`), sem transação com rollback geral
+- [x] Use case: editar alocação (`UpdateAssignmentUseCase`, unitária) — troca membro e/ou função; 409 se a edição colidir com uma alocação já existente na escala
+- [x] Use case: remover alocação (`RemoveAssignmentUseCase`; 404 se inexistente — não idempotente, como os demais deletes)
+- [x] Validar que o membro pertence ao ministério da escala
+- [x] Validar que a função pertence ao ministério da escala
+      (`AssignmentEligibility`, serviço compartilhado entre adicionar e editar — não duplica a regra)
+- [x] RBAC das escritas: `ADMIN_GERAL` ou admin escopado do ministério da escala (reusa a `MinistryAccessPolicy`)
+- [x] Endpoints: `POST /escalas/:id/alocacoes` (lote), `PATCH /alocacoes/:id` (edição unitária), `DELETE /alocacoes/:id`
+- [x] Testes: entidade, `AssignmentEligibility`, use cases (unit) e rotas (supertest)
 
 ### Motor de Conflito (RN01, RN02, RN03, RN07) — coração do TCC
 > **Preparação da Fase 3 já pronta:** a peça de compatibilidade
