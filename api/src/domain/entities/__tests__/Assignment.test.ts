@@ -36,6 +36,41 @@ describe('Assignment.create', () => {
   });
 });
 
+describe('Assignment.update', () => {
+  it('troca memberId e/ou positionId sem mutar a original; scheduleId/conflict/createdAt imutáveis', () => {
+    const assignment = Assignment.create(base);
+
+    const onlyMember = assignment.update({ memberId: 'mb2' });
+    expect(onlyMember.memberId).toBe('mb2');
+    expect(onlyMember.positionId).toBe('ps1'); // mantido
+    expect(onlyMember.scheduleId).toBe(assignment.scheduleId);
+    expect(onlyMember.id).toBe(assignment.id);
+    expect(onlyMember.createdAt).toBe(assignment.createdAt);
+
+    const both = assignment.update({ memberId: 'mb2', positionId: 'ps2' });
+    expect(both.memberId).toBe('mb2');
+    expect(both.positionId).toBe('ps2');
+
+    // imutabilidade: a original não muda
+    expect(assignment.memberId).toBe('mb1');
+    expect(assignment.positionId).toBe('ps1');
+  });
+
+  it('campos omitidos permanecem inalterados', () => {
+    const assignment = Assignment.create(base);
+    const updated = assignment.update({});
+
+    expect(updated.memberId).toBe('mb1');
+    expect(updated.positionId).toBe('ps1');
+  });
+
+  it('rejeita memberId/positionId vazios quando informados', () => {
+    const assignment = Assignment.create(base);
+    expect(() => assignment.update({ memberId: '  ' })).toThrow('Membro é obrigatório');
+    expect(() => assignment.update({ positionId: '' })).toThrow('Função é obrigatória');
+  });
+});
+
 describe('Assignment.restore', () => {
   it('reconstrói a entidade a partir de uma linha persistida (inclusive conflict=true)', () => {
     const createdAt = new Date('2026-07-12T18:00:00Z');
