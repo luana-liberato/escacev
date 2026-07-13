@@ -75,26 +75,49 @@ export class AssignmentController {
   };
 
   // PATCH /alocacoes/:id — edição unitária: troca memberId e/ou positionId.
+  // body aceita confirmConflict? para confirmar cientemente uma edição conflituosa.
   update = async (req: Request, res: Response): Promise<void> => {
     const { institutionId, memberId, role } = AssignmentController.authUser(req);
     const { memberId: newMemberId, positionId: newPositionId } = req.body;
+    const confirmConflict = AssignmentController.parseConfirmConflict(req.body);
 
     const useCase = new UpdateAssignmentUseCase(
       new PrismaAssignmentRepository(),
       new PrismaScheduleRepository(),
       new PrismaMinistryRepository(),
+      new PrismaEventRepository(),
       AssignmentController.eligibility(),
       AssignmentController.accessPolicy(),
+      AssignmentController.conflictDetection(),
     );
-    const assignment = await useCase.execute({
+    const result = await useCase.execute({
       institutionId,
       actor: { memberId, role },
       id: req.params.id,
       memberId: newMemberId,
       positionId: newPositionId,
+      confirmConflict,
     });
 
-    respond(res, 200, AssignmentController.serialize(assignment), 'Alocação atualizada');
+    // Sempre 200 quando o use case não lança: needs_confirmation não é erro
+    // (é "aguardando decisão"), e um status >= 400 zeraria data via respond(),
+    // escondendo os detalhes do conflito que o admin precisa para decidir.
+    if (result.status === 'needs_confirmation') {
+      respond(
+        res,
+        200,
+        { status: result.status, conflicts: result.conflicts },
+        'Esta edição gera conflito de horário — reenvie com confirmConflict=true para confirmar',
+      );
+      return;
+    }
+
+    respond(
+      res,
+      200,
+      { status: result.status, ...AssignmentController.serialize(result.assignment) },
+      'Alocação atualizada',
+    );
   };
 
   // DELETE /alocacoes/:id — remove a alocação.
@@ -176,6 +199,16 @@ export class AssignmentController {
         confirmConflict,
       };
     });
+  }
+
+  /** confirmConflict opcional no body do PATCH: ausente vira undefined; presente exige booleano. */
+  private static parseConfirmConflict(body: unknown): boolean | undefined {
+    const value = (body as { confirmConflict?: unknown })?.confirmConflict;
+    if (value === undefined) return undefined;
+    if (typeof value !== 'boolean') {
+      throw new AppError('confirmConflict deve ser um booleano', 400);
+    }
+    return value;
   }
 
   /** Mensagem do lote: distingue os quatro grupos (criado limpo/confirmado, falho, pendente). */
