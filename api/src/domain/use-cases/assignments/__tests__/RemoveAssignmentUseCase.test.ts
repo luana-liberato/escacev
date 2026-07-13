@@ -2,7 +2,7 @@ import { Assignment } from '../../../entities/Assignment';
 import { Ministry } from '../../../entities/Ministry';
 import { MinistryMembership } from '../../../entities/MinistryMembership';
 import { Schedule } from '../../../entities/Schedule';
-import { AssignmentRepository } from '../../../repositories/AssignmentRepository';
+import { AssignmentDetail, AssignmentRepository } from '../../../repositories/AssignmentRepository';
 import {
   MinistryRepository,
   MinistryBlockingDependencies,
@@ -109,6 +109,9 @@ class FakeAssignmentRepository implements AssignmentRepository {
   }
   async existsByScheduleMemberPosition(): Promise<boolean> {
     return false;
+  }
+  async findByScheduleWithDetails(): Promise<AssignmentDetail[]> {
+    return []; // não exercitado neste arquivo
   }
 }
 

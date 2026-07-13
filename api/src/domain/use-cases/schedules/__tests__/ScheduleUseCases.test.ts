@@ -2,6 +2,9 @@ import { Event } from '../../../entities/Event';
 import { Ministry } from '../../../entities/Ministry';
 import { Schedule } from '../../../entities/Schedule';
 import { MinistryMembership } from '../../../entities/MinistryMembership';
+import { Assignment } from '../../../entities/Assignment';
+import { Member } from '../../../entities/Member';
+import { Position } from '../../../entities/Position';
 import { ScheduleRepository } from '../../../repositories/ScheduleRepository';
 import {
   MinistryRepository,
@@ -13,11 +16,46 @@ import {
   MinistryMemberView,
   MemberMinistryView,
 } from '../../../repositories/MinistryMembershipRepository';
+import { AssignmentDetail, AssignmentRepository } from '../../../repositories/AssignmentRepository';
 import { MinistryAccessPolicy, Actor } from '../../../services/MinistryAccessPolicy';
 import { CreateScheduleUseCase } from '../CreateScheduleUseCase';
 import { GetScheduleUseCase } from '../GetScheduleUseCase';
 import { ListSchedulesUseCase } from '../ListSchedulesUseCase';
 import { DeleteScheduleUseCase } from '../DeleteScheduleUseCase';
+
+/**
+ * Fake mínimo do AssignmentRepository — só o necessário para o
+ * GetScheduleUseCase resolver as alocações da escala (join simulado em memória).
+ */
+class FakeAssignmentRepository implements AssignmentRepository {
+  assignments: Assignment[] = [];
+  members: Member[] = [];
+  positions: Position[] = [];
+
+  async findById(id: string): Promise<Assignment | null> {
+    return this.assignments.find((a) => a.id === id) ?? null;
+  }
+  async findByScheduleWithDetails(scheduleId: string): Promise<AssignmentDetail[]> {
+    return this.assignments
+      .filter((a) => a.scheduleId === scheduleId)
+      .map((assignment) => ({
+        assignment,
+        member: this.members.find((m) => m.id === assignment.memberId)!,
+        position: this.positions.find((p) => p.id === assignment.positionId)!,
+      }));
+  }
+  async save(assignment: Assignment): Promise<Assignment> {
+    this.assignments.push(assignment);
+    return assignment;
+  }
+  async update(assignment: Assignment): Promise<Assignment> {
+    return assignment;
+  }
+  async delete(): Promise<void> {}
+  async existsByScheduleMemberPosition(): Promise<boolean> {
+    return false;
+  }
+}
 
 // --- Fakes em memória (nível unitário, sem banco) ---
 
@@ -287,16 +325,41 @@ describe('CreateScheduleUseCase', () => {
 });
 
 describe('GetScheduleUseCase', () => {
-  it('retorna a escala do próprio tenant', async () => {
+  it('retorna a escala do próprio tenant, sem alocações (array vazio)', async () => {
     const s = await scenario();
     const created = await new CreateScheduleUseCase(s.scheduleRepo, s.ministryRepo, s.eventRepo, s.policy).execute({
       institutionId: INST, actor: ADMIN_GERAL, ministryId: s.ministry.id, eventId: s.event.id,
     });
+    const assignmentRepo = new FakeAssignmentRepository();
 
-    const found = await new GetScheduleUseCase(s.scheduleRepo, s.ministryRepo).execute({
+    const result = await new GetScheduleUseCase(s.scheduleRepo, s.ministryRepo, assignmentRepo).execute({
       institutionId: INST, id: created.id,
     });
-    expect(found.id).toBe(created.id);
+    expect(result.schedule.id).toBe(created.id);
+    expect(result.assignments).toEqual([]);
+  });
+
+  it('retorna as alocações da escala já com membro e função resolvidos', async () => {
+    const s = await scenario();
+    const created = await new CreateScheduleUseCase(s.scheduleRepo, s.ministryRepo, s.eventRepo, s.policy).execute({
+      institutionId: INST, actor: ADMIN_GERAL, ministryId: s.ministry.id, eventId: s.event.id,
+    });
+    const assignmentRepo = new FakeAssignmentRepository();
+    const member = Member.create({ institutionId: INST, name: 'João', email: 'joao@example.com' });
+    const position = Position.create({ name: 'Vocal', ministryId: s.ministry.id });
+    assignmentRepo.members.push(member);
+    assignmentRepo.positions.push(position);
+    await assignmentRepo.save(
+      Assignment.create({ scheduleId: created.id, memberId: member.id, positionId: position.id }),
+    );
+
+    const result = await new GetScheduleUseCase(s.scheduleRepo, s.ministryRepo, assignmentRepo).execute({
+      institutionId: INST, id: created.id,
+    });
+
+    expect(result.assignments).toHaveLength(1);
+    expect(result.assignments[0].member.name).toBe('João');
+    expect(result.assignments[0].position.name).toBe('Vocal');
   });
 
   it('404 quando a escala é de outra instituição', async () => {
@@ -306,14 +369,18 @@ describe('GetScheduleUseCase', () => {
     });
 
     await expect(
-      new GetScheduleUseCase(s.scheduleRepo, s.ministryRepo).execute({ institutionId: 'i2', id: created.id }),
+      new GetScheduleUseCase(s.scheduleRepo, s.ministryRepo, new FakeAssignmentRepository()).execute({
+        institutionId: 'i2', id: created.id,
+      }),
     ).rejects.toMatchObject({ statusCode: 404 });
   });
 
   it('404 quando o id não existe', async () => {
     const s = await scenario();
     await expect(
-      new GetScheduleUseCase(s.scheduleRepo, s.ministryRepo).execute({ institutionId: INST, id: 'nao-existe' }),
+      new GetScheduleUseCase(s.scheduleRepo, s.ministryRepo, new FakeAssignmentRepository()).execute({
+        institutionId: INST, id: 'nao-existe',
+      }),
     ).rejects.toMatchObject({ statusCode: 404 });
   });
 });

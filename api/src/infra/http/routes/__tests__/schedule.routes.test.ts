@@ -15,6 +15,7 @@ const ADMIN_SCOPED_ID = 'test-sched-scoped';
 const ADMIN_UNSCOPED_ID = 'test-sched-unscoped';
 const MEMBRO_ID = 'test-sched-membro';
 const MINISTRY_ID = 'test-sched-min';
+const POSITION_ID = 'test-sched-pos';
 
 let adminGeralToken: string;
 let adminScopedToken: string;
@@ -23,7 +24,10 @@ let membroToken: string;
 let eventSeq = 0;
 
 async function cleanupFixtures() {
+  const schedules = await prisma.escala.findMany({ where: { ministerioId: MINISTRY_ID }, select: { id: true } });
+  await prisma.alocacao.deleteMany({ where: { escalaId: { in: schedules.map((s) => s.id) } } });
   await prisma.escala.deleteMany({ where: { ministerioId: MINISTRY_ID } });
+  await prisma.funcao.deleteMany({ where: { ministerioId: MINISTRY_ID } });
   await prisma.evento.deleteMany({ where: { instituicaoId: { in: [INST_ID, OTHER_INST_ID] } } });
   await prisma.membroMinisterio.deleteMany({ where: { ministerioId: MINISTRY_ID } });
   await prisma.ministerio.deleteMany({ where: { id: MINISTRY_ID } });
@@ -57,6 +61,8 @@ beforeAll(async () => {
   await prisma.membroMinisterio.create({
     data: { membroId: ADMIN_SCOPED_ID, ministerioId: MINISTRY_ID, isAdmin: true },
   });
+  await prisma.membroMinisterio.create({ data: { membroId: MEMBRO_ID, ministerioId: MINISTRY_ID } });
+  await prisma.funcao.create({ data: { id: POSITION_ID, ministerioId: MINISTRY_ID, nome: 'Vocal' } });
 
   adminGeralToken = signTestToken({ memberId: ADMIN_GERAL_ID, institutionId: INST_ID, role: 'ADMIN_GERAL' });
   adminScopedToken = signTestToken({ memberId: ADMIN_SCOPED_ID, institutionId: INST_ID, role: 'ADMIN_MINISTERIO' });
@@ -178,6 +184,23 @@ describe('GET /escalas e /escalas/:id', () => {
 
     const notFound = await request(app).get('/escalas/nao-existe').set('Authorization', `Bearer ${adminGeralToken}`);
     expect(notFound.status).toBe(404);
+  });
+
+  it('ver por id retorna a escala COM as alocações (membro e função resolvidos)', async () => {
+    const eventId = await newEvent();
+    const created = await request(app).post('/escalas').set('Authorization', `Bearer ${adminGeralToken}`).send({ ministryId: MINISTRY_ID, eventId });
+    const scheduleId = created.body.data.id;
+    await prisma.alocacao.create({
+      data: { escalaId: scheduleId, membroId: MEMBRO_ID, funcaoId: POSITION_ID },
+    });
+
+    const res = await request(app).get(`/escalas/${scheduleId}`).set('Authorization', `Bearer ${adminGeralToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.assignments).toHaveLength(1);
+    expect(res.body.data.assignments[0].member.name).toBe('MB');
+    expect(res.body.data.assignments[0].position.name).toBe('Vocal');
+    expect(res.body.data.assignments[0].conflict).toBe(false);
   });
 
   it('MEMBRO não pode listar (403)', async () => {
