@@ -42,6 +42,14 @@ scheduleRoutes.get(
   asyncHandler(controller.show),
 );
 
+// Conflitos da escala (reavaliação ao vivo, read-only) — ADMIN_GERAL e ADMIN_MINISTERIO.
+scheduleRoutes.get(
+  '/escalas/:id/conflitos',
+  auth,
+  rbac('ADMIN_GERAL', 'ADMIN_MINISTERIO'),
+  asyncHandler(controller.conflicts),
+);
+
 // Remover escala — ADMIN_GERAL ou admin escopado do ministério (guarda no use case).
 scheduleRoutes.delete(
   '/escalas/:id',
