@@ -39,6 +39,34 @@ export interface MemberAssignmentContext {
   endsAt: Date;
 }
 
+/** Intervalo [from, to] fechado, usado para recortar a visão do membro por período. */
+export interface DateRange {
+  from: Date;
+  to: Date;
+}
+
+/**
+ * Uma alocação do membro já pronta para a "visão do membro" (GET /minhas-escalas)
+ * — evento, ministério, função e rótulo da escala resolvidos numa única consulta.
+ * Só alocações de escalas PUBLICADA chegam aqui: rascunho é invisível ao membro
+ * (RN04). É o espelho member-facing do detalhe que o admin vê, mas sem dado de
+ * conflito (a resolução de conflito é do admin; a visão do membro é agenda).
+ */
+export interface MemberScheduleEntry {
+  assignmentId: string;
+  scheduleId: string;
+  scheduleName: string;
+  ministryId: string;
+  ministryName: string;
+  eventId: string;
+  eventName: string;
+  eventType: string;
+  startsAt: Date;
+  endsAt: Date;
+  positionId: string;
+  positionName: string;
+}
+
 /**
  * Abstração de persistência da alocação (Assignment). Use cases dependem desta
  * interface, nunca do PrismaClient direto (Seção 4.2). Escopo por instituição é
@@ -57,6 +85,16 @@ export interface AssignmentRepository {
    * horário do evento — join numa única consulta (evita N+1 no motor de conflito).
    */
   findByMemberWithContext(memberId: string): Promise<MemberAssignmentContext[]>;
+  /**
+   * Alocações do membro em escalas **PUBLICADA** (RN04) cujo evento começa dentro
+   * do intervalo, em qualquer ministério — alimenta a visão do membro
+   * (GET /minhas-escalas). Ordenadas por início do evento (asc). Rascunho é
+   * filtrado na origem: nunca chega ao membro.
+   */
+  findByMemberPublishedInRange(
+    memberId: string,
+    range: DateRange,
+  ): Promise<MemberScheduleEntry[]>;
   /** Persiste uma nova alocação. */
   save(assignment: Assignment): Promise<Assignment>;
   /** Atualiza memberId e/ou positionId de uma alocação existente. */

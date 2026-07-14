@@ -56,6 +56,28 @@ export class Schedule {
     );
   }
 
+  /**
+   * Publica a escala: RASCUNHO → PUBLICADA, carimbando `publishedAt` com o
+   * instante da publicação. Só a partir daqui a escala fica visível ao membro
+   * (RN04). A data da 1ª publicação é DEFINITIVA — republicar é bloqueado (409)
+   * para preservar `publicadaEm`, base da precedência por publicação (RN07).
+   * Entidade imutável: devolve nova instância, não muta a original.
+   */
+  publish(): Schedule {
+    if (this.status === 'PUBLICADA') {
+      throw new AppError('Escala já está publicada', 409);
+    }
+    return new Schedule(
+      this.id,
+      this.ministryId,
+      this.eventId,
+      this.name,
+      'PUBLICADA',
+      new Date(),
+      this.createdAt,
+    );
+  }
+
   /** Reconstrói a entidade a partir de uma linha persistida (uso do repositório). */
   static restore(props: {
     id: string;

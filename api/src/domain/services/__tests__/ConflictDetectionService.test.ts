@@ -26,6 +26,9 @@ class FakeAssignmentRepository implements AssignmentRepository {
   async findByScheduleWithDetails(): Promise<AssignmentDetail[]> {
     throw new Error('não usado neste teste');
   }
+  async findByMemberPublishedInRange() {
+    return [];
+  }
   async save(): Promise<Assignment> {
     throw new Error('ConflictDetectionService não deveria gravar nada');
   }

@@ -79,6 +79,10 @@ class FakeScheduleRepository implements ScheduleRepository {
     this.schedules.push(s);
     return s;
   }
+  async update(s: Schedule): Promise<Schedule> {
+    this.schedules = this.schedules.map((x) => (x.id === s.id ? s : x));
+    return s;
+  }
   async delete(): Promise<void> {}
 }
 
@@ -212,6 +216,9 @@ class FakeAssignmentRepository implements AssignmentRepository {
 
   async findById(id: string): Promise<Assignment | null> {
     return this.assignments.find((a) => a.id === id) ?? null;
+  }
+  async findByMemberPublishedInRange() {
+    return [];
   }
   async save(assignment: Assignment): Promise<Assignment> {
     this.assignments.push(assignment);

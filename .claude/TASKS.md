@@ -252,13 +252,18 @@
 - [x] Cobrir o motor de conflito com testes (detecção pura, integração no Add/Update, consulta 3b)
 
 ### Publicação de Escala (RN04)
-- [ ] Use case: publicar escala → `status = PUBLICADA` + preencher `publicadaEm`
-- [ ] Garantir que escala RASCUNHO seja invisível ao membro
-- [ ] Use case: listar "minhas escalas" (apenas as PUBLICADAS onde o membro está alocado)
-- [ ] **Visão do membro agregada por período (semana/dia/mês):** puxar todas as alocações
+- [x] Use case: publicar escala → `status = PUBLICADA` + preencher `publicadaEm`
+      (`PublishScheduleUseCase`; escopo de ministério; republicar bloqueado com 409 para
+      preservar `publicadaEm`, base do RN07)
+- [x] Garantir que escala RASCUNHO seja invisível ao membro
+      (filtro `status = PUBLICADA` na origem, `findByMemberPublishedInRange`)
+- [x] Use case: listar "minhas escalas" (apenas as PUBLICADAS onde o membro está alocado)
+      (`GetMyScheduleUseCase`, member-scoped via JWT)
+- [x] **Visão do membro agregada por período (semana/dia/mês):** puxar todas as alocações
       do membro no intervalo, de **todos os ministérios** (só PUBLICADAS, RN04). A **visão
-      mensal é a principal** forma de consumo do membro.
-- [ ] Endpoints: `PATCH /escalas/:id/publicar`, `GET /minhas-escalas`
+      mensal é a principal** forma de consumo do membro. (Período `?from&?to`; mês corrente por padrão.)
+- [x] Endpoint: `PATCH /escalas/:id/publicar`
+- [x] Endpoint: `GET /minhas-escalas`
 - [ ] Disparar notificação ao publicar (integra com Fase 7)
 
 ---

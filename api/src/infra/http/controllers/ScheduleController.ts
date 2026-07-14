@@ -9,6 +9,7 @@ import {
   ScheduleConflictsResult,
 } from '../../../domain/use-cases/schedules/GetScheduleConflictsUseCase';
 import { ListSchedulesUseCase } from '../../../domain/use-cases/schedules/ListSchedulesUseCase';
+import { PublishScheduleUseCase } from '../../../domain/use-cases/schedules/PublishScheduleUseCase';
 import { DeleteScheduleUseCase } from '../../../domain/use-cases/schedules/DeleteScheduleUseCase';
 import { MinistryAccessPolicy } from '../../../domain/services/MinistryAccessPolicy';
 import { ConflictDetectionService } from '../../../domain/services/ConflictDetectionService';
@@ -96,6 +97,21 @@ export class ScheduleController {
     const result = await useCase.execute({ id: req.params.id, institutionId });
 
     respond(res, 200, ScheduleController.serializeConflicts(result), 'Conflitos da escala');
+  };
+
+  // PATCH /escalas/:id/publicar — publica a escala (RASCUNHO -> PUBLICADA, RN04).
+  // Escopo de ministério: rbac barra MEMBRO, a guarda fina é no use case.
+  publish = async (req: Request, res: Response): Promise<void> => {
+    const { institutionId, memberId, role } = ScheduleController.authUser(req);
+
+    const useCase = new PublishScheduleUseCase(
+      new PrismaScheduleRepository(),
+      new PrismaMinistryRepository(),
+      ScheduleController.accessPolicy(),
+    );
+    const schedule = await useCase.execute({ id: req.params.id, institutionId, actor: { memberId, role } });
+
+    respond(res, 200, ScheduleController.serialize(schedule), 'Escala publicada');
   };
 
   // DELETE /escalas/:id — remove a escala (escopo de ministério).
