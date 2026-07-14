@@ -271,13 +271,26 @@
 ## Fase 6 — Indisponibilidade de Membros 🔴
 
 ### Indisponibilidade (RF06, RN05)
-- [ ] Entidade `Indisponibilidade` + `create()` (validar período)
-- [ ] Use case: membro registra período de indisponibilidade
-- [ ] Use case: membro lista/remove suas indisponibilidades
-- [ ] Use case: admin consulta indisponibilidades ao montar escala
-- [ ] Integrar com o motor de conflito: **alertar** o admin ao tentar escalar membro indisponível no período (RN05)
-- [ ] Permitir que o admin ignore o alerta e escale mesmo assim
-- [ ] Endpoints: `POST /indisponibilidades`, `GET /indisponibilidades/minhas`, `DELETE /indisponibilidades/:id`
+> **Grupo A (CRUD member-scoped) — CONCLUÍDO** na branch `feat/indisponibilidade` (a
+> partir da `main`): entidade `Unavailability` (mapeia `Indisponibilidade`, nome em
+> inglês pela Seção 4.6), repositório, use cases do membro e endpoints, com testes
+> (entidade + use cases + rotas). Sem mudança de schema — a tabela já existe desde a
+> migration `init`. O repositório já expõe `findByMemberOverlapping` como gancho pronto
+> para o Grupo B consumir.
+>
+> **Grupo B (integração com o motor de conflito) — PENDENTE:** depende do merge do
+> motor (branch `feat/motor-conflito`). Será feito depois, rebaseando a branch sobre a
+> `main` atualizada e plugando a indisponibilidade como alerta paralelo ao conflito.
+- [x] Entidade `Indisponibilidade` + `create()` (validar período)
+- [x] Use case: membro registra período de indisponibilidade
+- [x] Use case: membro lista/remove suas indisponibilidades
+- [x] Use case: admin consulta indisponibilidades ao montar escala
+      (`ListMemberUnavailabilitiesUseCase` + `GET /membros/:id/indisponibilidades`, rbac admin + tenant via membro)
+- [x] Integrar com o motor de conflito: **alertar** o admin ao tentar escalar membro indisponível no período (RN05)
+      (Add/Update de alocação checam `findByMemberOverlapping` em paralelo ao conflito; alerta em `needsConfirmation`)
+- [x] Permitir que o admin ignore o alerta e escale mesmo assim
+      (flag única `confirm` cobre conflito + indisponibilidade; a indisponibilidade é só alerta, não marca a alocação)
+- [x] Endpoints: `POST /indisponibilidades`, `GET /indisponibilidades/minhas`, `DELETE /indisponibilidades/:id`
 - [ ] Disparar alerta ao admin quando membro registra indisponibilidade que afeta escala já existente (integra com Fase 7)
 
 ### Sobrecarga (RN06) — pode ser tratada aqui ou no dashboard

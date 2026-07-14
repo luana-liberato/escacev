@@ -6,18 +6,23 @@ import { EventRepository } from '../../repositories/EventRepository';
 import { Actor, MinistryAccessPolicy } from '../../services/MinistryAccessPolicy';
 import { AssignmentEligibility } from '../../services/AssignmentEligibility';
 import { ConflictDetail, ConflictDetectionService } from '../../services/ConflictDetectionService';
+import { Unavailability } from '../../entities/Unavailability';
+import { UnavailabilityRepository } from '../../repositories/UnavailabilityRepository';
 import { AppError } from '../../../shared/errors/AppError';
 
 /**
  * Um item do lote: a pessoa e a função que ela vai exercer na escala.
- * `confirmConflict`: quando o item já foi reportado em `needsConfirmation`
- * numa tentativa anterior, o admin reenvia o MESMO item com esta flag em
- * `true` para confirmar cientemente a alocação conflituosa (RN03).
+ * `confirm`: quando o item já foi reportado em `needsConfirmation` numa tentativa
+ * anterior (por conflito de horário RN01 e/ou indisponibilidade RN05), o admin
+ * reenvia o MESMO item com esta flag em `true` para escalar cientemente mesmo
+ * assim. É uma confirmação ÚNICA que reconhece todos os alertas do item — a
+ * alocação criada só registra `conflict = true` quando havia conflito (RN03); a
+ * indisponibilidade é apenas alerta, não fica marcada na alocação.
  */
 export interface AssignmentItem {
   memberId: string;
   positionId: string;
-  confirmConflict?: boolean;
+  confirm?: boolean;
 }
 
 /** institutionId vem do JWT (req.user), nunca do body. */
@@ -35,14 +40,17 @@ export interface FailedAssignment {
 }
 
 /**
- * Um item que passou nas validações mas tem conflito de horário (RN01) e não
- * veio confirmado — NÃO foi criado. O admin decide: reenviar este MESMO item
- * com `confirmConflict: true` (cria com `conflict = true`) ou desistir dele.
- * Diferente de `failed`: aqui reenviar PODE funcionar.
+ * Um item que passou nas validações mas dispara ALERTA — conflito de horário
+ * (RN01, `conflicts`) e/ou indisponibilidade do membro no período (RN05,
+ * `unavailabilities`) — e não veio confirmado, então NÃO foi criado. O admin
+ * decide: reenviar este MESMO item com `confirm: true` (cria mesmo assim) ou
+ * desistir. Diferente de `failed`: aqui reenviar PODE funcionar. Pelo menos uma
+ * das listas está não-vazia.
  */
 export interface NeedsConfirmationAssignment {
   item: AssignmentItem;
   conflicts: ConflictDetail[];
+  unavailabilities: Unavailability[];
 }
 
 /** Resultado do lote: criados, falhados (irrecuperável) e pendentes de confirmação (reenviáveis). */
@@ -54,10 +62,11 @@ export interface AddAssignmentsResult {
 
 /**
  * Adiciona um lote de alocações (pessoa + função) a uma escala — alocação
- * DIRETA, sem vaga abstrata. Integra o motor de conflito (RN01/RN03): NÃO
- * bloqueia conflito, avisa e pede confirmação ciente — só cria uma alocação
- * conflituosa se o item vier com `confirmConflict = true`, e nesse caso ela
- * nasce com `conflict = true`.
+ * DIRETA, sem vaga abstrata. Integra DOIS alertas que NÃO bloqueiam, avisam e
+ * pedem confirmação ciente: o motor de conflito (RN01/RN03) e a indisponibilidade
+ * do membro no período (RN05). Só cria um item alertado se ele vier com
+ * `confirm = true` — confirmação única que cobre ambos. A alocação registra
+ * `conflict = true` apenas quando havia conflito; a indisponibilidade é só alerta.
  *
  * PRÉ-CONDIÇÕES do lote inteiro (falham a operação toda, nenhum item processado):
  *  - a escala existe e pertence à instituição do usuário (tenant via ministério);
@@ -67,13 +76,14 @@ export interface AddAssignmentsResult {
  * CLASSIFICAÇÃO POR ITEM (parcial — um item nunca derruba os demais):
  *  1. Validação de pertencimento (membro/função do ministério) + duplicata
  *     (AssignmentEligibility) — falha aqui vai para `failed` e NEM CHEGA a
- *     checar conflito (irrecuperável: reenviar não muda a validação).
- *  2. Passou: roda o ConflictDetectionService (injetado, não reimplementado)
- *     com o horário do evento da escala.
- *  3. Sem conflito → `created` (conflict = false).
- *  4. Com conflito e SEM confirmConflict → `needsConfirmation` (NÃO cria; o
- *     admin decide reenviar o mesmo item com confirmConflict = true).
- *  5. Com conflito e COM confirmConflict = true → `created` (conflict = true).
+ *     checar os alertas (irrecuperável: reenviar não muda a validação).
+ *  2. Passou: roda o ConflictDetectionService (conflito, RN01) E busca as
+ *     indisponibilidades que sobrepõem o horário do evento (RN05).
+ *  3. Sem conflito e sem indisponibilidade → `created` (conflict = false).
+ *  4. Com algum alerta e SEM confirm → `needsConfirmation` (NÃO cria; o admin
+ *     decide reenviar o mesmo item com confirm = true).
+ *  5. Com algum alerta e COM confirm = true → `created` (conflict = true só se
+ *     havia conflito de horário).
  *
  * PERSISTÊNCIA: processamento SEQUENCIAL, um save() por item — sem envolver o
  * lote numa transação com rollback geral (um item ruim/pendente não apaga os
@@ -92,6 +102,7 @@ export class AddAssignmentsUseCase {
     private readonly eligibility: AssignmentEligibility,
     private readonly accessPolicy: MinistryAccessPolicy,
     private readonly conflictDetection: ConflictDetectionService,
+    private readonly unavailabilityRepo: UnavailabilityRepository,
   ) {}
 
   async execute(dto: AddAssignmentsDTO): Promise<AddAssignmentsResult> {
@@ -135,9 +146,15 @@ export class AddAssignmentsUseCase {
         startsAt: event.startsAt,
         endsAt: event.endsAt,
       });
+      const unavailabilities = await this.unavailabilityRepo.findByMemberOverlapping(
+        item.memberId,
+        event.startsAt,
+        event.endsAt,
+      );
 
-      if (conflictResult.hasConflict && !item.confirmConflict) {
-        needsConfirmation.push({ item, conflicts: conflictResult.conflicts });
+      const hasAlert = conflictResult.hasConflict || unavailabilities.length > 0;
+      if (hasAlert && !item.confirm) {
+        needsConfirmation.push({ item, conflicts: conflictResult.conflicts, unavailabilities });
         continue;
       }
 
@@ -146,7 +163,9 @@ export class AddAssignmentsUseCase {
           scheduleId: schedule.id,
           memberId: item.memberId,
           positionId: item.positionId,
-          conflict: conflictResult.hasConflict, // true só quando confirmado (o outro caso já foi para needsConfirmation)
+          // RN03: registra o conflito confirmado. A indisponibilidade (RN05) é só
+          // alerta — quando confirmada, a alocação nasce sem marca própria.
+          conflict: conflictResult.hasConflict,
         });
         created.push(await this.assignmentRepo.save(assignment));
         seenInBatch.add(AddAssignmentsUseCase.batchKey(item));
