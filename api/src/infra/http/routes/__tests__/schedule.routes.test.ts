@@ -290,6 +290,32 @@ describe('GET /escalas/:id/conflitos', () => {
       .set('Authorization', `Bearer ${adminGeralToken}`);
     expect(res.status).toBe(404);
   });
+
+  it('RN07: prioridade por publicação — a escala publicada ANTES prevalece (E2E, publicadaEm real)', async () => {
+    // Duas escalas do mesmo ministério no MESMO evento (sobreposição total), o
+    // mesmo membro em funções incompatíveis. A é publicada antes de B.
+    const eventId = await newEvent();
+    const post = (name?: string) =>
+      request(app).post('/escalas').set('Authorization', `Bearer ${adminGeralToken}`).send({ ministryId: MINISTRY_ID, eventId, name });
+    const schedA = (await post()).body.data.id;
+    const schedB = (await post('Sala 2')).body.data.id;
+    await prisma.alocacao.create({ data: { escalaId: schedA, membroId: MEMBRO_ID, funcaoId: POSITION_ID } });
+    await prisma.alocacao.create({ data: { escalaId: schedB, membroId: MEMBRO_ID, funcaoId: POSITION_2_ID } });
+    // publicadaEm determinístico: A antes de B.
+    await prisma.escala.update({ where: { id: schedA }, data: { status: 'PUBLICADA', publicadaEm: new Date('2026-01-01T00:00:00Z') } });
+    await prisma.escala.update({ where: { id: schedB }, data: { status: 'PUBLICADA', publicadaEm: new Date('2026-02-01T00:00:00Z') } });
+
+    // Consultando os conflitos de B (publicada depois): o conflito aponta A, que prevalece.
+    const resB = await request(app).get(`/escalas/${schedB}/conflitos`).set('Authorization', `Bearer ${adminGeralToken}`);
+    expect(resB.status).toBe(200);
+    expect(resB.body.data.conflicts[0].conflicts[0].scheduleId).toBe(schedA);
+    expect(resB.body.data.conflicts[0].conflicts[0].existingHasPrecedence).toBe(true);
+
+    // Consultando os conflitos de A (publicada antes): o conflito aponta B, que NÃO prevalece.
+    const resA = await request(app).get(`/escalas/${schedA}/conflitos`).set('Authorization', `Bearer ${adminGeralToken}`);
+    expect(resA.body.data.conflicts[0].conflicts[0].scheduleId).toBe(schedB);
+    expect(resA.body.data.conflicts[0].conflicts[0].existingHasPrecedence).toBe(false);
+  });
 });
 
 describe('PATCH /escalas/:id/publicar', () => {
