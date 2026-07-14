@@ -4,8 +4,10 @@ import { AppError } from '../../../shared/errors/AppError';
 import { Unavailability } from '../../../domain/entities/Unavailability';
 import { CreateUnavailabilityUseCase } from '../../../domain/use-cases/unavailabilities/CreateUnavailabilityUseCase';
 import { ListMyUnavailabilitiesUseCase } from '../../../domain/use-cases/unavailabilities/ListMyUnavailabilitiesUseCase';
+import { ListMemberUnavailabilitiesUseCase } from '../../../domain/use-cases/unavailabilities/ListMemberUnavailabilitiesUseCase';
 import { DeleteUnavailabilityUseCase } from '../../../domain/use-cases/unavailabilities/DeleteUnavailabilityUseCase';
 import { PrismaUnavailabilityRepository } from '../../database/repositories/PrismaUnavailabilityRepository';
+import { PrismaMemberRepository } from '../../database/repositories/PrismaMemberRepository';
 import { respond } from '../../../shared/utils/respond';
 
 /**
@@ -39,6 +41,20 @@ export class UnavailabilityController {
     const items = await useCase.execute({ memberId });
 
     respond(res, 200, items.map(UnavailabilityController.serialize), 'Indisponibilidades listadas');
+  };
+
+  // GET /membros/:id/indisponibilidades — o admin consulta as indisponibilidades
+  // de um membro (ao montar a escala, RN05). institutionId do JWT; tenant no use case.
+  listForMember = async (req: Request, res: Response): Promise<void> => {
+    const { institutionId } = UnavailabilityController.authUser(req);
+
+    const useCase = new ListMemberUnavailabilitiesUseCase(
+      new PrismaUnavailabilityRepository(),
+      new PrismaMemberRepository(),
+    );
+    const items = await useCase.execute({ institutionId, memberId: req.params.id });
+
+    respond(res, 200, items.map(UnavailabilityController.serialize), 'Indisponibilidades do membro');
   };
 
   // DELETE /indisponibilidades/:id — remove uma indisponibilidade do próprio membro.
