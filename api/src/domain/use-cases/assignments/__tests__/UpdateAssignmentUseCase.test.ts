@@ -6,7 +6,9 @@ import { MinistryMembership } from '../../../entities/MinistryMembership';
 import { Position } from '../../../entities/Position';
 import { PositionCompatibility } from '../../../entities/PositionCompatibility';
 import { Schedule } from '../../../entities/Schedule';
+import { Unavailability } from '../../../entities/Unavailability';
 import { AssignmentDetail, AssignmentRepository, MemberAssignmentContext } from '../../../repositories/AssignmentRepository';
+import { UnavailabilityRepository } from '../../../repositories/UnavailabilityRepository';
 import { EventRepository, EventDateRange } from '../../../repositories/EventRepository';
 import { MemberRepository } from '../../../repositories/MemberRepository';
 import {
@@ -269,6 +271,27 @@ class FakeAssignmentRepository implements AssignmentRepository {
   }
 }
 
+/** Fake em memória do UnavailabilityRepository — alimenta o alerta RN05. */
+class FakeUnavailabilityRepository implements UnavailabilityRepository {
+  items: Unavailability[] = [];
+  async findById(id: string): Promise<Unavailability | null> {
+    return this.items.find((u) => u.id === id) ?? null;
+  }
+  async findByMember(memberId: string): Promise<Unavailability[]> {
+    return this.items.filter((u) => u.memberId === memberId);
+  }
+  async findByMemberOverlapping(memberId: string, startsAt: Date, endsAt: Date): Promise<Unavailability[]> {
+    return this.items.filter((u) => u.memberId === memberId && u.startsAt < endsAt && u.endsAt > startsAt);
+  }
+  async save(u: Unavailability): Promise<Unavailability> {
+    this.items.push(u);
+    return u;
+  }
+  async delete(id: string): Promise<void> {
+    this.items = this.items.filter((u) => u.id !== id);
+  }
+}
+
 const INST = 'i1';
 const ADMIN_GERAL: Actor = { memberId: 'ag', role: 'ADMIN_GERAL' };
 
@@ -327,6 +350,7 @@ async function scenario() {
   const assignment = Assignment.create({ scheduleId: schedule.id, memberId: member.id, positionId: position.id });
   await assignmentRepo.save(assignment);
 
+  const unavailabilityRepo = new FakeUnavailabilityRepository();
   const useCase = new UpdateAssignmentUseCase(
     assignmentRepo,
     scheduleRepo,
@@ -335,11 +359,12 @@ async function scenario() {
     eligibility,
     policy,
     conflictDetection,
+    unavailabilityRepo,
   );
 
   return {
     ministryRepo, scheduleRepo, eventRepo, memberRepo, positionRepo, membershipRepo,
-    compatibilityRepo, assignmentRepo, policy, eligibility, conflictDetection,
+    compatibilityRepo, assignmentRepo, policy, eligibility, conflictDetection, unavailabilityRepo,
     ministry, event, schedule, member, member2, position, position2, assignment, useCase,
   };
 }
@@ -495,7 +520,7 @@ describe('UpdateAssignmentUseCase', () => {
 });
 
 describe('UpdateAssignmentUseCase — integração com o motor de conflito (RN01/RN03)', () => {
-  it('editar gerando conflito, SEM confirmConflict: needs_confirmation, NÃO aplica, com os detalhes', async () => {
+  it('editar gerando conflito, SEM confirm: needs_confirmation, NÃO aplica, com os detalhes', async () => {
     const s = await scenario();
     // member já tem outra alocação nesta escala (position2); a edição para
     // position3 sobrepõe 100% (mesmo evento) e não há compatibilidade registrada.
@@ -523,7 +548,7 @@ describe('UpdateAssignmentUseCase — integração com o motor de conflito (RN01
     expect(stillOriginal!.positionId).toBe(s.position.id);
   });
 
-  it('editar gerando conflito, COM confirmConflict=true: aplica com conflict=true', async () => {
+  it('editar gerando conflito, COM confirm=true: aplica com conflict=true', async () => {
     const s = await scenario();
     await s.assignmentRepo.save(
       Assignment.create({ scheduleId: s.schedule.id, memberId: s.member.id, positionId: s.position2.id }),
@@ -532,7 +557,7 @@ describe('UpdateAssignmentUseCase — integração com o motor de conflito (RN01
     await s.positionRepo.save(position3);
 
     const result = await s.useCase.execute({
-      institutionId: INST, actor: ADMIN_GERAL, id: s.assignment.id, positionId: position3.id, confirmConflict: true,
+      institutionId: INST, actor: ADMIN_GERAL, id: s.assignment.id, positionId: position3.id, confirm: true,
     });
     const updated = expectApplied(result);
 
@@ -558,5 +583,56 @@ describe('UpdateAssignmentUseCase — integração com o motor de conflito (RN01
     const updated = expectApplied(result);
 
     expect(updated.conflict).toBe(false); // conflito que some -> false
+  });
+});
+
+describe('UpdateAssignmentUseCase — alerta de indisponibilidade (RN05)', () => {
+  it('editar com o membro indisponível no período: needs_confirmation com unavailabilities, NÃO aplica', async () => {
+    const s = await scenario();
+    s.unavailabilityRepo.items.push(
+      Unavailability.create({ memberId: s.member.id, startsAt: d('2026-07-12T17:00:00Z'), endsAt: d('2026-07-12T19:00:00Z') }),
+    );
+
+    const result = await s.useCase.execute({
+      institutionId: INST, actor: ADMIN_GERAL, id: s.assignment.id, positionId: s.position2.id,
+    });
+
+    expect(result.status).toBe('needs_confirmation');
+    if (result.status === 'needs_confirmation') {
+      expect(result.unavailabilities).toHaveLength(1);
+      expect(result.conflicts).toHaveLength(0); // só indisponibilidade
+    }
+    // Não aplicou: a alocação continua na função original.
+    expect((await s.assignmentRepo.findById(s.assignment.id))?.positionId).toBe(s.position.id);
+  });
+
+  it('editar indisponível COM confirm=true: applied com conflict=false', async () => {
+    const s = await scenario();
+    s.unavailabilityRepo.items.push(
+      Unavailability.create({ memberId: s.member.id, startsAt: d('2026-07-12T17:00:00Z'), endsAt: d('2026-07-12T19:00:00Z') }),
+    );
+
+    const result = await s.useCase.execute({
+      institutionId: INST, actor: ADMIN_GERAL, id: s.assignment.id, positionId: s.position2.id, confirm: true,
+    });
+
+    const applied = expectApplied(result);
+    expect(applied.conflict).toBe(false); // indisponibilidade é só alerta
+    expect(applied.positionId).toBe(s.position2.id);
+  });
+
+  it('trocar para um membro SEM indisponibilidade no período: applied sem alerta (checa o candidato)', async () => {
+    const s = await scenario();
+    // O membro ATUAL (João) está indisponível, mas a edição troca para Maria, que não está.
+    s.unavailabilityRepo.items.push(
+      Unavailability.create({ memberId: s.member.id, startsAt: d('2026-07-12T17:00:00Z'), endsAt: d('2026-07-12T19:00:00Z') }),
+    );
+
+    const result = await s.useCase.execute({
+      institutionId: INST, actor: ADMIN_GERAL, id: s.assignment.id, memberId: s.member2.id,
+    });
+
+    const applied = expectApplied(result);
+    expect(applied.memberId).toBe(s.member2.id);
   });
 });

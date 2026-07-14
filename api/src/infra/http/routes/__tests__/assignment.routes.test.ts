@@ -41,6 +41,9 @@ async function cleanupFixtures() {
   await prisma.funcao.deleteMany({ where: { ministerioId: MINISTRY_ID } });
   await prisma.membroMinisterio.deleteMany({ where: { ministerioId: MINISTRY_ID } });
   await prisma.ministerio.deleteMany({ where: { id: MINISTRY_ID } });
+  await prisma.indisponibilidade.deleteMany({
+    where: { membroId: { in: [MEMBER_1_ID, MEMBER_2_ID, OUTSIDER_ID] } },
+  });
   await prisma.membro.deleteMany({ where: { instituicaoId: INST_ID } });
   await prisma.instituicao.deleteMany({ where: { id: INST_ID } });
 }
@@ -177,7 +180,7 @@ describe('POST /escalas/:id/alocacoes', () => {
     expect(res.status).toBe(401);
   });
 
-  it('item que gera conflito SEM confirmConflict: needsConfirmation (201) com os nomes legíveis', async () => {
+  it('item que gera conflito SEM confirm: needsConfirmation (201) com os nomes legíveis', async () => {
     const scheduleId = await newSchedule();
     // MEMBER_1_ID já está alocado nesta escala em POSITION_2_ID; o segundo
     // item do lote (POSITION_3_ID, incompatível com POSITION_2_ID) sobrepõe.
@@ -265,7 +268,7 @@ describe('PATCH /alocacoes/:id', () => {
     expect(res.status).toBe(404);
   });
 
-  it('edição que gera conflito SEM confirmConflict: retorna needs_confirmation (200), não aplica', async () => {
+  it('edição que gera conflito SEM confirm: retorna needs_confirmation (200), não aplica', async () => {
     const scheduleId = await newSchedule();
     const created = await request(app)
       .post(`/escalas/${scheduleId}/alocacoes`)
@@ -297,7 +300,7 @@ describe('PATCH /alocacoes/:id', () => {
     expect(stillFirst?.funcaoId).toBe(POSITION_1_ID);
   });
 
-  it('edição que gera conflito COM confirmConflict=true: aplica (200) com conflict=true', async () => {
+  it('edição que gera conflito COM confirm=true: aplica (200) com conflict=true', async () => {
     const scheduleId = await newSchedule();
     const created = await request(app)
       .post(`/escalas/${scheduleId}/alocacoes`)
@@ -311,7 +314,7 @@ describe('PATCH /alocacoes/:id', () => {
     const res = await request(app)
       .patch(`/alocacoes/${first.id}`)
       .set('Authorization', `Bearer ${adminGeralToken}`)
-      .send({ positionId: POSITION_3_ID, confirmConflict: true });
+      .send({ positionId: POSITION_3_ID, confirm: true });
 
     expect(res.status).toBe(200);
     expect(res.body.data.status).toBe('applied');
@@ -357,5 +360,51 @@ describe('DELETE /alocacoes/:id', () => {
       .set('Authorization', `Bearer ${adminUnscopedToken}`);
 
     expect(res.status).toBe(403);
+  });
+});
+
+describe('POST /escalas/:id/alocacoes — alerta de indisponibilidade (RN05)', () => {
+  /**
+   * Escala num dia próprio (out/2026, `isoDay` único por teste para não colidir no
+   * @@unique do evento) + indisponibilidade do MEMBER_1 sobreposta ao evento.
+   */
+  async function scheduleWithUnavailableMember(isoDay: string): Promise<string> {
+    const eventId = `test-assign-ev-unavail-${isoDay}`;
+    await prisma.evento.create({
+      data: { id: eventId, instituicaoId: INST_ID, nome: 'Culto', tipo: 'culto', inicio: new Date(`${isoDay}T18:00:00Z`), fim: new Date(`${isoDay}T20:00:00Z`) },
+    });
+    const escala = await prisma.escala.create({ data: { ministerioId: MINISTRY_ID, eventoId: eventId } });
+    await prisma.indisponibilidade.create({
+      data: { membroId: MEMBER_1_ID, inicio: new Date(`${isoDay}T17:00:00Z`), fim: new Date(`${isoDay}T19:00:00Z`), motivo: 'Viagem' },
+    });
+    return escala.id;
+  }
+
+  it('escalar membro indisponível SEM confirm: needsConfirmation com unavailabilities (201), não cria', async () => {
+    const scheduleId = await scheduleWithUnavailableMember('2026-10-15');
+
+    const res = await request(app)
+      .post(`/escalas/${scheduleId}/alocacoes`)
+      .set('Authorization', `Bearer ${adminGeralToken}`)
+      .send([{ memberId: MEMBER_1_ID, positionId: POSITION_1_ID }]);
+
+    expect(res.status).toBe(201);
+    expect(res.body.data.created).toHaveLength(0);
+    expect(res.body.data.needsConfirmation).toHaveLength(1);
+    expect(res.body.data.needsConfirmation[0].unavailabilities).toHaveLength(1);
+    expect(res.body.data.needsConfirmation[0].conflicts).toHaveLength(0);
+  });
+
+  it('reenviar com confirm=true: cria a alocação (201, created)', async () => {
+    const scheduleId = await scheduleWithUnavailableMember('2026-10-16');
+
+    const res = await request(app)
+      .post(`/escalas/${scheduleId}/alocacoes`)
+      .set('Authorization', `Bearer ${adminGeralToken}`)
+      .send([{ memberId: MEMBER_1_ID, positionId: POSITION_1_ID, confirm: true }]);
+
+    expect(res.status).toBe(201);
+    expect(res.body.data.created).toHaveLength(1);
+    expect(res.body.data.created[0].conflict).toBe(false); // indisponibilidade é só alerta
   });
 });

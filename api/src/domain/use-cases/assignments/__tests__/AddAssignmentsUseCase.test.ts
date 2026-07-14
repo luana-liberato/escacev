@@ -6,7 +6,9 @@ import { MinistryMembership } from '../../../entities/MinistryMembership';
 import { Position } from '../../../entities/Position';
 import { PositionCompatibility } from '../../../entities/PositionCompatibility';
 import { Schedule } from '../../../entities/Schedule';
+import { Unavailability } from '../../../entities/Unavailability';
 import { AssignmentDetail, AssignmentRepository, MemberAssignmentContext } from '../../../repositories/AssignmentRepository';
+import { UnavailabilityRepository } from '../../../repositories/UnavailabilityRepository';
 import { EventRepository, EventDateRange } from '../../../repositories/EventRepository';
 import { MemberRepository } from '../../../repositories/MemberRepository';
 import {
@@ -275,6 +277,27 @@ class FakeAssignmentRepository implements AssignmentRepository {
   }
 }
 
+/** Fake em memória do UnavailabilityRepository — alimenta o alerta RN05. */
+class FakeUnavailabilityRepository implements UnavailabilityRepository {
+  items: Unavailability[] = [];
+  async findById(id: string): Promise<Unavailability | null> {
+    return this.items.find((u) => u.id === id) ?? null;
+  }
+  async findByMember(memberId: string): Promise<Unavailability[]> {
+    return this.items.filter((u) => u.memberId === memberId);
+  }
+  async findByMemberOverlapping(memberId: string, startsAt: Date, endsAt: Date): Promise<Unavailability[]> {
+    return this.items.filter((u) => u.memberId === memberId && u.startsAt < endsAt && u.endsAt > startsAt);
+  }
+  async save(u: Unavailability): Promise<Unavailability> {
+    this.items.push(u);
+    return u;
+  }
+  async delete(id: string): Promise<void> {
+    this.items = this.items.filter((u) => u.id !== id);
+  }
+}
+
 const INST = 'i1';
 const ADMIN_GERAL: Actor = { memberId: 'ag', role: 'ADMIN_GERAL' };
 
@@ -296,6 +319,7 @@ async function scenario() {
   const eligibility = new AssignmentEligibility(memberRepo, positionRepo, membershipRepo);
   const checkCompatibility = new CheckPositionCompatibilityUseCase(compatibilityRepo);
   const conflictDetection = new ConflictDetectionService(assignmentRepo, checkCompatibility);
+  const unavailabilityRepo = new FakeUnavailabilityRepository();
 
   const ministry = Ministry.create({ institutionId: INST, name: 'Louvor' });
   await ministryRepo.save(ministry);
@@ -325,11 +349,12 @@ async function scenario() {
     eligibility,
     policy,
     conflictDetection,
+    unavailabilityRepo,
   );
 
   return {
     ministryRepo, scheduleRepo, eventRepo, memberRepo, positionRepo, membershipRepo,
-    compatibilityRepo, assignmentRepo, policy, eligibility, conflictDetection,
+    compatibilityRepo, assignmentRepo, policy, eligibility, conflictDetection, unavailabilityRepo,
     ministry, event, schedule, member, position, useCase,
   };
 }
@@ -542,7 +567,7 @@ describe('AddAssignmentsUseCase — integração com o motor de conflito (RN01/R
     expect(result.needsConfirmation).toHaveLength(0);
   });
 
-  it('conflito SEM confirmConflict: needsConfirmation, NÃO cria, com os detalhes do conflito', async () => {
+  it('conflito SEM confirm: needsConfirmation, NÃO cria, com os detalhes do conflito', async () => {
     const s = await scenario();
     // Primeira alocação do membro nesta escala — sem conflito.
     await s.useCase.execute({
@@ -568,7 +593,7 @@ describe('AddAssignmentsUseCase — integração com o motor de conflito (RN01/R
     expect(s.assignmentRepo.assignments).toHaveLength(1); // só a primeira; a segunda não foi criada
   });
 
-  it('conflito COM confirmConflict=true: CREATED com conflict=true', async () => {
+  it('conflito COM confirm=true: CREATED com conflict=true', async () => {
     const s = await scenario();
     await s.useCase.execute({
       institutionId: INST, actor: ADMIN_GERAL, scheduleId: s.schedule.id,
@@ -579,7 +604,7 @@ describe('AddAssignmentsUseCase — integração com o motor de conflito (RN01/R
 
     const result = await s.useCase.execute({
       institutionId: INST, actor: ADMIN_GERAL, scheduleId: s.schedule.id,
-      items: [{ memberId: s.member.id, positionId: guitar.id, confirmConflict: true }],
+      items: [{ memberId: s.member.id, positionId: guitar.id, confirm: true }],
     });
 
     expect(result.needsConfirmation).toHaveLength(0);
@@ -650,7 +675,7 @@ describe('AddAssignmentsUseCase — integração com o motor de conflito (RN01/R
         { memberId: memberA.id, positionId: s.position.id },                       // limpa
         { memberId: memberB.id, positionId: s.position.id },                       // inválida
         { memberId: memberC.id, positionId: positionC1.id },                       // conflito, sem confirmação
-        { memberId: memberD.id, positionId: positionD1.id, confirmConflict: true }, // conflito, confirmada
+        { memberId: memberD.id, positionId: positionD1.id, confirm: true }, // conflito, confirmada
       ],
     });
 
@@ -670,5 +695,85 @@ describe('AddAssignmentsUseCase — integração com o motor de conflito (RN01/R
     // Parcial preservado: os criados (inclusive de chamadas anteriores) persistem
     // mesmo havendo falha e pendência no MESMO lote desta chamada.
     expect(s.assignmentRepo.assignments).toHaveLength(4); // C0, D0 (antes) + A, D1 (deste lote)
+  });
+});
+
+describe('AddAssignmentsUseCase — alerta de indisponibilidade (RN05)', () => {
+  it('membro indisponível no período do evento: needsConfirmation com unavailabilities, NÃO cria', async () => {
+    const s = await scenario();
+    s.unavailabilityRepo.items.push(
+      Unavailability.create({
+        memberId: s.member.id,
+        startsAt: d('2026-07-12T17:00:00Z'), // sobrepõe o evento (18-20h)
+        endsAt: d('2026-07-12T19:00:00Z'),
+        reason: 'Viagem',
+      }),
+    );
+
+    const result = await s.useCase.execute({
+      institutionId: INST, actor: ADMIN_GERAL, scheduleId: s.schedule.id,
+      items: [{ memberId: s.member.id, positionId: s.position.id }],
+    });
+
+    expect(result.created).toHaveLength(0);
+    expect(result.needsConfirmation).toHaveLength(1);
+    expect(result.needsConfirmation[0].unavailabilities).toHaveLength(1);
+    expect(result.needsConfirmation[0].conflicts).toHaveLength(0); // só indisponibilidade, sem conflito
+    expect(s.assignmentRepo.assignments).toHaveLength(0);
+  });
+
+  it('indisponível COM confirm=true: CREATED com conflict=false (indisponibilidade é só alerta)', async () => {
+    const s = await scenario();
+    s.unavailabilityRepo.items.push(
+      Unavailability.create({ memberId: s.member.id, startsAt: d('2026-07-12T17:00:00Z'), endsAt: d('2026-07-12T19:00:00Z') }),
+    );
+
+    const result = await s.useCase.execute({
+      institutionId: INST, actor: ADMIN_GERAL, scheduleId: s.schedule.id,
+      items: [{ memberId: s.member.id, positionId: s.position.id, confirm: true }],
+    });
+
+    expect(result.created).toHaveLength(1);
+    expect(result.created[0].conflict).toBe(false); // não há conflito de horário; indisponibilidade não marca a alocação
+    expect(result.needsConfirmation).toHaveLength(0);
+  });
+
+  it('indisponibilidade que NÃO sobrepõe o horário do evento: sem alerta, cria normal', async () => {
+    const s = await scenario();
+    s.unavailabilityRepo.items.push(
+      Unavailability.create({ memberId: s.member.id, startsAt: d('2026-07-13T10:00:00Z'), endsAt: d('2026-07-13T12:00:00Z') }),
+    );
+
+    const result = await s.useCase.execute({
+      institutionId: INST, actor: ADMIN_GERAL, scheduleId: s.schedule.id,
+      items: [{ memberId: s.member.id, positionId: s.position.id }],
+    });
+
+    expect(result.created).toHaveLength(1);
+    expect(result.needsConfirmation).toHaveLength(0);
+  });
+
+  it('conflito E indisponibilidade juntos: needsConfirmation carrega as duas listas', async () => {
+    const s = await scenario();
+    // 1ª alocação (sem alerta) para criar o conflito na 2ª.
+    await s.useCase.execute({
+      institutionId: INST, actor: ADMIN_GERAL, scheduleId: s.schedule.id,
+      items: [{ memberId: s.member.id, positionId: s.position.id }],
+    });
+    const guitar = Position.create({ name: 'Violão', ministryId: s.ministry.id });
+    await s.positionRepo.save(guitar);
+    // + indisponibilidade sobreposta ao evento.
+    s.unavailabilityRepo.items.push(
+      Unavailability.create({ memberId: s.member.id, startsAt: d('2026-07-12T17:00:00Z'), endsAt: d('2026-07-12T19:00:00Z') }),
+    );
+
+    const result = await s.useCase.execute({
+      institutionId: INST, actor: ADMIN_GERAL, scheduleId: s.schedule.id,
+      items: [{ memberId: s.member.id, positionId: guitar.id }],
+    });
+
+    expect(result.needsConfirmation).toHaveLength(1);
+    expect(result.needsConfirmation[0].conflicts.length).toBeGreaterThan(0);
+    expect(result.needsConfirmation[0].unavailabilities).toHaveLength(1);
   });
 });
