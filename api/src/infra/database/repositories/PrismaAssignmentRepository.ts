@@ -2,7 +2,11 @@ import type { Alocacao as AlocacaoRow, Membro as MembroRow, Funcao as FuncaoRow 
 import { Assignment } from '../../../domain/entities/Assignment';
 import { Member } from '../../../domain/entities/Member';
 import { Position } from '../../../domain/entities/Position';
-import { AssignmentDetail, AssignmentRepository } from '../../../domain/repositories/AssignmentRepository';
+import {
+  AssignmentDetail,
+  AssignmentRepository,
+  MemberAssignmentContext,
+} from '../../../domain/repositories/AssignmentRepository';
 import { prisma } from '../prisma';
 
 export class PrismaAssignmentRepository implements AssignmentRepository {
@@ -25,6 +29,33 @@ export class PrismaAssignmentRepository implements AssignmentRepository {
     }));
   }
 
+  async findByMemberWithContext(memberId: string): Promise<MemberAssignmentContext[]> {
+    // Uma única consulta com join (evita N+1): Alocacao -> Membro/Funcao e
+    // Escala -> Evento/Ministerio. Traz os nomes legíveis (incremento 3a)
+    // desde a origem, sem consulta adicional por conflito.
+    const rows = await prisma.alocacao.findMany({
+      where: { membroId: memberId },
+      include: {
+        membro: true,
+        funcao: true,
+        escala: { include: { evento: true, ministerio: true } },
+      },
+    });
+    return rows.map((row) => ({
+      assignmentId: row.id,
+      memberName: row.membro.nome,
+      scheduleId: row.escalaId,
+      ministryId: row.escala.ministerioId,
+      ministryName: row.escala.ministerio.nome,
+      eventId: row.escala.eventoId,
+      eventName: row.escala.evento.nome,
+      positionId: row.funcaoId,
+      positionName: row.funcao.nome,
+      startsAt: row.escala.evento.inicio,
+      endsAt: row.escala.evento.fim,
+    }));
+  }
+
   async save(assignment: Assignment): Promise<Assignment> {
     // Entidade em inglês → colunas em português (espelham o schema.prisma).
     const row = await prisma.alocacao.create({
@@ -41,12 +72,15 @@ export class PrismaAssignmentRepository implements AssignmentRepository {
   }
 
   async update(assignment: Assignment): Promise<Assignment> {
-    // Escala e conflict não são mutáveis por aqui (conflict é do motor de conflito).
+    // Escala não é mutável por aqui. conflict É persistido: o
+    // UpdateAssignmentUseCase recalcula a flag a cada edição (RN01/RN03) e
+    // espera que o valor recalculado seja gravado, não apenas retornado.
     const row = await prisma.alocacao.update({
       where: { id: assignment.id },
       data: {
         membroId: assignment.memberId,
         funcaoId: assignment.positionId,
+        conflito: assignment.conflict,
       },
     });
     return PrismaAssignmentRepository.toEntity(row);

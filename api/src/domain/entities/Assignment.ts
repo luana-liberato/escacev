@@ -7,8 +7,9 @@ import { AppError } from '../../shared/errors/AppError';
  * abstrata. O membro e a função devem pertencer ao mesmo ministério da escala —
  * essa checagem é feita no use case (AddAssignmentsUseCase), não aqui.
  *
- * `conflict` nasce sempre `false`; vira `true` só quando o admin confirma uma
- * alocação sabendo do conflito (RN03, motor de conflito — fora deste bloco).
+ * `conflict` nasce `false` por padrão; vira `true` só quando o admin confirma
+ * cientemente uma alocação conflituosa (RN03 — AddAssignmentsUseCase, que
+ * integra o ConflictDetectionService).
  *
  * Nome do campo `positionId` (não `functionId`) para manter coerência com a
  * entidade `Position`, que já mapeia o model `Funcao` (Seção 4.6). Construtor
@@ -26,26 +27,35 @@ export class Assignment {
   ) {}
 
   /**
-   * Cria uma nova alocação (conflict sempre false — RN03 é responsabilidade do
-   * motor de conflito, fora deste bloco). A existência e o pertencimento de
+   * Cria uma nova alocação. `conflict` é opcional (default `false`); só nasce
+   * `true` quando o admin confirma cientemente uma alocação conflituosa (RN03
+   * — ver AddAssignmentsUseCase). A existência e o pertencimento de
    * escala/membro/função ao mesmo ministério são validados no use case.
    */
-  static create(props: { scheduleId: string; memberId: string; positionId: string }): Assignment {
+  static create(props: {
+    scheduleId: string;
+    memberId: string;
+    positionId: string;
+    conflict?: boolean;
+  }): Assignment {
     const scheduleId = Assignment.requireId(props.scheduleId, 'Escala é obrigatória');
     const memberId = Assignment.requireId(props.memberId, 'Membro é obrigatório');
     const positionId = Assignment.requireId(props.positionId, 'Função é obrigatória');
 
-    return new Assignment(cuid(), scheduleId, memberId, positionId, false, new Date());
+    return new Assignment(cuid(), scheduleId, memberId, positionId, props.conflict ?? false, new Date());
   }
 
   /**
-   * Retorna uma cópia com memberId e/ou positionId atualizados (troca a pessoa,
-   * a função, ou ambos). scheduleId, conflict e createdAt são imutáveis — a
-   * revalidação de pertencimento ao ministério da escala e a checagem de
-   * duplicata ficam no use case (UpdateAssignmentUseCase). Entidade imutável:
-   * valida os campos presentes e devolve nova instância (não muta a original).
+   * Retorna uma cópia com memberId, positionId e/ou conflict atualizados (troca
+   * a pessoa, a função, ou ambos). `conflict` é opcional — quando omitido,
+   * mantém o valor atual; o UpdateAssignmentUseCase o recalcula EXPLICITAMENTE
+   * a cada edição (nunca herda o valor antigo por omissão silenciosa), para que
+   * a flag reflita o estado APÓS a edição nos dois sentidos: um conflito que
+   * some vira `false`; um conflito novo confirmado vira `true` (RN03).
+   * scheduleId e createdAt são imutáveis. Entidade imutável: valida os campos
+   * presentes e devolve nova instância (não muta a original).
    */
-  update(props: { memberId?: string; positionId?: string }): Assignment {
+  update(props: { memberId?: string; positionId?: string; conflict?: boolean }): Assignment {
     const memberId =
       props.memberId !== undefined
         ? Assignment.requireId(props.memberId, 'Membro é obrigatório')
@@ -54,8 +64,9 @@ export class Assignment {
       props.positionId !== undefined
         ? Assignment.requireId(props.positionId, 'Função é obrigatória')
         : this.positionId;
+    const conflict = props.conflict !== undefined ? props.conflict : this.conflict;
 
-    return new Assignment(this.id, this.scheduleId, memberId, positionId, this.conflict, this.createdAt);
+    return new Assignment(this.id, this.scheduleId, memberId, positionId, conflict, this.createdAt);
   }
 
   /** Reconstrói a entidade a partir de uma linha persistida (uso do repositório). */

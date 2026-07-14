@@ -4,13 +4,20 @@ import { AppError } from '../../../shared/errors/AppError';
 import { Schedule } from '../../../domain/entities/Schedule';
 import { CreateScheduleUseCase } from '../../../domain/use-cases/schedules/CreateScheduleUseCase';
 import { GetScheduleUseCase, ScheduleWithAssignments } from '../../../domain/use-cases/schedules/GetScheduleUseCase';
+import {
+  GetScheduleConflictsUseCase,
+  ScheduleConflictsResult,
+} from '../../../domain/use-cases/schedules/GetScheduleConflictsUseCase';
 import { ListSchedulesUseCase } from '../../../domain/use-cases/schedules/ListSchedulesUseCase';
 import { DeleteScheduleUseCase } from '../../../domain/use-cases/schedules/DeleteScheduleUseCase';
 import { MinistryAccessPolicy } from '../../../domain/services/MinistryAccessPolicy';
+import { ConflictDetectionService } from '../../../domain/services/ConflictDetectionService';
+import { CheckPositionCompatibilityUseCase } from '../../../domain/use-cases/position-compatibilities/CheckPositionCompatibilityUseCase';
 import { PrismaScheduleRepository } from '../../database/repositories/PrismaScheduleRepository';
 import { PrismaMinistryRepository } from '../../database/repositories/PrismaMinistryRepository';
 import { PrismaEventRepository } from '../../database/repositories/PrismaEventRepository';
 import { PrismaAssignmentRepository } from '../../database/repositories/PrismaAssignmentRepository';
+import { PrismaPositionCompatibilityRepository } from '../../database/repositories/PrismaPositionCompatibilityRepository';
 import { PrismaMinistryMembershipRepository } from '../../database/repositories/PrismaMinistryMembershipRepository';
 import { respond } from '../../../shared/utils/respond';
 
@@ -74,6 +81,23 @@ export class ScheduleController {
     respond(res, 200, ScheduleController.serializeWithAssignments(result), 'Escala encontrada');
   };
 
+  // GET /escalas/:id/conflitos — reavalia AO VIVO os conflitos das alocações da
+  // escala (RN01), sem gravar. Leitura aberta a qualquer admin (rbac barra MEMBRO).
+  conflicts = async (req: Request, res: Response): Promise<void> => {
+    const { institutionId } = ScheduleController.authUser(req);
+
+    const useCase = new GetScheduleConflictsUseCase(
+      new PrismaScheduleRepository(),
+      new PrismaMinistryRepository(),
+      new PrismaEventRepository(),
+      new PrismaAssignmentRepository(),
+      ScheduleController.conflictDetection(),
+    );
+    const result = await useCase.execute({ id: req.params.id, institutionId });
+
+    respond(res, 200, ScheduleController.serializeConflicts(result), 'Conflitos da escala');
+  };
+
   // DELETE /escalas/:id — remove a escala (escopo de ministério).
   remove = async (req: Request, res: Response): Promise<void> => {
     const { institutionId, memberId, role } = ScheduleController.authUser(req);
@@ -91,6 +115,14 @@ export class ScheduleController {
   /** Guarda de escopo de ministério (ADMIN_GERAL ou admin com isAdmin no ministério). */
   private static accessPolicy(): MinistryAccessPolicy {
     return new MinistryAccessPolicy(new PrismaMinistryMembershipRepository());
+  }
+
+  /** Motor de detecção de conflito (RN01) — reusa o Check de compatibilidade já existente. */
+  private static conflictDetection(): ConflictDetectionService {
+    return new ConflictDetectionService(
+      new PrismaAssignmentRepository(),
+      new CheckPositionCompatibilityUseCase(new PrismaPositionCompatibilityRepository()),
+    );
   }
 
   /**
@@ -136,6 +168,27 @@ export class ScheduleController {
         createdAt: detail.assignment.createdAt,
         member: { id: detail.member.id, name: detail.member.name },
         position: { id: detail.position.id, name: detail.position.name },
+      })),
+    };
+  }
+
+  /**
+   * Projeção da consulta de conflitos (GET /:id/conflitos): a escala + apenas as
+   * alocações em conflito, cada uma com os detalhes (já com nomes legíveis, 3a).
+   */
+  private static serializeConflicts(result: ScheduleConflictsResult) {
+    return {
+      ...ScheduleController.serialize(result.schedule),
+      conflicts: result.conflicts.map((entry) => ({
+        assignment: {
+          id: entry.assignment.id,
+          positionId: entry.assignment.positionId,
+          conflict: entry.assignment.conflict,
+          createdAt: entry.assignment.createdAt,
+          member: { id: entry.member.id, name: entry.member.name },
+          position: { id: entry.position.id, name: entry.position.name },
+        },
+        conflicts: entry.conflicts,
       })),
     };
   }

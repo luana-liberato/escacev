@@ -229,23 +229,27 @@
 > inteiro** (todos os ministérios), não só no ministério do admin — e é também o motivo de
 > a matriz de compatibilidade ser institucional (`ADMIN_GERAL`), já que um par pode ligar
 > funções de ministérios diferentes.
-- [ ] Implementar serviço de detecção de conflito centrado no membro:
-  - [ ] Dado um membro, buscar **todas** as suas alocações (em todos os ministérios)
-  - [ ] Detectar sobreposição de horário: `novo.inicio < existente.fim AND novo.fim > existente.inicio`
-  - [ ] Para cada sobreposição, checar a compatibilidade via o `CheckPositionCompatibilityUseCase` (Fase 3, já pronto) — não reimplementar
-  - [ ] Marcar conflito apenas quando as funções são incompatíveis (RN02)
-  - [ ] Tratar **mesma função sobreposta** (mesmo `funcaoId`) como conflito — o `Check` devolve `false` para ids iguais (não existe linha canônica para par igual; ninguém em dois lugares ao mesmo tempo)
-  - [ ] Retornar detalhes claros: qual evento, qual escala, qual função conflita
-- [ ] **DECISÃO DE PRODUTO pendente — visibilidade cross-ministério:** quando o conflito de
-      X estiver numa alocação de um ministério que o admin **não** administra, definir quanto
-      detalhe expor ("X indisponível neste horário" vs. "X está como Baterista no culto tal do
-      Ministério B"). Não é bloqueio técnico; é escolha de privacidade/UX a decidir antes da UI.
+- [x] Implementar serviço de detecção de conflito centrado no membro:
+  - [x] Dado um membro, buscar **todas** as suas alocações (em todos os ministérios)
+  - [x] Detectar sobreposição de horário: `novo.inicio < existente.fim AND novo.fim > existente.inicio`
+  - [x] Para cada sobreposição, checar a compatibilidade via o `CheckPositionCompatibilityUseCase` (Fase 3, já pronto) — não reimplementar
+  - [x] Marcar conflito apenas quando as funções são incompatíveis (RN02)
+  - [x] Tratar **mesma função sobreposta** (mesmo `funcaoId`) como conflito — o `Check` devolve `false` para ids iguais (não existe linha canônica para par igual; ninguém em dois lugares ao mesmo tempo)
+  - [x] Retornar detalhes claros: qual evento, qual escala, qual função conflita
+- [x] Integrar o motor à criação (`AddAssignmentsUseCase`) e à edição (`UpdateAssignmentUseCase`) de alocações, com confirmação ciente (RN03)
+- [x] Endpoint de consulta (read-only) dos conflitos de uma escala: `GET /escalas/:id/conflitos` (reavalia ao vivo, sem gravar)
+- [x] **DECISÃO DE PRODUTO — visibilidade cross-ministério: resolvido por transparência total.** O
+      `ConflictDetail` expõe os nomes legíveis (membro/função/ministério/evento) inclusive de
+      ministérios que o admin **não** administra, sem filtragem por papel. (Reavaliar na UI se
+      necessário — não é bloqueio técnico.)
 - [ ] Aplicar prioridade por publicação: escala publicada primeiro tem precedência (RN07)
-- [ ] Permitir que o admin confirme a alocação mesmo com conflito (RN03)
-- [ ] Registrar a sobrescrita: `alocacao.conflito = true`
-- [ ] **Nota operacional (RN02):** matriz vazia = todo par sobreposto vira conflito; a matriz
-      precisa ser populada pelo `ADMIN_GERAL` para o motor ser útil (é o default, não bug)
-- [ ] Cobrir o motor de conflito com testes (Fase 10)
+      — **adiado**: depende da Publicação de Escala (RN04); `publicadaEm` é sempre `null` até lá.
+- [x] Permitir que o admin confirme a alocação mesmo com conflito (RN03)
+- [x] Registrar a sobrescrita: `alocacao.conflito = true`
+> **Nota operacional (RN02):** matriz vazia = todo par sobreposto vira conflito; a matriz
+> precisa ser populada pelo `ADMIN_GERAL` para o motor ser útil (é o default, não bug).
+> Não é tarefa — descreve comportamento já implementado (`CheckPositionCompatibilityUseCase`).
+- [x] Cobrir o motor de conflito com testes (detecção pura, integração no Add/Update, consulta 3b)
 
 ### Publicação de Escala (RN04)
 - [ ] Use case: publicar escala → `status = PUBLICADA` + preencher `publicadaEm`

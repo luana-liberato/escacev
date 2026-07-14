@@ -2,14 +2,22 @@ import { Assignment } from '../../entities/Assignment';
 import { AssignmentRepository } from '../../repositories/AssignmentRepository';
 import { ScheduleRepository } from '../../repositories/ScheduleRepository';
 import { MinistryRepository } from '../../repositories/MinistryRepository';
+import { EventRepository } from '../../repositories/EventRepository';
 import { Actor, MinistryAccessPolicy } from '../../services/MinistryAccessPolicy';
 import { AssignmentEligibility } from '../../services/AssignmentEligibility';
+import { ConflictDetail, ConflictDetectionService } from '../../services/ConflictDetectionService';
 import { AppError } from '../../../shared/errors/AppError';
 
-/** Um item do lote: a pessoa e a função que ela vai exercer na escala. */
+/**
+ * Um item do lote: a pessoa e a função que ela vai exercer na escala.
+ * `confirmConflict`: quando o item já foi reportado em `needsConfirmation`
+ * numa tentativa anterior, o admin reenvia o MESMO item com esta flag em
+ * `true` para confirmar cientemente a alocação conflituosa (RN03).
+ */
 export interface AssignmentItem {
   memberId: string;
   positionId: string;
+  confirmConflict?: boolean;
 }
 
 /** institutionId vem do JWT (req.user), nunca do body. */
@@ -26,31 +34,50 @@ export interface FailedAssignment {
   reason: string;
 }
 
-/** Resultado do lote: os criados com sucesso e os que falharam (com motivo). */
+/**
+ * Um item que passou nas validações mas tem conflito de horário (RN01) e não
+ * veio confirmado — NÃO foi criado. O admin decide: reenviar este MESMO item
+ * com `confirmConflict: true` (cria com `conflict = true`) ou desistir dele.
+ * Diferente de `failed`: aqui reenviar PODE funcionar.
+ */
+export interface NeedsConfirmationAssignment {
+  item: AssignmentItem;
+  conflicts: ConflictDetail[];
+}
+
+/** Resultado do lote: criados, falhados (irrecuperável) e pendentes de confirmação (reenviáveis). */
 export interface AddAssignmentsResult {
   created: Assignment[];
   failed: FailedAssignment[];
+  needsConfirmation: NeedsConfirmationAssignment[];
 }
 
 /**
  * Adiciona um lote de alocações (pessoa + função) a uma escala — alocação
- * DIRETA, sem vaga abstrata. Não implementa o motor de conflito (RN01/RN03):
- * toda alocação criada aqui nasce com `conflict = false`.
+ * DIRETA, sem vaga abstrata. Integra o motor de conflito (RN01/RN03): NÃO
+ * bloqueia conflito, avisa e pede confirmação ciente — só cria uma alocação
+ * conflituosa se o item vier com `confirmConflict = true`, e nesse caso ela
+ * nasce com `conflict = true`.
  *
  * PRÉ-CONDIÇÕES do lote inteiro (falham a operação toda, nenhum item processado):
  *  - a escala existe e pertence à instituição do usuário (tenant via ministério);
  *  - o ator administra o ministério da escala (Permissão Escopada — reusa a
  *    MinistryAccessPolicy.ensureCanManage).
  *
- * VALIDAÇÃO POR ITEM (parcial — um item inválido não derruba os demais):
- *  - o membro existe e pertence ao ministério da escala; a função existe e
- *    pertence ao mesmo ministério — checagem compartilhada com o
- *    UpdateAssignmentUseCase via AssignmentEligibility (não duplica a regra);
- *  - não é duplicata (nem já existente na escala, nem repetida dentro do próprio lote).
+ * CLASSIFICAÇÃO POR ITEM (parcial — um item nunca derruba os demais):
+ *  1. Validação de pertencimento (membro/função do ministério) + duplicata
+ *     (AssignmentEligibility) — falha aqui vai para `failed` e NEM CHEGA a
+ *     checar conflito (irrecuperável: reenviar não muda a validação).
+ *  2. Passou: roda o ConflictDetectionService (injetado, não reimplementado)
+ *     com o horário do evento da escala.
+ *  3. Sem conflito → `created` (conflict = false).
+ *  4. Com conflito e SEM confirmConflict → `needsConfirmation` (NÃO cria; o
+ *     admin decide reenviar o mesmo item com confirmConflict = true).
+ *  5. Com conflito e COM confirmConflict = true → `created` (conflict = true).
  *
  * PERSISTÊNCIA: processamento SEQUENCIAL, um save() por item — sem envolver o
- * lote numa transação com rollback geral (um item ruim não pode apagar os itens
- * bons já salvos). O save() de cada item tem seu próprio try/catch: mesmo já
+ * lote numa transação com rollback geral (um item ruim/pendente não apaga os
+ * itens já salvos). O save() de cada item tem seu próprio try/catch: mesmo já
  * validado em memória, uma corrida entre requisições concorrentes pode fazer o
  * banco rejeitar por violação do @@unique — esse catch converte a exceção em
  * mais uma entrada de `failed`, sem interromper o restante do lote nem desfazer
@@ -61,8 +88,10 @@ export class AddAssignmentsUseCase {
     private readonly assignmentRepo: AssignmentRepository,
     private readonly scheduleRepo: ScheduleRepository,
     private readonly ministryRepo: MinistryRepository,
+    private readonly eventRepo: EventRepository,
     private readonly eligibility: AssignmentEligibility,
     private readonly accessPolicy: MinistryAccessPolicy,
+    private readonly conflictDetection: ConflictDetectionService,
   ) {}
 
   async execute(dto: AddAssignmentsDTO): Promise<AddAssignmentsResult> {
@@ -78,10 +107,19 @@ export class AddAssignmentsUseCase {
 
     await this.accessPolicy.ensureCanManage(dto.actor, ministry.id);
 
+    // Todos os itens do lote são da MESMA escala → mesmo evento; busca uma vez.
+    const event = await this.eventRepo.findById(schedule.eventId);
+    if (!event) {
+      throw new AppError('Escala não encontrada', 404);
+    }
+
     const created: Assignment[] = [];
     const failed: FailedAssignment[] = [];
-    // Rastreia os pares já aceitos NESTE lote — pega duplicata dentro do próprio
-    // array de entrada, além da duplicata já existente no banco (checada abaixo).
+    const needsConfirmation: NeedsConfirmationAssignment[] = [];
+    // Rastreia os pares já ACEITOS (criados) NESTE lote — pega duplicata dentro
+    // do próprio array de entrada, além da duplicata já existente no banco
+    // (checada abaixo). Itens em needsConfirmation não entram aqui: não foram
+    // criados, então não bloqueiam um item posterior igual no mesmo lote.
     const seenInBatch = new Set<string>();
 
     for (const item of dto.items) {
@@ -91,11 +129,24 @@ export class AddAssignmentsUseCase {
         continue;
       }
 
+      const conflictResult = await this.conflictDetection.check({
+        memberId: item.memberId,
+        positionId: item.positionId,
+        startsAt: event.startsAt,
+        endsAt: event.endsAt,
+      });
+
+      if (conflictResult.hasConflict && !item.confirmConflict) {
+        needsConfirmation.push({ item, conflicts: conflictResult.conflicts });
+        continue;
+      }
+
       try {
         const assignment = Assignment.create({
           scheduleId: schedule.id,
           memberId: item.memberId,
           positionId: item.positionId,
+          conflict: conflictResult.hasConflict, // true só quando confirmado (o outro caso já foi para needsConfirmation)
         });
         created.push(await this.assignmentRepo.save(assignment));
         seenInBatch.add(AddAssignmentsUseCase.batchKey(item));
@@ -107,7 +158,7 @@ export class AddAssignmentsUseCase {
       }
     }
 
-    return { created, failed };
+    return { created, failed, needsConfirmation };
   }
 
   /** Retorna o motivo da falha (string) ou null quando o item é válido. */
