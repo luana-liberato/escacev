@@ -284,7 +284,8 @@
 - [x] Entidade `Indisponibilidade` + `create()` (validar período)
 - [x] Use case: membro registra período de indisponibilidade
 - [x] Use case: membro lista/remove suas indisponibilidades
-- [ ] Use case: admin consulta indisponibilidades ao montar escala (Grupo B — depende do motor)
+- [x] Use case: admin consulta indisponibilidades ao montar escala
+      (`ListMemberUnavailabilitiesUseCase` + `GET /membros/:id/indisponibilidades`, rbac admin + tenant via membro)
 - [ ] Integrar com o motor de conflito: **alertar** o admin ao tentar escalar membro indisponível no período (RN05) (Grupo B)
 - [ ] Permitir que o admin ignore o alerta e escale mesmo assim (Grupo B)
 - [x] Endpoints: `POST /indisponibilidades`, `GET /indisponibilidades/minhas`, `DELETE /indisponibilidades/:id`
