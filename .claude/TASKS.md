@@ -242,8 +242,10 @@
       `ConflictDetail` expõe os nomes legíveis (membro/função/ministério/evento) inclusive de
       ministérios que o admin **não** administra, sem filtragem por papel. (Reavaliar na UI se
       necessário — não é bloqueio técnico.)
-- [ ] Aplicar prioridade por publicação: escala publicada primeiro tem precedência (RN07)
-      — **adiado**: depende da Publicação de Escala (RN04); `publicadaEm` é sempre `null` até lá.
+- [x] Aplicar prioridade por publicação: escala publicada primeiro tem precedência (RN07)
+      (o motor traz `publicadaEm` da escala no `MemberAssignmentContext` e o `ConflictDetail`
+      expõe `existingHasPrecedence` — comparação por `publicadaEm`, a publicada antes prevalece;
+      metadado para o admin, não altera a detecção)
 - [x] Permitir que o admin confirme a alocação mesmo com conflito (RN03)
 - [x] Registrar a sobrescrita: `alocacao.conflito = true`
 > **Nota operacional (RN02):** matriz vazia = todo par sobreposto vira conflito; a matriz
