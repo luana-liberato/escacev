@@ -8,6 +8,7 @@ import { compatibilityRoutes } from './compatibility.routes';
 import { positionRoutes } from './position.routes';
 import { eventRoutes } from './event.routes';
 import { scheduleRoutes } from './schedule.routes';
+import { myScheduleRoutes } from './mySchedule.routes';
 import { assignmentRoutes } from './assignment.routes';
 
 export const routes = Router();
@@ -22,4 +23,5 @@ routes.use(compatibilityRoutes);
 routes.use(positionRoutes);
 routes.use(eventRoutes);
 routes.use(scheduleRoutes);
+routes.use(myScheduleRoutes);
 routes.use(assignmentRoutes);
