@@ -73,6 +73,7 @@ function existingCtx(overrides: Partial<MemberAssignmentContext> = {}): MemberAs
     assignmentId: 'existing-1',
     memberName: 'Membro Existente',
     scheduleId: 'sch-1',
+    schedulePublishedAt: null,
     ministryId: 'min-1',
     ministryName: 'Ministério Existente',
     eventId: 'ev-1',
@@ -343,6 +344,7 @@ describe('ConflictDetectionService — múltiplos conflitos e detalhes', () => {
       positionName: 'Recepcionista',
       startsAt: d('2026-07-12T18:00:00Z'),
       endsAt: d('2026-07-12T20:00:00Z'),
+      existingHasPrecedence: false, // ambas não publicadas (RASCUNHO) → sem precedência
     });
   });
 });

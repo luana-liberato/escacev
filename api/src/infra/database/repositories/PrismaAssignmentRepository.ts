@@ -47,6 +47,7 @@ export class PrismaAssignmentRepository implements AssignmentRepository {
       assignmentId: row.id,
       memberName: row.membro.nome,
       scheduleId: row.escalaId,
+      schedulePublishedAt: row.escala.publicadaEm,
       ministryId: row.escala.ministerioId,
       ministryName: row.escala.ministerio.nome,
       eventId: row.escala.eventoId,

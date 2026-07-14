@@ -89,6 +89,7 @@ export class GetScheduleConflictsUseCase {
         startsAt: event.startsAt,
         endsAt: event.endsAt,
         excludeAssignmentId: detail.assignment.id,
+        candidatePublishedAt: schedule.publishedAt, // RN07: precedência por publicação
       });
 
       if (result.hasConflict) {

@@ -145,6 +145,7 @@ export class AddAssignmentsUseCase {
         positionId: item.positionId,
         startsAt: event.startsAt,
         endsAt: event.endsAt,
+        candidatePublishedAt: schedule.publishedAt, // RN07: precedência por publicação
       });
       const unavailabilities = await this.unavailabilityRepo.findByMemberOverlapping(
         item.memberId,

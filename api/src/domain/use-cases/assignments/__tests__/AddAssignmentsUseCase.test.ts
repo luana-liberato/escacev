@@ -264,6 +264,7 @@ class FakeAssignmentRepository implements AssignmentRepository {
           assignmentId: a.id,
           memberName: member.name,
           scheduleId: a.scheduleId,
+          schedulePublishedAt: schedule.publishedAt,
           ministryId: schedule.ministryId,
           ministryName: ministry.name,
           eventId: schedule.eventId,
