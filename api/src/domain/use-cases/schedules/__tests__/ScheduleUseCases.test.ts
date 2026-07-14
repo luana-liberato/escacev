@@ -48,6 +48,9 @@ class FakeAssignmentRepository implements AssignmentRepository {
   async findByMemberWithContext(): Promise<MemberAssignmentContext[]> {
     return []; // não exercitado neste arquivo
   }
+  async findByMemberPublishedInRange() {
+    return [];
+  }
   async save(assignment: Assignment): Promise<Assignment> {
     this.assignments.push(assignment);
     return assignment;

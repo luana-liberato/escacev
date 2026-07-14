@@ -5,7 +5,9 @@ import { Position } from '../../../domain/entities/Position';
 import {
   AssignmentDetail,
   AssignmentRepository,
+  DateRange,
   MemberAssignmentContext,
+  MemberScheduleEntry,
 } from '../../../domain/repositories/AssignmentRepository';
 import { prisma } from '../prisma';
 
@@ -54,6 +56,45 @@ export class PrismaAssignmentRepository implements AssignmentRepository {
       startsAt: row.escala.evento.inicio,
       endsAt: row.escala.evento.fim,
     }));
+  }
+
+  async findByMemberPublishedInRange(
+    memberId: string,
+    range: DateRange,
+  ): Promise<MemberScheduleEntry[]> {
+    // Só escalas PUBLICADA (RN04: rascunho invisível ao membro) cujo evento
+    // começa no intervalo. Join único (Alocacao -> Funcao e Escala -> Evento/
+    // Ministerio). Ordenação por início do evento é feita em memória para não
+    // depender de orderBy aninhado em relação (mantém a query simples e portável).
+    const rows = await prisma.alocacao.findMany({
+      where: {
+        membroId: memberId,
+        escala: {
+          status: 'PUBLICADA',
+          evento: { inicio: { gte: range.from, lte: range.to } },
+        },
+      },
+      include: {
+        funcao: true,
+        escala: { include: { evento: true, ministerio: true } },
+      },
+    });
+    return rows
+      .map((row) => ({
+        assignmentId: row.id,
+        scheduleId: row.escalaId,
+        scheduleName: row.escala.nome,
+        ministryId: row.escala.ministerioId,
+        ministryName: row.escala.ministerio.nome,
+        eventId: row.escala.eventoId,
+        eventName: row.escala.evento.nome,
+        eventType: row.escala.evento.tipo,
+        startsAt: row.escala.evento.inicio,
+        endsAt: row.escala.evento.fim,
+        positionId: row.funcaoId,
+        positionName: row.funcao.nome,
+      }))
+      .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
   }
 
   async save(assignment: Assignment): Promise<Assignment> {

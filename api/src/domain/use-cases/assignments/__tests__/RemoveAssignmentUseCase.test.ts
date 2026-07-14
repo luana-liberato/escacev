@@ -100,6 +100,9 @@ class FakeAssignmentRepository implements AssignmentRepository {
   async findById(id: string): Promise<Assignment | null> {
     return this.assignments.find((a) => a.id === id) ?? null;
   }
+  async findByMemberPublishedInRange() {
+    return [];
+  }
   async save(assignment: Assignment): Promise<Assignment> {
     this.assignments.push(assignment);
     return assignment;
