@@ -41,6 +41,51 @@ describe('Schedule.create', () => {
   });
 });
 
+describe('Schedule.publish', () => {
+  it('transita RASCUNHO → PUBLICADA e carimba publishedAt', () => {
+    const draft = Schedule.create({ ...base, name: 'Sala 1' });
+    const published = draft.publish();
+
+    expect(published.status).toBe('PUBLICADA');
+    expect(published.publishedAt).toBeInstanceOf(Date);
+    // Identidade preservada (id, trio, createdAt).
+    expect(published.id).toBe(draft.id);
+    expect(published.ministryId).toBe(draft.ministryId);
+    expect(published.eventId).toBe(draft.eventId);
+    expect(published.name).toBe(draft.name);
+    expect(published.createdAt).toEqual(draft.createdAt);
+  });
+
+  it('é imutável: não muta a instância original', () => {
+    const draft = Schedule.create(base);
+    draft.publish();
+
+    expect(draft.status).toBe('RASCUNHO');
+    expect(draft.publishedAt).toBeNull();
+  });
+
+  it('bloqueia republicar uma escala já PUBLICADA (409) — preserva publicadaEm (RN07)', () => {
+    const published = Schedule.restore({
+      id: 's1',
+      ministryId: 'min1',
+      eventId: 'ev1',
+      name: '',
+      status: 'PUBLICADA',
+      publishedAt: new Date('2026-07-10T12:00:00Z'),
+      createdAt: new Date('2026-07-01T09:00:00Z'),
+    });
+
+    expect(() => published.publish()).toThrow('Escala já está publicada');
+    let caught: unknown;
+    try {
+      published.publish();
+    } catch (e) {
+      caught = e;
+    }
+    expect(caught).toMatchObject({ statusCode: 409 });
+  });
+});
+
 describe('Schedule.restore', () => {
   it('reconstrói a entidade a partir de uma linha persistida (inclusive PUBLICADA)', () => {
     const publishedAt = new Date('2026-07-10T12:00:00Z');
