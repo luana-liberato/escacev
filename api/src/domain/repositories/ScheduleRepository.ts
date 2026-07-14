@@ -35,6 +35,11 @@ export interface ScheduleRepository {
   /** Persiste uma nova escala. */
   save(schedule: Schedule): Promise<Schedule>;
   /**
+   * Persiste alterações de estado de uma escala existente (ex.: publicação —
+   * `status` + `publicadaEm`). Não altera o trio identitário (ministério, evento).
+   */
+  update(schedule: Schedule): Promise<Schedule>;
+  /**
    * Remove a escala. Hoje a escala nasce vazia, então é uma remoção simples.
    * Quando existirem alocações (bloco seguinte da Fase 5), esta remoção deve
    * passar a apagar em transação as `Alocacao` da própria escala — elas são o

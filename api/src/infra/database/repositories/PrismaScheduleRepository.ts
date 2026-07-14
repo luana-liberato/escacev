@@ -76,6 +76,18 @@ export class PrismaScheduleRepository implements ScheduleRepository {
     return PrismaScheduleRepository.toEntity(row);
   }
 
+  async update(schedule: Schedule): Promise<Schedule> {
+    // Só o estado muda (publicação); o trio identitário permanece.
+    const row = await prisma.escala.update({
+      where: { id: schedule.id },
+      data: {
+        status: schedule.status,
+        publicadaEm: schedule.publishedAt,
+      },
+    });
+    return PrismaScheduleRepository.toEntity(row);
+  }
+
   async delete(id: string): Promise<void> {
     await prisma.escala.delete({ where: { id } });
   }
