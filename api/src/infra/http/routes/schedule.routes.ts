@@ -50,6 +50,14 @@ scheduleRoutes.get(
   asyncHandler(controller.conflicts),
 );
 
+// Publicar escala (RASCUNHO -> PUBLICADA, RN04) — ADMIN_GERAL ou admin escopado (guarda no use case).
+scheduleRoutes.patch(
+  '/escalas/:id/publicar',
+  auth,
+  rbac('ADMIN_GERAL', 'ADMIN_MINISTERIO'),
+  asyncHandler(controller.publish),
+);
+
 // Remover escala — ADMIN_GERAL ou admin escopado do ministério (guarda no use case).
 scheduleRoutes.delete(
   '/escalas/:id',
