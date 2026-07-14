@@ -286,8 +286,10 @@
 - [x] Use case: membro lista/remove suas indisponibilidades
 - [x] Use case: admin consulta indisponibilidades ao montar escala
       (`ListMemberUnavailabilitiesUseCase` + `GET /membros/:id/indisponibilidades`, rbac admin + tenant via membro)
-- [ ] Integrar com o motor de conflito: **alertar** o admin ao tentar escalar membro indisponível no período (RN05) (Grupo B)
-- [ ] Permitir que o admin ignore o alerta e escale mesmo assim (Grupo B)
+- [x] Integrar com o motor de conflito: **alertar** o admin ao tentar escalar membro indisponível no período (RN05)
+      (Add/Update de alocação checam `findByMemberOverlapping` em paralelo ao conflito; alerta em `needsConfirmation`)
+- [x] Permitir que o admin ignore o alerta e escale mesmo assim
+      (flag única `confirm` cobre conflito + indisponibilidade; a indisponibilidade é só alerta, não marca a alocação)
 - [x] Endpoints: `POST /indisponibilidades`, `GET /indisponibilidades/minhas`, `DELETE /indisponibilidades/:id`
 - [ ] Disparar alerta ao admin quando membro registra indisponibilidade que afeta escala já existente (integra com Fase 7)
 
