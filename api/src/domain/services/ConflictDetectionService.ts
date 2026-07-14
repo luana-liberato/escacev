@@ -13,6 +13,12 @@ export interface ConflictCheckInput {
    * consigo mesma.
    */
   excludeAssignmentId?: string;
+  /**
+   * Data de publicação da escala à qual o candidato pertence (`null`/omitido =
+   * ainda RASCUNHO). Base da prioridade por publicação (RN07): compara-se com o
+   * `publicadaEm` de cada alocação existente para saber quem prevalece.
+   */
+  candidatePublishedAt?: Date | null;
 }
 
 /**
@@ -33,6 +39,15 @@ export interface ConflictDetail {
   positionName: string;
   startsAt: Date;
   endsAt: Date;
+  /**
+   * Prioridade por publicação (RN07): `true` quando ESTA alocação existente está
+   * numa escala publicada ANTES da escala do candidato — ou seja, ela prevalece e
+   * é o CANDIDATO que deve ser ajustado. `false` quando o candidato tem
+   * precedência (publicado antes, ou empate) ou quando a existente ainda é
+   * RASCUNHO (rascunho nunca tem precedência). Só metadado para o admin decidir —
+   * não bloqueia nem altera qual lado grava `conflict`.
+   */
+  existingHasPrecedence: boolean;
 }
 
 export interface ConflictCheckResult {
@@ -56,6 +71,12 @@ export interface ConflictCheckResult {
  * A varredura é CENTRADA NO MEMBRO, institution-wide e cross-ministério (RN09):
  * não filtra por ministério nem por escala — inclusive múltiplas escalas do
  * MESMO ministério no mesmo evento entram na comparação, sem isenção.
+ *
+ * RN07 (prioridade por publicação): cada conflito vem anotado com
+ * `existingHasPrecedence` — se a escala da alocação existente foi publicada ANTES
+ * da escala do candidato, ela prevalece e o candidato é quem deve ceder. É
+ * metadado (comparação por `publicadaEm`), não altera a detecção nem qual lado
+ * grava a flag `conflict`.
  *
  * Dependências injetadas via construtor (Seção 4.2): reusa o
  * CheckPositionCompatibilityUseCase já existente (não reimplementa
@@ -93,6 +114,10 @@ export class ConflictDetectionService {
         positionName: existing.positionName,
         startsAt: existing.startsAt,
         endsAt: existing.endsAt,
+        existingHasPrecedence: ConflictDetectionService.existingHasPrecedence(
+          existing.schedulePublishedAt,
+          input.candidatePublishedAt ?? null,
+        ),
       });
     }
 
@@ -105,5 +130,22 @@ export class ConflictDetectionService {
     other: { startsAt: Date; endsAt: Date },
   ): boolean {
     return period.startsAt < other.endsAt && period.endsAt > other.startsAt;
+  }
+
+  /**
+   * Prioridade por publicação (RN07): a alocação EXISTENTE prevalece sobre o
+   * candidato quando sua escala foi publicada ANTES. Regras:
+   *  - existente ainda RASCUNHO (`publicadaEm = null`) → nunca prevalece (false);
+   *  - existente PUBLICADA e candidato ainda não publicado → existente prevalece;
+   *  - ambas PUBLICADAS → prevalece a de `publicadaEm` mais antiga (empate = false,
+   *    o candidato não é obrigado a ceder num empate exato).
+   */
+  private static existingHasPrecedence(
+    existingPublishedAt: Date | null,
+    candidatePublishedAt: Date | null,
+  ): boolean {
+    if (existingPublishedAt === null) return false;
+    if (candidatePublishedAt === null) return true;
+    return existingPublishedAt.getTime() < candidatePublishedAt.getTime();
   }
 }

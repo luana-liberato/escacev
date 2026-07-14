@@ -73,6 +73,7 @@ function existingCtx(overrides: Partial<MemberAssignmentContext> = {}): MemberAs
     assignmentId: 'existing-1',
     memberName: 'Membro Existente',
     scheduleId: 'sch-1',
+    schedulePublishedAt: null,
     ministryId: 'min-1',
     ministryName: 'Ministério Existente',
     eventId: 'ev-1',
@@ -343,6 +344,7 @@ describe('ConflictDetectionService — múltiplos conflitos e detalhes', () => {
       positionName: 'Recepcionista',
       startsAt: d('2026-07-12T18:00:00Z'),
       endsAt: d('2026-07-12T20:00:00Z'),
+      existingHasPrecedence: false, // ambas não publicadas (RASCUNHO) → sem precedência
     });
   });
 });
@@ -369,5 +371,75 @@ describe('ConflictDetectionService — excludeAssignmentId (suporte à edição 
     expect(result.hasConflict).toBe(true);
     expect(result.conflicts).toHaveLength(1);
     expect(result.conflicts[0].assignmentId).toBe('a-outra');
+  });
+});
+
+describe('ConflictDetectionService — prioridade por publicação (RN07)', () => {
+  const ANTES = d('2026-07-01T10:00:00Z');
+  const DEPOIS = d('2026-07-05T10:00:00Z');
+
+  it('existente publicada ANTES e candidato publicado DEPOIS: existente prevalece (candidato é o sinalizado)', async () => {
+    const { assignmentRepo, service } = build();
+    assignmentRepo.contexts = [existingCtx({ schedulePublishedAt: ANTES })];
+
+    const result = await service.check(newInput({ candidatePublishedAt: DEPOIS }));
+
+    expect(result.hasConflict).toBe(true); // detecção não muda
+    expect(result.conflicts[0].existingHasPrecedence).toBe(true);
+  });
+
+  it('existente publicada DEPOIS e candidato publicado ANTES: candidato prevalece (existente sem precedência)', async () => {
+    const { assignmentRepo, service } = build();
+    assignmentRepo.contexts = [existingCtx({ schedulePublishedAt: DEPOIS })];
+
+    const result = await service.check(newInput({ candidatePublishedAt: ANTES }));
+
+    expect(result.hasConflict).toBe(true);
+    expect(result.conflicts[0].existingHasPrecedence).toBe(false);
+  });
+
+  it('existente PUBLICADA e candidato ainda NÃO publicado: existente prevalece', async () => {
+    const { assignmentRepo, service } = build();
+    assignmentRepo.contexts = [existingCtx({ schedulePublishedAt: ANTES })];
+
+    const result = await service.check(newInput({ candidatePublishedAt: null }));
+
+    expect(result.conflicts[0].existingHasPrecedence).toBe(true);
+  });
+
+  it('existente ainda RASCUNHO (não publicada): nunca prevalece, mesmo com candidato publicado', async () => {
+    const { assignmentRepo, service } = build();
+    assignmentRepo.contexts = [existingCtx({ schedulePublishedAt: null })];
+
+    const result = await service.check(newInput({ candidatePublishedAt: ANTES }));
+
+    expect(result.hasConflict).toBe(true);
+    expect(result.conflicts[0].existingHasPrecedence).toBe(false);
+  });
+
+  it('empate exato de publicadaEm: sem precedência (candidato não é obrigado a ceder)', async () => {
+    const { assignmentRepo, service } = build();
+    assignmentRepo.contexts = [existingCtx({ schedulePublishedAt: ANTES })];
+
+    const result = await service.check(newInput({ candidatePublishedAt: ANTES }));
+
+    expect(result.conflicts[0].existingHasPrecedence).toBe(false);
+  });
+
+  it('duas existentes publicadas (uma antes, uma depois) vs candidato no meio: precedência por par', async () => {
+    const { assignmentRepo, service } = build();
+    const MEIO = d('2026-07-03T10:00:00Z');
+    assignmentRepo.contexts = [
+      existingCtx({ assignmentId: 'ex-antiga', schedulePublishedAt: ANTES }),
+      existingCtx({ assignmentId: 'ex-nova', schedulePublishedAt: DEPOIS }),
+    ];
+
+    const result = await service.check(newInput({ candidatePublishedAt: MEIO }));
+
+    expect(result.conflicts).toHaveLength(2);
+    const antiga = result.conflicts.find((c) => c.assignmentId === 'ex-antiga')!;
+    const nova = result.conflicts.find((c) => c.assignmentId === 'ex-nova')!;
+    expect(antiga.existingHasPrecedence).toBe(true); // publicada antes do candidato → prevalece
+    expect(nova.existingHasPrecedence).toBe(false); // publicada depois → candidato prevalece sobre ela
   });
 });

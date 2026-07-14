@@ -29,6 +29,13 @@ export interface MemberAssignmentContext {
   assignmentId: string;
   memberName: string;
   scheduleId: string;
+  /**
+   * Data de publicação da escala desta alocação (`null` se ainda RASCUNHO).
+   * Alimenta a prioridade por publicação (RN07): num conflito, prevalece a escala
+   * com `publicadaEm` mais antiga. `null` = escala não publicada, que nunca tem
+   * precedência.
+   */
+  schedulePublishedAt: Date | null;
   ministryId: string;
   ministryName: string;
   eventId: string;
