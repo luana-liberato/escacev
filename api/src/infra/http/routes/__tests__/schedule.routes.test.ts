@@ -292,6 +292,64 @@ describe('GET /escalas/:id/conflitos', () => {
   });
 });
 
+describe('PATCH /escalas/:id/publicar', () => {
+  async function draftSchedule(token = adminGeralToken): Promise<string> {
+    const eventId = await newEvent();
+    const created = await request(app)
+      .post('/escalas')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ ministryId: MINISTRY_ID, eventId });
+    return created.body.data.id;
+  }
+
+  it('admin escopado publica (200, PUBLICADA + publishedAt)', async () => {
+    const scheduleId = await draftSchedule(adminScopedToken);
+
+    const res = await request(app)
+      .patch(`/escalas/${scheduleId}/publicar`)
+      .set('Authorization', `Bearer ${adminScopedToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.status).toBe('PUBLICADA');
+    expect(res.body.data.publishedAt).not.toBeNull();
+    const row = await prisma.escala.findUnique({ where: { id: scheduleId } });
+    expect(row?.status).toBe('PUBLICADA');
+    expect(row?.publicadaEm).not.toBeNull();
+  });
+
+  it('republicar retorna 409 e mantém a publicadaEm original', async () => {
+    const scheduleId = await draftSchedule();
+    const first = await request(app).patch(`/escalas/${scheduleId}/publicar`).set('Authorization', `Bearer ${adminGeralToken}`);
+    const publishedAt = first.body.data.publishedAt;
+
+    const again = await request(app).patch(`/escalas/${scheduleId}/publicar`).set('Authorization', `Bearer ${adminGeralToken}`);
+    expect(again.status).toBe(409);
+    const row = await prisma.escala.findUnique({ where: { id: scheduleId } });
+    expect(row?.publicadaEm?.toISOString()).toBe(publishedAt);
+  });
+
+  it('admin SEM escopo naquele ministério recebe 403 (escala continua RASCUNHO)', async () => {
+    const scheduleId = await draftSchedule();
+
+    const res = await request(app)
+      .patch(`/escalas/${scheduleId}/publicar`)
+      .set('Authorization', `Bearer ${adminUnscopedToken}`);
+    expect(res.status).toBe(403);
+    expect((await prisma.escala.findUnique({ where: { id: scheduleId } }))?.status).toBe('RASCUNHO');
+  });
+
+  it('MEMBRO não pode publicar (403)', async () => {
+    const scheduleId = await draftSchedule();
+    const res = await request(app).patch(`/escalas/${scheduleId}/publicar`).set('Authorization', `Bearer ${membroToken}`);
+    expect(res.status).toBe(403);
+  });
+
+  it('404 para escala inexistente', async () => {
+    const res = await request(app).patch('/escalas/nao-existe/publicar').set('Authorization', `Bearer ${adminGeralToken}`);
+    expect(res.status).toBe(404);
+  });
+});
+
 describe('DELETE /escalas/:id', () => {
   it('admin escopado remove (200); admin sem escopo recebe 403', async () => {
     const eventId = await newEvent();

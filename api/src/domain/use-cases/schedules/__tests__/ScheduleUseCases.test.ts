@@ -21,6 +21,7 @@ import { MinistryAccessPolicy, Actor } from '../../../services/MinistryAccessPol
 import { CreateScheduleUseCase } from '../CreateScheduleUseCase';
 import { GetScheduleUseCase } from '../GetScheduleUseCase';
 import { ListSchedulesUseCase } from '../ListSchedulesUseCase';
+import { PublishScheduleUseCase } from '../PublishScheduleUseCase';
 import { DeleteScheduleUseCase } from '../DeleteScheduleUseCase';
 
 /**
@@ -455,6 +456,86 @@ describe('ListSchedulesUseCase', () => {
     await expect(
       new ListSchedulesUseCase(s.scheduleRepo, s.ministryRepo, s.eventRepo).execute({
         institutionId: INST, eventId: foreignEvent.id,
+      }),
+    ).rejects.toMatchObject({ statusCode: 404 });
+  });
+});
+
+describe('PublishScheduleUseCase', () => {
+  async function createdSchedule(s: Awaited<ReturnType<typeof scenario>>) {
+    return new CreateScheduleUseCase(s.scheduleRepo, s.ministryRepo, s.eventRepo, s.policy).execute({
+      institutionId: INST, actor: ADMIN_GERAL, ministryId: s.ministry.id, eventId: s.event.id,
+    });
+  }
+
+  it('ADMIN_GERAL publica: status PUBLICADA e publishedAt carimbado', async () => {
+    const s = await scenario();
+    const schedule = await createdSchedule(s);
+
+    const published = await new PublishScheduleUseCase(s.scheduleRepo, s.ministryRepo, s.policy).execute({
+      institutionId: INST, actor: ADMIN_GERAL, id: schedule.id,
+    });
+
+    expect(published.status).toBe('PUBLICADA');
+    expect(published.publishedAt).toBeInstanceOf(Date);
+    // Persistido no repositório (não só devolvido).
+    expect((await s.scheduleRepo.findById(schedule.id))?.status).toBe('PUBLICADA');
+  });
+
+  it('ADMIN_MINISTERIO com isAdmin naquele ministério publica', async () => {
+    const s = await scenario();
+    s.membershipRepo.memberships.push(
+      MinistryMembership.create({ memberId: 'am', ministryId: s.ministry.id, isAdmin: true }),
+    );
+    const schedule = await createdSchedule(s);
+
+    const published = await new PublishScheduleUseCase(s.scheduleRepo, s.ministryRepo, s.policy).execute({
+      institutionId: INST, actor: { memberId: 'am', role: 'ADMIN_MINISTERIO' }, id: schedule.id,
+    });
+    expect(published.status).toBe('PUBLICADA');
+  });
+
+  it('409 ao republicar uma escala já publicada (preserva publicadaEm — RN07)', async () => {
+    const s = await scenario();
+    const schedule = await createdSchedule(s);
+    const publish = new PublishScheduleUseCase(s.scheduleRepo, s.ministryRepo, s.policy);
+    const first = await publish.execute({ institutionId: INST, actor: ADMIN_GERAL, id: schedule.id });
+
+    await expect(
+      publish.execute({ institutionId: INST, actor: ADMIN_GERAL, id: schedule.id }),
+    ).rejects.toMatchObject({ statusCode: 409 });
+    // A data da 1ª publicação permanece.
+    expect((await s.scheduleRepo.findById(schedule.id))?.publishedAt).toEqual(first.publishedAt);
+  });
+
+  it('403 quando o ator não administra o ministério da escala', async () => {
+    const s = await scenario();
+    const schedule = await createdSchedule(s);
+
+    await expect(
+      new PublishScheduleUseCase(s.scheduleRepo, s.ministryRepo, s.policy).execute({
+        institutionId: INST, actor: { memberId: 'am', role: 'ADMIN_MINISTERIO' }, id: schedule.id,
+      }),
+    ).rejects.toMatchObject({ statusCode: 403 });
+    expect((await s.scheduleRepo.findById(schedule.id))?.status).toBe('RASCUNHO');
+  });
+
+  it('404 ao publicar escala de outra instituição', async () => {
+    const s = await scenario();
+    const schedule = await createdSchedule(s);
+
+    await expect(
+      new PublishScheduleUseCase(s.scheduleRepo, s.ministryRepo, s.policy).execute({
+        institutionId: 'i2', actor: ADMIN_GERAL, id: schedule.id,
+      }),
+    ).rejects.toMatchObject({ statusCode: 404 });
+  });
+
+  it('404 quando o id não existe', async () => {
+    const s = await scenario();
+    await expect(
+      new PublishScheduleUseCase(s.scheduleRepo, s.ministryRepo, s.policy).execute({
+        institutionId: INST, actor: ADMIN_GERAL, id: 'nao-existe',
       }),
     ).rejects.toMatchObject({ statusCode: 404 });
   });
