@@ -246,8 +246,9 @@
       — **adiado**: depende da Publicação de Escala (RN04); `publicadaEm` é sempre `null` até lá.
 - [x] Permitir que o admin confirme a alocação mesmo com conflito (RN03)
 - [x] Registrar a sobrescrita: `alocacao.conflito = true`
-- [ ] **Nota operacional (RN02):** matriz vazia = todo par sobreposto vira conflito; a matriz
-      precisa ser populada pelo `ADMIN_GERAL` para o motor ser útil (é o default, não bug)
+> **Nota operacional (RN02):** matriz vazia = todo par sobreposto vira conflito; a matriz
+> precisa ser populada pelo `ADMIN_GERAL` para o motor ser útil (é o default, não bug).
+> Não é tarefa — descreve comportamento já implementado (`CheckPositionCompatibilityUseCase`).
 - [x] Cobrir o motor de conflito com testes (detecção pura, integração no Add/Update, consulta 3b)
 
 ### Publicação de Escala (RN04)
