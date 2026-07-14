@@ -16,6 +16,7 @@ const ADMIN_UNSCOPED_ID = 'test-sched-unscoped';
 const MEMBRO_ID = 'test-sched-membro';
 const MINISTRY_ID = 'test-sched-min';
 const POSITION_ID = 'test-sched-pos';
+const POSITION_2_ID = 'test-sched-pos-2';
 
 let adminGeralToken: string;
 let adminScopedToken: string;
@@ -35,11 +36,21 @@ async function cleanupFixtures() {
   await prisma.instituicao.deleteMany({ where: { id: { in: [INST_ID, OTHER_INST_ID] } } });
 }
 
-/** Cria um evento novo (id único) para cada teste, evitando colisão do @@unique. */
+/**
+ * Cria um evento novo (id único) para cada teste, evitando colisão do @@unique.
+ * Cada evento cai num DIA distinto (offset por eventSeq) para NÃO se sobrepor no
+ * horário com os eventos de outros testes — a varredura de conflito é
+ * institution-wide e centrada no membro (o MEMBRO_ID é reusado entre testes), então
+ * horários iguais gerariam conflito cruzado indesejado. Testes que QUEREM conflito
+ * alocam no MESMO evento (mesma janela), única sobreposição proposital.
+ */
 async function newEvent(institutionId = INST_ID): Promise<string> {
-  const id = `test-sched-ev-${eventSeq++}`;
+  const seq = eventSeq++;
+  const id = `test-sched-ev-${seq}`;
+  const start = new Date(Date.UTC(2026, 6, 12, 18, 0, 0) + seq * 24 * 60 * 60 * 1000);
+  const end = new Date(start.getTime() + 2 * 60 * 60 * 1000);
   await prisma.evento.create({
-    data: { id, instituicaoId: institutionId, nome: 'Culto', tipo: 'culto', inicio: new Date('2026-07-12T18:00:00Z'), fim: new Date('2026-07-12T20:00:00Z') },
+    data: { id, instituicaoId: institutionId, nome: 'Culto', tipo: 'culto', inicio: start, fim: end },
   });
   return id;
 }
@@ -63,6 +74,9 @@ beforeAll(async () => {
   });
   await prisma.membroMinisterio.create({ data: { membroId: MEMBRO_ID, ministerioId: MINISTRY_ID } });
   await prisma.funcao.create({ data: { id: POSITION_ID, ministerioId: MINISTRY_ID, nome: 'Vocal' } });
+  // Segunda função, SEM par na matriz de compatibilidade -> incompatível com a
+  // primeira (RN02): usada para forjar um conflito na consulta de conflitos.
+  await prisma.funcao.create({ data: { id: POSITION_2_ID, ministerioId: MINISTRY_ID, nome: 'Violão' } });
 
   adminGeralToken = signTestToken({ memberId: ADMIN_GERAL_ID, institutionId: INST_ID, role: 'ADMIN_GERAL' });
   adminScopedToken = signTestToken({ memberId: ADMIN_SCOPED_ID, institutionId: INST_ID, role: 'ADMIN_MINISTERIO' });
@@ -206,6 +220,75 @@ describe('GET /escalas e /escalas/:id', () => {
   it('MEMBRO não pode listar (403)', async () => {
     const res = await request(app).get('/escalas').set('Authorization', `Bearer ${membroToken}`);
     expect(res.status).toBe(403);
+  });
+});
+
+describe('GET /escalas/:id/conflitos', () => {
+  /** Cria uma escala e aloca o MESMO membro em duas funções incompatíveis (conflito). */
+  async function scheduleWithConflict(): Promise<string> {
+    const eventId = await newEvent();
+    const created = await request(app)
+      .post('/escalas')
+      .set('Authorization', `Bearer ${adminGeralToken}`)
+      .send({ ministryId: MINISTRY_ID, eventId });
+    const scheduleId = created.body.data.id;
+    await prisma.alocacao.createMany({
+      data: [
+        { escalaId: scheduleId, membroId: MEMBRO_ID, funcaoId: POSITION_ID },
+        { escalaId: scheduleId, membroId: MEMBRO_ID, funcaoId: POSITION_2_ID },
+      ],
+    });
+    return scheduleId;
+  }
+
+  it('reavalia ao vivo e retorna as alocações em conflito com nomes legíveis (200)', async () => {
+    const scheduleId = await scheduleWithConflict();
+
+    const res = await request(app)
+      .get(`/escalas/${scheduleId}/conflitos`)
+      .set('Authorization', `Bearer ${adminScopedToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    // Cada uma das duas funções aponta a outra como conflitante.
+    expect(res.body.data.conflicts).toHaveLength(2);
+    const entry = res.body.data.conflicts[0];
+    expect(entry.assignment.member.name).toBe('MB');
+    expect(entry.conflicts[0].memberName).toBe('MB');
+    expect(entry.conflicts[0].positionName).toBeTruthy();
+  });
+
+  it('escala sem conflito retorna conflicts vazio (200)', async () => {
+    const eventId = await newEvent();
+    const created = await request(app)
+      .post('/escalas')
+      .set('Authorization', `Bearer ${adminGeralToken}`)
+      .send({ ministryId: MINISTRY_ID, eventId });
+    await prisma.alocacao.create({
+      data: { escalaId: created.body.data.id, membroId: MEMBRO_ID, funcaoId: POSITION_ID },
+    });
+
+    const res = await request(app)
+      .get(`/escalas/${created.body.data.id}/conflitos`)
+      .set('Authorization', `Bearer ${adminGeralToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.conflicts).toEqual([]);
+  });
+
+  it('MEMBRO não pode consultar (403)', async () => {
+    const scheduleId = await scheduleWithConflict();
+    const res = await request(app)
+      .get(`/escalas/${scheduleId}/conflitos`)
+      .set('Authorization', `Bearer ${membroToken}`);
+    expect(res.status).toBe(403);
+  });
+
+  it('404 para escala inexistente', async () => {
+    const res = await request(app)
+      .get('/escalas/nao-existe/conflitos')
+      .set('Authorization', `Bearer ${adminGeralToken}`);
+    expect(res.status).toBe(404);
   });
 });
 
