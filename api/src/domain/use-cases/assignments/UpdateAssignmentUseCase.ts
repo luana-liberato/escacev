@@ -6,6 +6,8 @@ import { EventRepository } from '../../repositories/EventRepository';
 import { Actor, MinistryAccessPolicy } from '../../services/MinistryAccessPolicy';
 import { AssignmentEligibility } from '../../services/AssignmentEligibility';
 import { ConflictDetail, ConflictDetectionService } from '../../services/ConflictDetectionService';
+import { Unavailability } from '../../entities/Unavailability';
+import { UnavailabilityRepository } from '../../repositories/UnavailabilityRepository';
 import { AppError } from '../../../shared/errors/AppError';
 
 /** institutionId vem do JWT (req.user), nunca do body. */
@@ -15,7 +17,7 @@ export interface UpdateAssignmentDTO {
   id: string;
   memberId?: string;
   positionId?: string;
-  confirmConflict?: boolean;
+  confirm?: boolean;
 }
 
 /** A edição foi aplicada: a alocação já está com os novos valores persistidos. */
@@ -25,23 +27,27 @@ export interface UpdateAssignmentApplied {
 }
 
 /**
- * A edição NÃO foi aplicada: gera conflito de horário (RN01) e o item não veio
- * confirmado. O admin decide: reenviar com `confirmConflict: true` (aplica com
- * `conflict = true`) ou desistir. Não é erro — é "aguardando decisão".
+ * A edição NÃO foi aplicada: dispara alerta — conflito de horário (RN01) e/ou
+ * indisponibilidade do membro no período (RN05) — e não veio confirmada. O admin
+ * decide: reenviar com `confirm: true` (aplica mesmo assim) ou desistir. Não é
+ * erro — é "aguardando decisão". Pelo menos uma das listas está não-vazia.
  */
 export interface UpdateAssignmentNeedsConfirmation {
   status: 'needs_confirmation';
   conflicts: ConflictDetail[];
+  unavailabilities: Unavailability[];
 }
 
 export type UpdateAssignmentResult = UpdateAssignmentApplied | UpdateAssignmentNeedsConfirmation;
 
 /**
  * Edita uma alocação existente — troca a pessoa, a função, ou ambas (edição
- * UNITÁRIA, um id por vez; não é lote como o AddAssignmentsUseCase). Integra o
- * motor de conflito (RN01/RN03) com a MESMA confirmação ciente do Add: não
- * bloqueia conflito, avisa e pede confirmação — só aplica uma edição
- * conflituosa se `confirmConflict = true`, e nesse caso `conflict` vira `true`.
+ * UNITÁRIA, um id por vez; não é lote como o AddAssignmentsUseCase). Integra os
+ * MESMOS alertas do Add com a mesma confirmação única: conflito de horário
+ * (RN01/RN03) e indisponibilidade do membro no período (RN05). Não bloqueia:
+ * avisa e pede confirmação — só aplica uma edição alertada se `confirm = true`.
+ * `conflict` vira `true` apenas quando havia conflito de horário; a
+ * indisponibilidade é só alerta e não marca a alocação.
  *
  * Revalida as MESMAS regras do Add para os valores novos, via a mesma
  * AssignmentEligibility (não duplica a checagem de pertencimento ao ministério):
@@ -58,10 +64,12 @@ export type UpdateAssignmentResult = UpdateAssignmentApplied | UpdateAssignmentN
  *     `excludeAssignmentId = assignment.id` — SEMPRE, mesmo quando o par não
  *     muda: é isso que impede a própria alocação de conflitar consigo mesma
  *     (sem isso, editar sem trocar nada acusaria auto-conflito).
- *  4. Sem conflito → aplica com `conflict = false` (recalculado, nunca herdado
- *     do estado antigo — resolve um conflito anterior automaticamente).
- *  5. Com conflito e SEM confirmConflict → `needs_confirmation`, NÃO aplica.
- *  6. Com conflito e COM confirmConflict = true → aplica com `conflict = true`.
+ *  4. Também busca as indisponibilidades que sobrepõem o horário do evento (RN05).
+ *  5. Sem conflito e sem indisponibilidade → aplica com `conflict = false`
+ *     (recalculado, nunca herdado — resolve um conflito anterior automaticamente).
+ *  6. Com algum alerta e SEM confirm → `needs_confirmation`, NÃO aplica.
+ *  7. Com algum alerta e COM confirm = true → aplica (`conflict = true` só se
+ *     havia conflito de horário).
  *
  * Dependências injetadas via construtor (Seção 4.2).
  */
@@ -74,6 +82,7 @@ export class UpdateAssignmentUseCase {
     private readonly eligibility: AssignmentEligibility,
     private readonly accessPolicy: MinistryAccessPolicy,
     private readonly conflictDetection: ConflictDetectionService,
+    private readonly unavailabilityRepo: UnavailabilityRepository,
   ) {}
 
   async execute(dto: UpdateAssignmentDTO): Promise<UpdateAssignmentResult> {
@@ -136,11 +145,18 @@ export class UpdateAssignmentUseCase {
       endsAt: event.endsAt,
       excludeAssignmentId: assignment.id,
     });
+    const unavailabilities = await this.unavailabilityRepo.findByMemberOverlapping(
+      candidate.memberId,
+      event.startsAt,
+      event.endsAt,
+    );
 
-    if (conflictResult.hasConflict && !dto.confirmConflict) {
-      return { status: 'needs_confirmation', conflicts: conflictResult.conflicts };
+    const hasAlert = conflictResult.hasConflict || unavailabilities.length > 0;
+    if (hasAlert && !dto.confirm) {
+      return { status: 'needs_confirmation', conflicts: conflictResult.conflicts, unavailabilities };
     }
 
+    // RN03: registra o conflito confirmado. A indisponibilidade (RN05) é só alerta.
     const finalAssignment = candidate.update({ conflict: conflictResult.hasConflict });
     const saved = await this.assignmentRepo.update(finalAssignment);
     return { status: 'applied', assignment: saved };

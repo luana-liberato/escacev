@@ -20,6 +20,7 @@ import { PrismaMemberRepository } from '../../database/repositories/PrismaMember
 import { PrismaPositionRepository } from '../../database/repositories/PrismaPositionRepository';
 import { PrismaPositionCompatibilityRepository } from '../../database/repositories/PrismaPositionCompatibilityRepository';
 import { PrismaMinistryMembershipRepository } from '../../database/repositories/PrismaMinistryMembershipRepository';
+import { PrismaUnavailabilityRepository } from '../../database/repositories/PrismaUnavailabilityRepository';
 import { respond } from '../../../shared/utils/respond';
 
 /**
@@ -31,7 +32,7 @@ import { respond } from '../../../shared/utils/respond';
  */
 export class AssignmentController {
   // POST /escalas/:id/alocacoes — adiciona um lote (array) de
-  // { memberId, positionId, confirmConflict? }.
+  // { memberId, positionId, confirm? }.
   add = async (req: Request, res: Response): Promise<void> => {
     const { institutionId, memberId, role } = AssignmentController.authUser(req);
     const items = AssignmentController.parseItems(req.body);
@@ -44,6 +45,7 @@ export class AssignmentController {
       AssignmentController.eligibility(),
       AssignmentController.accessPolicy(),
       AssignmentController.conflictDetection(),
+      new PrismaUnavailabilityRepository(),
     );
     const result = await useCase.execute({
       institutionId,
@@ -57,7 +59,7 @@ export class AssignmentController {
     // detalhes de needsConfirmation no corpo mesmo quando nada foi criado (um
     // status >= 400 zeraria data). needsConfirmation NÃO é erro: é um estado
     // de "aguardando decisão do admin" — o item pode ser reenviado com
-    // confirmConflict=true.
+    // confirm=true.
     respond(
       res,
       201,
@@ -75,11 +77,11 @@ export class AssignmentController {
   };
 
   // PATCH /alocacoes/:id — edição unitária: troca memberId e/ou positionId.
-  // body aceita confirmConflict? para confirmar cientemente uma edição conflituosa.
+  // body aceita confirm? para aplicar cientemente uma edição alertada (conflito e/ou indisponibilidade).
   update = async (req: Request, res: Response): Promise<void> => {
     const { institutionId, memberId, role } = AssignmentController.authUser(req);
     const { memberId: newMemberId, positionId: newPositionId } = req.body;
-    const confirmConflict = AssignmentController.parseConfirmConflict(req.body);
+    const confirm = AssignmentController.parseConfirm(req.body);
 
     const useCase = new UpdateAssignmentUseCase(
       new PrismaAssignmentRepository(),
@@ -89,6 +91,7 @@ export class AssignmentController {
       AssignmentController.eligibility(),
       AssignmentController.accessPolicy(),
       AssignmentController.conflictDetection(),
+      new PrismaUnavailabilityRepository(),
     );
     const result = await useCase.execute({
       institutionId,
@@ -96,7 +99,7 @@ export class AssignmentController {
       id: req.params.id,
       memberId: newMemberId,
       positionId: newPositionId,
-      confirmConflict,
+      confirm,
     });
 
     // Sempre 200 quando o use case não lança: needs_confirmation não é erro
@@ -106,8 +109,12 @@ export class AssignmentController {
       respond(
         res,
         200,
-        { status: result.status, conflicts: result.conflicts },
-        'Esta edição gera conflito de horário — reenvie com confirmConflict=true para confirmar',
+        {
+          status: result.status,
+          conflicts: result.conflicts,
+          unavailabilities: result.unavailabilities,
+        },
+        'Esta edição gera conflito de horário e/ou o membro está indisponível — reenvie com confirm=true para confirmar',
       );
       return;
     }
@@ -168,11 +175,11 @@ export class AssignmentController {
 
   /**
    * Valida a forma do corpo do POST (fronteira HTTP, não regra de negócio):
-   * precisa ser um array não-vazio de { memberId, positionId, confirmConflict? }
-   * com ids string não-vazias e confirmConflict booleano quando presente. Barra
-   * aqui evita que um item malformado escape para dentro do use case e seja
-   * rotulado incorretamente como duplicata (o try/catch do AddAssignmentsUseCase
-   * é só o backstop de corrida do @@unique).
+   * precisa ser um array não-vazio de { memberId, positionId, confirm? } com ids
+   * string não-vazias e confirm booleano quando presente. Barra aqui evita que um
+   * item malformado escape para dentro do use case e seja rotulado incorretamente
+   * como duplicata (o try/catch do AddAssignmentsUseCase é só o backstop de corrida
+   * do @@unique).
    */
   private static parseItems(body: unknown): AssignmentItem[] {
     if (!Array.isArray(body) || body.length === 0) {
@@ -189,24 +196,24 @@ export class AssignmentController {
       ) {
         throw new AppError(`Item ${index}: informe memberId e positionId (strings)`, 400);
       }
-      const confirmConflict = (item as { confirmConflict?: unknown }).confirmConflict;
-      if (confirmConflict !== undefined && typeof confirmConflict !== 'boolean') {
-        throw new AppError(`Item ${index}: confirmConflict deve ser um booleano`, 400);
+      const confirm = (item as { confirm?: unknown }).confirm;
+      if (confirm !== undefined && typeof confirm !== 'boolean') {
+        throw new AppError(`Item ${index}: confirm deve ser um booleano`, 400);
       }
       return {
         memberId: (item as { memberId: string }).memberId,
         positionId: (item as { positionId: string }).positionId,
-        confirmConflict,
+        confirm,
       };
     });
   }
 
-  /** confirmConflict opcional no body do PATCH: ausente vira undefined; presente exige booleano. */
-  private static parseConfirmConflict(body: unknown): boolean | undefined {
-    const value = (body as { confirmConflict?: unknown })?.confirmConflict;
+  /** confirm opcional no body do PATCH: ausente vira undefined; presente exige booleano. */
+  private static parseConfirm(body: unknown): boolean | undefined {
+    const value = (body as { confirm?: unknown })?.confirm;
     if (value === undefined) return undefined;
     if (typeof value !== 'boolean') {
-      throw new AppError('confirmConflict deve ser um booleano', 400);
+      throw new AppError('confirm deve ser um booleano', 400);
     }
     return value;
   }
@@ -222,7 +229,7 @@ export class AssignmentController {
     const parts: string[] = [];
     if (createdCount > 0) parts.push(`${createdCount} criada(s)`);
     if (failedCount > 0) parts.push(`${failedCount} falharam`);
-    if (needsConfirmationCount > 0) parts.push(`${needsConfirmationCount} aguardando confirmação de conflito`);
+    if (needsConfirmationCount > 0) parts.push(`${needsConfirmationCount} aguardando confirmação (conflito/indisponibilidade)`);
     return parts.join(', ');
   }
 
