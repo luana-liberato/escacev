@@ -1,7 +1,10 @@
 import { Unavailability } from '../../../entities/Unavailability';
+import { Member } from '../../../entities/Member';
 import { UnavailabilityRepository } from '../../../repositories/UnavailabilityRepository';
+import { MemberRepository } from '../../../repositories/MemberRepository';
 import { CreateUnavailabilityUseCase } from '../CreateUnavailabilityUseCase';
 import { ListMyUnavailabilitiesUseCase } from '../ListMyUnavailabilitiesUseCase';
+import { ListMemberUnavailabilitiesUseCase } from '../ListMemberUnavailabilitiesUseCase';
 import { DeleteUnavailabilityUseCase } from '../DeleteUnavailabilityUseCase';
 
 /**
@@ -38,6 +41,36 @@ class FakeUnavailabilityRepository implements UnavailabilityRepository {
 
   async delete(id: string): Promise<void> {
     this.items = this.items.filter((u) => u.id !== id);
+  }
+}
+
+/** Fake mínimo do MemberRepository — só o findById é exercitado (checagem de tenant). */
+class FakeMemberRepository implements MemberRepository {
+  members: Member[] = [];
+  async findById(id: string): Promise<Member | null> {
+    return this.members.find((m) => m.id === id) ?? null;
+  }
+  async findByAccountId(): Promise<Member | null> {
+    return null;
+  }
+  async findByEmailAndInstitution(): Promise<Member | null> {
+    return null;
+  }
+  async findByInstitution(institutionId: string): Promise<Member[]> {
+    return this.members.filter((m) => m.institutionId === institutionId);
+  }
+  async findPendingByEmail(): Promise<Member | null> {
+    return null;
+  }
+  async save(m: Member): Promise<Member> {
+    this.members.push(m);
+    return m;
+  }
+  async update(m: Member): Promise<Member> {
+    return m;
+  }
+  async linkAccount(): Promise<Member> {
+    throw new Error('não usado neste teste');
   }
 }
 
@@ -92,6 +125,54 @@ describe('ListMyUnavailabilitiesUseCase', () => {
     expect(mine).toHaveLength(2);
     expect(mine.every((u) => u.memberId === 'm1')).toBe(true);
     expect(mine[0].startsAt.getTime()).toBeLessThan(mine[1].startsAt.getTime()); // ordem cronológica
+  });
+});
+
+describe('ListMemberUnavailabilitiesUseCase', () => {
+  const INST = 'i1';
+
+  it('admin lista as indisponibilidades de um membro da sua instituição (ordem cronológica)', async () => {
+    const repo = new FakeUnavailabilityRepository();
+    const memberRepo = new FakeMemberRepository();
+    const member = Member.create({ institutionId: INST, name: 'João', email: 'joao@example.com' });
+    await memberRepo.save(member);
+    const createUC = new CreateUnavailabilityUseCase(repo);
+    await createUC.execute({ memberId: member.id, startsAt: d('2026-08-01T10:00:00Z'), endsAt: d('2026-08-01T12:00:00Z') });
+    await createUC.execute({ memberId: member.id, startsAt: d('2026-07-01T10:00:00Z'), endsAt: d('2026-07-01T12:00:00Z') });
+
+    const items = await new ListMemberUnavailabilitiesUseCase(repo, memberRepo).execute({
+      institutionId: INST,
+      memberId: member.id,
+    });
+
+    expect(items).toHaveLength(2);
+    expect(items[0].startsAt.getTime()).toBeLessThan(items[1].startsAt.getTime());
+  });
+
+  it('404 quando o membro é de outra instituição (não vaza dados de outro tenant)', async () => {
+    const repo = new FakeUnavailabilityRepository();
+    const memberRepo = new FakeMemberRepository();
+    const member = Member.create({ institutionId: 'i2', name: 'Alheio', email: 'alheio@example.com' });
+    await memberRepo.save(member);
+
+    await expect(
+      new ListMemberUnavailabilitiesUseCase(repo, memberRepo).execute({
+        institutionId: INST,
+        memberId: member.id,
+      }),
+    ).rejects.toMatchObject({ statusCode: 404 });
+  });
+
+  it('404 quando o membro não existe', async () => {
+    const repo = new FakeUnavailabilityRepository();
+    const memberRepo = new FakeMemberRepository();
+
+    await expect(
+      new ListMemberUnavailabilitiesUseCase(repo, memberRepo).execute({
+        institutionId: INST,
+        memberId: 'nao-existe',
+      }),
+    ).rejects.toMatchObject({ statusCode: 404 });
   });
 });
 

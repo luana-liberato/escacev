@@ -13,33 +13,41 @@ import { signTestToken } from '../../../../test/testAuth';
  * limpas em afterAll.
  */
 const INST_ID = 'test-inst-unavail';
+const OTHER_INST_ID = 'test-inst-unavail-other';
 const MEMBRO_ID = 'test-membro-unavail';
 const OTHER_MEMBRO_ID = 'test-membro-unavail-other';
+const ADMIN_ID = 'test-admin-unavail';
+const OTHER_INST_MEMBRO_ID = 'test-membro-unavail-otherinst';
 
 let membroToken: string;
 let otherMembroToken: string;
+let adminToken: string;
 
 async function cleanupFixtures() {
   await prisma.indisponibilidade.deleteMany({
-    where: { membroId: { in: [MEMBRO_ID, OTHER_MEMBRO_ID] } },
+    where: { membroId: { in: [MEMBRO_ID, OTHER_MEMBRO_ID, ADMIN_ID, OTHER_INST_MEMBRO_ID] } },
   });
-  await prisma.membro.deleteMany({ where: { instituicaoId: INST_ID } });
-  await prisma.instituicao.deleteMany({ where: { id: INST_ID } });
+  await prisma.membro.deleteMany({ where: { instituicaoId: { in: [INST_ID, OTHER_INST_ID] } } });
+  await prisma.instituicao.deleteMany({ where: { id: { in: [INST_ID, OTHER_INST_ID] } } });
 }
 
 beforeAll(async () => {
   await cleanupFixtures(); // defensivo: limpa resíduo de uma run anterior que falhou
 
   await prisma.instituicao.create({ data: { id: INST_ID, nome: 'Instituição de Teste (Indisponibilidade)' } });
+  await prisma.instituicao.create({ data: { id: OTHER_INST_ID, nome: 'Outra Instituição' } });
   await prisma.membro.createMany({
     data: [
       { id: MEMBRO_ID, instituicaoId: INST_ID, nome: 'Membro Teste', email: 'membro@test.escacev', perfil: 'MEMBRO' },
       { id: OTHER_MEMBRO_ID, instituicaoId: INST_ID, nome: 'Outro Membro', email: 'outro@test.escacev', perfil: 'MEMBRO' },
+      { id: ADMIN_ID, instituicaoId: INST_ID, nome: 'Admin Geral', email: 'admin@test.escacev', perfil: 'ADMIN_GERAL' },
+      { id: OTHER_INST_MEMBRO_ID, instituicaoId: OTHER_INST_ID, nome: 'Membro Alheio', email: 'alheio@test.escacev', perfil: 'MEMBRO' },
     ],
   });
 
   membroToken = signTestToken({ memberId: MEMBRO_ID, institutionId: INST_ID, role: 'MEMBRO' });
   otherMembroToken = signTestToken({ memberId: OTHER_MEMBRO_ID, institutionId: INST_ID, role: 'MEMBRO' });
+  adminToken = signTestToken({ memberId: ADMIN_ID, institutionId: INST_ID, role: 'ADMIN_GERAL' });
 });
 
 afterAll(async () => {
@@ -124,6 +132,48 @@ describe('GET /indisponibilidades/minhas', () => {
 
   it('sem token (401)', async () => {
     const res = await request(app).get('/indisponibilidades/minhas');
+    expect(res.status).toBe(401);
+  });
+});
+
+describe('GET /membros/:id/indisponibilidades (consulta do admin)', () => {
+  it('ADMIN lista as indisponibilidades de um membro da sua instituição (200)', async () => {
+    await prisma.indisponibilidade.create({
+      data: { id: 'test-unavail-admin-view', membroId: OTHER_MEMBRO_ID, inicio: new Date('2026-09-01T10:00:00.000Z'), fim: new Date('2026-09-01T12:00:00.000Z') },
+    });
+
+    const res = await request(app)
+      .get(`/membros/${OTHER_MEMBRO_ID}/indisponibilidades`)
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.some((u: { id: string }) => u.id === 'test-unavail-admin-view')).toBe(true);
+    expect(res.body.data.every((u: { memberId: string }) => u.memberId === OTHER_MEMBRO_ID)).toBe(true);
+  });
+
+  it('MEMBRO não pode consultar as de um membro (403)', async () => {
+    const res = await request(app)
+      .get(`/membros/${OTHER_MEMBRO_ID}/indisponibilidades`)
+      .set('Authorization', `Bearer ${membroToken}`);
+    expect(res.status).toBe(403);
+  });
+
+  it('404 para membro de outra instituição (não vaza tenant)', async () => {
+    const res = await request(app)
+      .get(`/membros/${OTHER_INST_MEMBRO_ID}/indisponibilidades`)
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(res.status).toBe(404);
+  });
+
+  it('404 para membro inexistente', async () => {
+    const res = await request(app)
+      .get('/membros/nao-existe/indisponibilidades')
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(res.status).toBe(404);
+  });
+
+  it('sem token (401)', async () => {
+    const res = await request(app).get(`/membros/${OTHER_MEMBRO_ID}/indisponibilidades`);
     expect(res.status).toBe(401);
   });
 });
