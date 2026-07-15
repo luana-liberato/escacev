@@ -305,7 +305,7 @@
 
 ### Infraestrutura de e-mail (RF08)
 - [x] Configurar serviço de envio (Nodemailer + SMTP)
-- [ ] Criar templates de e-mail (convite, escalado, lembrete, indisponibilidade-conflito)
+- [ ] Criar templates de e-mail — convite/escalado/indisponibilidade-conflito FEITOS (`emailTemplates.ts`); lembrete = S4 (🟡, não implementado nesta rodada)
 - [x] Entidade `Notificacao` (registro interno) + use case para criar/listar/marcar como lida
 
 ### Gatilhos de notificação (RF08, RN08)
