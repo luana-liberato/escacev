@@ -40,14 +40,15 @@ export class AppNotifier implements Notifier {
     eventName: string;
     startsAt: Date;
     positionName: string;
-  }): Promise<void> {
+  }): Promise<boolean> {
     await this.persist({
       memberId: input.memberId,
       type: 'ESCALADO',
       title: 'Você foi escalado',
       body: `${input.eventName} — função ${input.positionName}`,
     });
-    await this.emailService.send({
+    // Devolve se o e-mail saiu (o in-app já foi gravado acima, canal confiável).
+    return this.emailService.send({
       to: input.email,
       ...scheduledEmail({
         memberName: input.memberName,
@@ -55,6 +56,17 @@ export class AppNotifier implements Notifier {
         startsAt: input.startsAt,
         positionName: input.positionName,
       }),
+    });
+  }
+
+  async systemNotice(input: { memberId: string; title: string; body: string }): Promise<void> {
+    // In-app apenas (tipo SISTEMA): o canal que costuma falhar é o e-mail, então
+    // um aviso de falha de e-mail não deve depender de e-mail.
+    await this.persist({
+      memberId: input.memberId,
+      type: 'SISTEMA',
+      title: input.title,
+      body: input.body,
     });
   }
 

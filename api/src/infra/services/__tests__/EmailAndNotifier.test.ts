@@ -28,11 +28,13 @@ class FakeNotificationRepository implements NotificationRepository {
   }
 }
 
-/** Fake do EmailService — registra as mensagens em vez de enviar. */
+/** Fake do EmailService — registra as mensagens em vez de enviar. `deliver` controla o retorno. */
 class FakeEmailService implements EmailService {
   sent: EmailMessage[] = [];
-  async send(message: EmailMessage): Promise<void> {
+  deliver = true;
+  async send(message: EmailMessage): Promise<boolean> {
     this.sent.push(message);
+    return this.deliver;
   }
 }
 
@@ -42,9 +44,10 @@ describe('NodemailerEmailService', () => {
     // Config sem host/user/pass → não configurado → modo log.
     const service = new NodemailerEmailService({ config: { port: 587, from: 'noreply@escacev.app' } });
 
+    // Modo log conta como "ok" (true) — não é falha de envio.
     await expect(
       service.send({ to: 'a@b.c', subject: 'Oi', html: '<p>oi</p>', text: 'oi' }),
-    ).resolves.toBeUndefined();
+    ).resolves.toBe(true);
 
     expect(info).toHaveBeenCalledWith(expect.stringContaining('SMTP não configurado'));
     info.mockRestore();
@@ -81,9 +84,10 @@ describe('NodemailerEmailService', () => {
       transporter,
     });
 
+    // Não lança e devolve false (envio real falhou).
     await expect(
       service.send({ to: 'a@b.c', subject: 's', html: 'h', text: 't' }),
-    ).resolves.toBeUndefined();
+    ).resolves.toBe(false);
 
     expect(err).toHaveBeenCalled();
     err.mockRestore();
@@ -110,23 +114,46 @@ describe('AppNotifier', () => {
     return { repo, email, notifier };
   };
 
-  it('memberScheduled: grava notificação in-app ESCALADO e envia e-mail', async () => {
+  const scheduledInput = {
+    memberId: 'm1',
+    email: 'm1@ex.com',
+    memberName: 'João',
+    eventName: 'Culto de Domingo',
+    startsAt: new Date('2026-08-02T13:00:00Z'),
+    positionName: 'Recepção',
+  };
+
+  it('memberScheduled: grava notificação in-app ESCALADO, envia e-mail e devolve true', async () => {
     const { repo, email, notifier } = buildNotifier();
 
-    await notifier.memberScheduled({
-      memberId: 'm1',
-      email: 'm1@ex.com',
-      memberName: 'João',
-      eventName: 'Culto de Domingo',
-      startsAt: new Date('2026-08-02T13:00:00Z'),
-      positionName: 'Recepção',
-    });
+    const delivered = await notifier.memberScheduled(scheduledInput);
 
+    expect(delivered).toBe(true);
     expect(repo.items).toHaveLength(1);
     expect(repo.items[0]).toMatchObject({ memberId: 'm1', type: 'ESCALADO' });
     expect(email.sent).toHaveLength(1);
     expect(email.sent[0].to).toBe('m1@ex.com');
     expect(email.sent[0].subject).toContain('Culto de Domingo');
+  });
+
+  it('memberScheduled: devolve false quando o e-mail falha (in-app ainda é gravado)', async () => {
+    const { repo, email, notifier } = buildNotifier();
+    email.deliver = false;
+
+    const delivered = await notifier.memberScheduled(scheduledInput);
+
+    expect(delivered).toBe(false);
+    expect(repo.items).toHaveLength(1); // o in-app confiável foi gravado mesmo assim
+  });
+
+  it('systemNotice: grava notificação SISTEMA in-app e NÃO envia e-mail', async () => {
+    const { repo, email, notifier } = buildNotifier();
+
+    await notifier.systemNotice({ memberId: 'pub1', title: 'Falhou', body: 'detalhes' });
+
+    expect(email.sent).toHaveLength(0); // sem e-mail (o canal que falha é o e-mail)
+    expect(repo.items).toHaveLength(1);
+    expect(repo.items[0]).toMatchObject({ memberId: 'pub1', type: 'SISTEMA' });
   });
 
   it('memberInvited: e-mail-only, usa INSTITUTION_NAME e o link de login (APP_LOGIN_URL) do ambiente', async () => {
@@ -157,16 +184,8 @@ describe('AppNotifier', () => {
     repo.saveShouldThrow = true;
     const errSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
 
-    await expect(
-      notifier.memberScheduled({
-        memberId: 'm1',
-        email: 'm1@ex.com',
-        memberName: 'João',
-        eventName: 'Culto',
-        startsAt: new Date('2026-08-02T13:00:00Z'),
-        positionName: 'Recepção',
-      }),
-    ).resolves.toBeUndefined();
+    // Não lança e ainda devolve o resultado do envio (true = e-mail saiu).
+    await expect(notifier.memberScheduled(scheduledInput)).resolves.toBe(true);
 
     expect(repo.items).toHaveLength(0); // não gravou
     expect(email.sent).toHaveLength(1); // mas enviou o e-mail

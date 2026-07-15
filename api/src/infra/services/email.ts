@@ -15,9 +15,12 @@ export interface EmailMessage extends EmailContent {
 /**
  * Porta de envio de e-mail. É best-effort por contrato: `send` NUNCA lança —
  * falha de e-mail loga e segue, jamais quebra a operação que a disparou (Fase 7).
+ * Devolve `true` quando o e-mail foi enviado (ou logado, em modo-dev sem SMTP) e
+ * `false` quando o envio real falhou — para quem quiser reagir à falha sem tratar
+ * exceção (ex.: avisar o publicador da escala).
  */
 export interface EmailService {
-  send(message: EmailMessage): Promise<void>;
+  send(message: EmailMessage): Promise<boolean>;
 }
 
 /** Configuração SMTP lida do ambiente. */
@@ -85,17 +88,19 @@ export class NodemailerEmailService implements EmailService {
     }
   }
 
-  async send(message: EmailMessage): Promise<void> {
-    // Modo log: sem SMTP, só registra o que seria enviado. Não é erro.
+  async send(message: EmailMessage): Promise<boolean> {
+    // Modo log: sem SMTP, só registra o que seria enviado. Não é erro — conta como
+    // "ok" (true) para não sinalizar falha em ambiente sem credencial.
     if (!this.transporter) {
       // eslint-disable-next-line no-console
       console.info(
         `[email:log] (SMTP não configurado) para=${message.to} assunto="${message.subject}"`,
       );
-      return;
+      return true;
     }
 
     // Best-effort: qualquer falha de envio loga e é engolida — nunca propaga.
+    // Devolve false para o caller poder reagir (sem tratar exceção).
     try {
       await this.transporter.sendMail({
         from: this.config.from,
@@ -104,9 +109,11 @@ export class NodemailerEmailService implements EmailService {
         html: message.html,
         text: message.text,
       });
+      return true;
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error(`[email:erro] falha ao enviar para=${message.to}:`, err);
+      return false;
     }
   }
 }
