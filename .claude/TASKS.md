@@ -94,7 +94,7 @@
 - [x] Use case: atualizar membro (nome, perfil, ativo)
 - [x] Use case: desativar/remover membro (soft delete via `ativo`)
 - [x] Endpoints: `POST /membros`, `GET /membros`, `GET /membros/:id`, `PUT /membros/:id`, `DELETE /membros/:id`
-- [ ] Disparar e-mail de convite ao criar membro (integra com Fase 7)
+- [x] Disparar e-mail de convite ao criar membro (integra com Fase 7)
 
 ### Ministérios (RF03)
 > Escrita restrita ao `ADMIN_GERAL` neste bloco. A edição escopada pelo
@@ -266,7 +266,7 @@
       mensal é a principal** forma de consumo do membro. (Período `?from&?to`; mês corrente por padrão.)
 - [x] Endpoint: `PATCH /escalas/:id/publicar`
 - [x] Endpoint: `GET /minhas-escalas`
-- [ ] Disparar notificação ao publicar (integra com Fase 7)
+- [x] Disparar notificação ao publicar (integra com Fase 7)
 
 ---
 
@@ -293,7 +293,7 @@
 - [x] Permitir que o admin ignore o alerta e escale mesmo assim
       (flag única `confirm` cobre conflito + indisponibilidade; a indisponibilidade é só alerta, não marca a alocação)
 - [x] Endpoints: `POST /indisponibilidades`, `GET /indisponibilidades/minhas`, `DELETE /indisponibilidades/:id`
-- [ ] Disparar alerta ao admin quando membro registra indisponibilidade que afeta escala já existente (integra com Fase 7)
+- [x] Disparar alerta ao admin quando membro registra indisponibilidade que afeta escala já existente (integra com Fase 7)
 
 ### Sobrecarga (RN06) — pode ser tratada aqui ou no dashboard
 - [ ] Definir limite configurável de escalas simultâneas por membro no período
@@ -309,10 +309,10 @@
 - [x] Entidade `Notificacao` (registro interno) + use case para criar/listar/marcar como lida
 
 ### Gatilhos de notificação (RF08, RN08)
-- [ ] E-mail de **convite** ao cadastrar um novo membro
-- [ ] E-mail ao membro quando é **escalado** em um evento (na publicação)
+- [x] E-mail de **convite** ao cadastrar um novo membro
+- [x] E-mail ao membro quando é **escalado** em um evento (na publicação)
 - [ ] **Lembrete** antes do evento (X horas antes — configurável)
-- [ ] Alerta ao admin quando membro registra **indisponibilidade** que conflita com escala existente
+- [x] Alerta ao admin quando membro registra **indisponibilidade** que conflita com escala existente
 - [x] Endpoints internos: `GET /notificacoes`, `PATCH /notificacoes/:id/lida`
 - [ ] Decidir mecanismo do lembrete (cron job / agendador na API)
 
