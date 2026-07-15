@@ -311,10 +311,10 @@
 ### Gatilhos de notificação (RF08, RN08)
 - [x] E-mail de **convite** ao cadastrar um novo membro
 - [x] E-mail ao membro quando é **escalado** em um evento (na publicação)
-- [ ] **Lembrete** antes do evento (X horas antes — configurável)
+- [ ] 🟡 **Lembrete** antes do evento (X horas antes — configurável) — S4, não implementado nesta rodada
 - [x] Alerta ao admin quando membro registra **indisponibilidade** que conflita com escala existente
 - [x] Endpoints internos: `GET /notificacoes`, `PATCH /notificacoes/:id/lida`
-- [ ] Decidir mecanismo do lembrete (cron job / agendador na API)
+- [ ] 🟡 Decidir mecanismo do lembrete (cron job / agendador na API) — S4
 
 ---
 
