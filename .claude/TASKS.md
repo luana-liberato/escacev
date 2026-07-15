@@ -304,7 +304,7 @@
 ## Fase 7 — Notificações por E-mail 🔴
 
 ### Infraestrutura de e-mail (RF08)
-- [ ] Configurar serviço de envio (Nodemailer + SMTP)
+- [x] Configurar serviço de envio (Nodemailer + SMTP)
 - [ ] Criar templates de e-mail (convite, escalado, lembrete, indisponibilidade-conflito)
 - [x] Entidade `Notificacao` (registro interno) + use case para criar/listar/marcar como lida
 
