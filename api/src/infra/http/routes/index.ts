@@ -11,6 +11,7 @@ import { scheduleRoutes } from './schedule.routes';
 import { myScheduleRoutes } from './mySchedule.routes';
 import { assignmentRoutes } from './assignment.routes';
 import { unavailabilityRoutes } from './unavailability.routes';
+import { notificationRoutes } from './notification.routes';
 
 export const routes = Router();
 
@@ -27,3 +28,4 @@ routes.use(scheduleRoutes);
 routes.use(myScheduleRoutes);
 routes.use(assignmentRoutes);
 routes.use(unavailabilityRoutes);
+routes.use(notificationRoutes);
