@@ -1,5 +1,6 @@
 import { Member } from '../../../entities/Member';
 import { MemberRepository } from '../../../repositories/MemberRepository';
+import { RecordingNotifier } from '../../../../test/fakeNotifier';
 import { CreateMemberUseCase } from '../CreateMemberUseCase';
 import { ListMembersUseCase } from '../ListMembersUseCase';
 import { GetMemberUseCase } from '../GetMemberUseCase';
@@ -53,7 +54,7 @@ const base = { institutionId: INST, name: 'João Silva', email: 'joao@example.co
 describe('CreateMemberUseCase', () => {
   it('cria um membro (convite) com accountId nulo e perfil padrão', async () => {
     const repo = new FakeMemberRepository();
-    const member = await new CreateMemberUseCase(repo).execute(base);
+    const member = await new CreateMemberUseCase(repo, new RecordingNotifier()).execute(base);
 
     expect(member.id).toBeTruthy();
     expect(member.accountId).toBeNull();
@@ -63,7 +64,7 @@ describe('CreateMemberUseCase', () => {
 
   it('rejeita e-mail duplicado na mesma instituição (409)', async () => {
     const repo = new FakeMemberRepository();
-    const useCase = new CreateMemberUseCase(repo);
+    const useCase = new CreateMemberUseCase(repo, new RecordingNotifier());
     await useCase.execute(base);
 
     await expect(useCase.execute({ ...base, name: 'Outro' })).rejects.toMatchObject({
@@ -78,19 +79,38 @@ describe('CreateMemberUseCase', () => {
 
   it('permite o mesmo e-mail em instituições diferentes', async () => {
     const repo = new FakeMemberRepository();
-    const useCase = new CreateMemberUseCase(repo);
+    const useCase = new CreateMemberUseCase(repo, new RecordingNotifier());
     await useCase.execute(base);
 
     const outra = await useCase.execute({ ...base, institutionId: 'i2' });
     expect(outra.institutionId).toBe('i2');
     expect(repo.members).toHaveLength(2);
   });
+
+  it('dispara o e-mail de convite ao criar o membro (Fase 7)', async () => {
+    const repo = new FakeMemberRepository();
+    const notifier = new RecordingNotifier();
+    const member = await new CreateMemberUseCase(repo, notifier).execute(base);
+
+    expect(notifier.invited).toHaveLength(1);
+    expect(notifier.invited[0]).toEqual({ to: member.email, memberName: member.name });
+  });
+
+  it('não dispara convite quando a criação falha (e-mail duplicado, 409)', async () => {
+    const repo = new FakeMemberRepository();
+    const notifier = new RecordingNotifier();
+    const useCase = new CreateMemberUseCase(repo, notifier);
+    await useCase.execute(base);
+
+    await expect(useCase.execute(base)).rejects.toMatchObject({ statusCode: 409 });
+    expect(notifier.invited).toHaveLength(1); // só o primeiro, bem-sucedido
+  });
 });
 
 describe('ListMembersUseCase', () => {
   it('lista só os membros da instituição do usuário (isolamento por tenant)', async () => {
     const repo = new FakeMemberRepository();
-    const create = new CreateMemberUseCase(repo);
+    const create = new CreateMemberUseCase(repo, new RecordingNotifier());
     await create.execute(base);
     await create.execute({ ...base, email: 'maria@example.com', name: 'Maria' });
     await create.execute({ ...base, institutionId: 'i2', email: 'alheio@example.com' });
@@ -104,7 +124,7 @@ describe('ListMembersUseCase', () => {
 describe('GetMemberUseCase', () => {
   it('404 quando o membro é de outra instituição (não vaza outro tenant)', async () => {
     const repo = new FakeMemberRepository();
-    const member = await new CreateMemberUseCase(repo).execute(base);
+    const member = await new CreateMemberUseCase(repo, new RecordingNotifier()).execute(base);
 
     await expect(
       new GetMemberUseCase(repo).execute({ id: member.id, institutionId: 'i2' }),
@@ -122,7 +142,7 @@ describe('GetMemberUseCase', () => {
 describe('UpdateMemberUseCase', () => {
   it('atualiza nome e perfil do membro do próprio tenant', async () => {
     const repo = new FakeMemberRepository();
-    const member = await new CreateMemberUseCase(repo).execute(base);
+    const member = await new CreateMemberUseCase(repo, new RecordingNotifier()).execute(base);
 
     const updated = await new UpdateMemberUseCase(repo).execute({
       id: member.id,
@@ -137,7 +157,7 @@ describe('UpdateMemberUseCase', () => {
 
   it('404 ao tentar atualizar membro de outra instituição', async () => {
     const repo = new FakeMemberRepository();
-    const member = await new CreateMemberUseCase(repo).execute(base);
+    const member = await new CreateMemberUseCase(repo, new RecordingNotifier()).execute(base);
 
     await expect(
       new UpdateMemberUseCase(repo).execute({ id: member.id, institutionId: 'i2', name: 'X' }),
@@ -148,7 +168,7 @@ describe('UpdateMemberUseCase', () => {
 describe('DeactivateMemberUseCase', () => {
   it('desativa via soft delete (ativo = false), preservando o registro', async () => {
     const repo = new FakeMemberRepository();
-    const member = await new CreateMemberUseCase(repo).execute(base);
+    const member = await new CreateMemberUseCase(repo, new RecordingNotifier()).execute(base);
 
     const deactivated = await new DeactivateMemberUseCase(repo).execute({
       id: member.id,
@@ -161,7 +181,7 @@ describe('DeactivateMemberUseCase', () => {
 
   it('é idempotente: membro já inativo é retornado como está', async () => {
     const repo = new FakeMemberRepository();
-    const member = await new CreateMemberUseCase(repo).execute(base);
+    const member = await new CreateMemberUseCase(repo, new RecordingNotifier()).execute(base);
     const deactivate = new DeactivateMemberUseCase(repo);
 
     await deactivate.execute({ id: member.id, institutionId: INST });
@@ -171,7 +191,7 @@ describe('DeactivateMemberUseCase', () => {
 
   it('404 ao desativar membro de outra instituição', async () => {
     const repo = new FakeMemberRepository();
-    const member = await new CreateMemberUseCase(repo).execute(base);
+    const member = await new CreateMemberUseCase(repo, new RecordingNotifier()).execute(base);
 
     await expect(
       new DeactivateMemberUseCase(repo).execute({ id: member.id, institutionId: 'i2' }),

@@ -12,6 +12,7 @@ import {
   MemberMinistryView,
 } from '../../../repositories/MinistryMembershipRepository';
 import { MinistryAccessPolicy, Actor } from '../../../services/MinistryAccessPolicy';
+import { RecordingNotifier } from '../../../../test/fakeNotifier';
 import { CreateMemberUseCase } from '../../members/CreateMemberUseCase';
 import { AssociateMemberToMinistryUseCase } from '../AssociateMemberToMinistryUseCase';
 import { SetMembershipAdminUseCase } from '../SetMembershipAdminUseCase';
@@ -330,21 +331,23 @@ describe('ListMembershipsUseCase', () => {
 
 describe('InviteMemberToMinistryUseCase', () => {
   function buildInvite(s: Awaited<ReturnType<typeof scenario>>) {
-    const createMember = new CreateMemberUseCase(s.memberRepo);
-    return new InviteMemberToMinistryUseCase(
+    const notifier = new RecordingNotifier();
+    const createMember = new CreateMemberUseCase(s.memberRepo, notifier);
+    const useCase = new InviteMemberToMinistryUseCase(
       s.membershipRepo,
       s.ministryRepo,
       s.memberRepo,
       createMember,
       s.policy,
     );
+    return { useCase, notifier };
   }
 
-  it('e-mail novo: cria o Membro e associa (created = true)', async () => {
+  it('e-mail novo: cria o Membro e associa (created = true) e dispara o convite', async () => {
     const s = await scenario();
-    const invite = buildInvite(s);
+    const { useCase, notifier } = buildInvite(s);
 
-    const result = await invite.execute({
+    const result = await useCase.execute({
       institutionId: INST,
       actor: ADMIN_GERAL,
       ministryId: s.ministry.id,
@@ -355,13 +358,15 @@ describe('InviteMemberToMinistryUseCase', () => {
     expect(result.created).toBe(true);
     expect(result.member.email).toBe('maria@example.com');
     expect(s.membershipRepo.memberships).toHaveLength(1);
+    // Membro novo → convite disparado (via CreateMemberUseCase delegado).
+    expect(notifier.invited).toEqual([{ to: 'maria@example.com', memberName: 'Maria' }]);
   });
 
-  it('e-mail existente fora do ministério: só associa (created = false)', async () => {
+  it('e-mail existente fora do ministério: só associa (created = false), SEM convite', async () => {
     const s = await scenario(); // já tem s.member joao@example.com
-    const invite = buildInvite(s);
+    const { useCase, notifier } = buildInvite(s);
 
-    const result = await invite.execute({
+    const result = await useCase.execute({
       institutionId: INST,
       actor: ADMIN_GERAL,
       ministryId: s.ministry.id,
@@ -372,6 +377,8 @@ describe('InviteMemberToMinistryUseCase', () => {
     expect(result.created).toBe(false);
     expect(result.member.id).toBe(s.member.id);
     expect(s.membershipRepo.memberships).toHaveLength(1);
+    // Membro já existia → nenhum convite (ele já está na instituição).
+    expect(notifier.invited).toHaveLength(0);
   });
 
   it('e-mail já no ministério: 409', async () => {
@@ -379,10 +386,10 @@ describe('InviteMemberToMinistryUseCase', () => {
     await s.membershipRepo.save(
       MinistryMembership.create({ memberId: s.member.id, ministryId: s.ministry.id }),
     );
-    const invite = buildInvite(s);
+    const { useCase } = buildInvite(s);
 
     await expect(
-      invite.execute({
+      useCase.execute({
         institutionId: INST,
         actor: ADMIN_GERAL,
         ministryId: s.ministry.id,
@@ -398,9 +405,9 @@ describe('InviteMemberToMinistryUseCase', () => {
     await s.membershipRepo.save(
       MinistryMembership.create({ memberId: 'am', ministryId: s.ministry.id, isAdmin: true }),
     );
-    const invite = buildInvite(s);
+    const { useCase } = buildInvite(s);
 
-    const result = await invite.execute({
+    const result = await useCase.execute({
       institutionId: INST,
       actor: { memberId: 'am', role: 'ADMIN_MINISTERIO' },
       ministryId: s.ministry.id,
@@ -414,9 +421,9 @@ describe('InviteMemberToMinistryUseCase', () => {
 
   it('ADMIN_GERAL pode convidar já como admin do ministério (isAdmin=true)', async () => {
     const s = await scenario();
-    const invite = buildInvite(s);
+    const { useCase } = buildInvite(s);
 
-    const result = await invite.execute({
+    const result = await useCase.execute({
       institutionId: INST,
       actor: ADMIN_GERAL,
       ministryId: s.ministry.id,

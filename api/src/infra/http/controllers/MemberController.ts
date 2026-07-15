@@ -8,6 +8,7 @@ import { GetMemberUseCase } from '../../../domain/use-cases/members/GetMemberUse
 import { UpdateMemberUseCase } from '../../../domain/use-cases/members/UpdateMemberUseCase';
 import { DeactivateMemberUseCase } from '../../../domain/use-cases/members/DeactivateMemberUseCase';
 import { PrismaMemberRepository } from '../../database/repositories/PrismaMemberRepository';
+import { buildNotifier } from '../../services/notifierFactory';
 import { respond } from '../../../shared/utils/respond';
 
 export class MemberController {
@@ -16,7 +17,7 @@ export class MemberController {
     const { institutionId } = MemberController.authUser(req);
     const { name, email, role } = req.body;
 
-    const useCase = new CreateMemberUseCase(new PrismaMemberRepository());
+    const useCase = new CreateMemberUseCase(new PrismaMemberRepository(), buildNotifier());
     const member = await useCase.execute({ institutionId, name, email, role });
 
     respond(res, 201, MemberController.serialize(member), 'Membro criado');

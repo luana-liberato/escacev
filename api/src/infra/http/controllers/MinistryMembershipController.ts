@@ -18,6 +18,7 @@ import { MinistryAccessPolicy } from '../../../domain/services/MinistryAccessPol
 import { PrismaMinistryMembershipRepository } from '../../database/repositories/PrismaMinistryMembershipRepository';
 import { PrismaMinistryRepository } from '../../database/repositories/PrismaMinistryRepository';
 import { PrismaMemberRepository } from '../../database/repositories/PrismaMemberRepository';
+import { buildNotifier } from '../../services/notifierFactory';
 import { respond } from '../../../shared/utils/respond';
 
 export class MinistryMembershipController {
@@ -60,7 +61,7 @@ export class MinistryMembershipController {
       new PrismaMinistryMembershipRepository(),
       new PrismaMinistryRepository(),
       memberRepo,
-      new CreateMemberUseCase(memberRepo),
+      new CreateMemberUseCase(memberRepo, buildNotifier()),
       MinistryMembershipController.accessPolicy(),
     );
     const result = await useCase.execute({
