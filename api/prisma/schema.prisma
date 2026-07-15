@@ -314,7 +314,7 @@ model Troca {
 model Notificacao {
   id       String   @id @default(cuid())
   membroId String
-  tipo     String   // "ESCALADO" | "INDISPONIBILIDADE_CONFLITO" | "LEMBRETE" | "TROCA"
+  tipo     String   // "ESCALADO" | "INDISPONIBILIDADE_CONFLITO" | "LEMBRETE" | "TROCA" | "SISTEMA"
   titulo   String
   corpo    String
   lida     Boolean  @default(false)
