@@ -23,7 +23,9 @@ export interface Notifier {
 
   /**
    * Membro escalado em um evento (na publicação da escala, RN04). Grava a
-   * notificação in-app e envia o e-mail best-effort.
+   * notificação in-app e envia o e-mail best-effort. Devolve `true` se o e-mail
+   * saiu (ou foi logado em modo-dev) e `false` se o envio real falhou — o
+   * chamador usa isso para avisar o publicador quando algum e-mail não sai.
    */
   memberScheduled(input: {
     memberId: string;
@@ -32,7 +34,15 @@ export interface Notifier {
     eventName: string;
     startsAt: Date;
     positionName: string;
-  }): Promise<void>;
+  }): Promise<boolean>;
+
+  /**
+   * Aviso de sistema para um membro específico (tipo SISTEMA). É in-app apenas —
+   * usado, por exemplo, para avisar o publicador da escala de que alguns e-mails
+   * de notificação não puderam ser enviados. Sem e-mail: o canal que falhou é
+   * justamente o e-mail.
+   */
+  systemNotice(input: { memberId: string; title: string; body: string }): Promise<void>;
 
   /**
    * Indisponibilidade recém-registrada por um membro conflita com uma escala já

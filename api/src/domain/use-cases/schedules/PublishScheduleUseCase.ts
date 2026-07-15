@@ -1,10 +1,9 @@
 import { Schedule } from '../../entities/Schedule';
 import { ScheduleRepository } from '../../repositories/ScheduleRepository';
 import { MinistryRepository } from '../../repositories/MinistryRepository';
-import { AssignmentRepository } from '../../repositories/AssignmentRepository';
-import { EventRepository } from '../../repositories/EventRepository';
 import { Actor, MinistryAccessPolicy } from '../../services/MinistryAccessPolicy';
-import { Notifier } from '../../services/Notifier';
+import { PublishNotification } from '../../services/PublishNotification';
+import { BackgroundTasks } from '../../services/BackgroundTasks';
 import { AppError } from '../../../shared/errors/AppError';
 
 /** institutionId vem do JWT (req.user), nunca do body. */
@@ -27,19 +26,18 @@ export interface PublishScheduleDTO {
  * precedência por publicação (RN07). A ordem 404 → 403 → 409 garante que o 409 de
  * "já publicada" só apareça a quem tem permissão. Dependências via construtor (4.2).
  *
- * Ao publicar (RN04), notifica cada membro escalado (Fase 7): a escala passa a ser
- * visível ao membro, então é o momento de avisá-lo. O bloco de notificação é
- * best-effort e isolado em try/catch — nem a coleta de dados nem o envio quebram a
- * publicação (o Notifier já é não-lançante; o try/catch protege as leituras).
+ * Ao publicar (RN04), notifica cada escalado (Fase 7) — mas em SEGUNDO PLANO (via
+ * BackgroundTasks): a resposta HTTP volta assim que a escala é persistida, sem
+ * esperar os e-mails. O `actor` (quem publicou) é passado ao PublishNotification
+ * para receber um aviso in-app caso algum e-mail não seja enviado.
  */
 export class PublishScheduleUseCase {
   constructor(
     private readonly scheduleRepo: ScheduleRepository,
     private readonly ministryRepo: MinistryRepository,
     private readonly accessPolicy: MinistryAccessPolicy,
-    private readonly assignmentRepo: AssignmentRepository,
-    private readonly eventRepo: EventRepository,
-    private readonly notifier: Notifier,
+    private readonly publishNotification: PublishNotification,
+    private readonly background: BackgroundTasks,
   ) {}
 
   async execute(dto: PublishScheduleDTO): Promise<Schedule> {
@@ -58,35 +56,9 @@ export class PublishScheduleUseCase {
     const published = schedule.publish();
     const saved = await this.scheduleRepo.update(published);
 
-    await this.notifyScheduledMembers(saved);
+    // Fire-and-forget: notifica os escalados fora do request (não bloqueia a
+    // resposta). Falhas de envio viram aviso in-app ao publicador (dto.actor).
+    this.background.run(() => this.publishNotification.notify(saved, dto.actor.memberId));
     return saved;
-  }
-
-  /**
-   * Avisa cada membro escalado que a escala foi publicada. Isolado e não-lançante:
-   * uma falha aqui (leitura de evento/alocações ou envio) apenas loga — a
-   * publicação já está persistida e não deve ser revertida por um problema de
-   * notificação (efeito colateral, fora da transação da operação).
-   */
-  private async notifyScheduledMembers(schedule: Schedule): Promise<void> {
-    try {
-      const event = await this.eventRepo.findById(schedule.eventId);
-      if (!event) return; // sem evento resolvível, não há o que notificar
-
-      const details = await this.assignmentRepo.findByScheduleWithDetails(schedule.id);
-      for (const { member, position } of details) {
-        await this.notifier.memberScheduled({
-          memberId: member.id,
-          email: member.email,
-          memberName: member.name,
-          eventName: event.name,
-          startsAt: event.startsAt,
-          positionName: position.name,
-        });
-      }
-    } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error('[notificacao:erro] falha ao notificar escalados da publicação:', err);
-    }
   }
 }

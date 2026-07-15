@@ -11,13 +11,15 @@ export type NotificationType =
   | 'ESCALADO'
   | 'INDISPONIBILIDADE_CONFLITO'
   | 'LEMBRETE'
-  | 'TROCA';
+  | 'TROCA'
+  | 'SISTEMA';
 
 const NOTIFICATION_TYPES: readonly NotificationType[] = [
   'ESCALADO',
   'INDISPONIBILIDADE_CONFLITO',
   'LEMBRETE',
   'TROCA',
+  'SISTEMA',
 ];
 
 /**

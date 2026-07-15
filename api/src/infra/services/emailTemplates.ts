@@ -26,13 +26,18 @@ function wrap(title: string, bodyHtml: string): string {
 </div>`;
 }
 
-/** Convite para participar da instituição (e, opcionalmente, de um ministério). */
+/**
+ * Convite para participar da instituição (e, opcionalmente, de um ministério).
+ * `loginUrl` é o endereço para iniciar o login com Google (o fluxo que vincula a
+ * conta ao membro convidado) — vem do ambiente, resolvido pela implementação.
+ */
 export function inviteEmail(params: {
   memberName: string;
   institutionName: string;
+  loginUrl: string;
   ministryName?: string | null;
 }): EmailContent {
-  const { memberName, institutionName, ministryName } = params;
+  const { memberName, institutionName, loginUrl, ministryName } = params;
   const ministryLine = ministryName
     ? ` para participar do ministério <strong>${ministryName}</strong>`
     : '';
@@ -44,12 +49,14 @@ export function inviteEmail(params: {
       'Você recebeu um convite',
       `<p>Olá, ${memberName}!</p>
        <p>Você foi convidado(a) para <strong>${institutionName}</strong>${ministryLine}.</p>
-       <p>Acesse o Escacev e faça login com sua conta Google para começar.</p>`,
+       <p>Para começar, acesse e faça login com sua conta Google:</p>
+       <p><a href="${loginUrl}" style="display:inline-block;padding:10px 18px;background:#1a1a1a;color:#fff;text-decoration:none;border-radius:6px">Acessar o Escacev</a></p>
+       <p style="font-size:12px;color:#888">Se o botão não funcionar, copie e cole no navegador: ${loginUrl}</p>`,
     ),
     text:
       `Olá, ${memberName}!\n\n` +
       `Você foi convidado(a) para ${institutionName}${ministryLineText}.\n` +
-      `Acesse o Escacev e faça login com sua conta Google para começar.`,
+      `Para começar, acesse e faça login com sua conta Google:\n${loginUrl}`,
   };
 }
 

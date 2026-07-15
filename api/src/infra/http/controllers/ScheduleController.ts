@@ -12,6 +12,7 @@ import { ListSchedulesUseCase } from '../../../domain/use-cases/schedules/ListSc
 import { PublishScheduleUseCase } from '../../../domain/use-cases/schedules/PublishScheduleUseCase';
 import { DeleteScheduleUseCase } from '../../../domain/use-cases/schedules/DeleteScheduleUseCase';
 import { MinistryAccessPolicy } from '../../../domain/services/MinistryAccessPolicy';
+import { PublishNotification } from '../../../domain/services/PublishNotification';
 import { ConflictDetectionService } from '../../../domain/services/ConflictDetectionService';
 import { CheckPositionCompatibilityUseCase } from '../../../domain/use-cases/position-compatibilities/CheckPositionCompatibilityUseCase';
 import { PrismaScheduleRepository } from '../../database/repositories/PrismaScheduleRepository';
@@ -21,6 +22,7 @@ import { PrismaAssignmentRepository } from '../../database/repositories/PrismaAs
 import { PrismaPositionCompatibilityRepository } from '../../database/repositories/PrismaPositionCompatibilityRepository';
 import { PrismaMinistryMembershipRepository } from '../../database/repositories/PrismaMinistryMembershipRepository';
 import { buildNotifier } from '../../services/notifierFactory';
+import { DetachedBackgroundTasks } from '../../services/DetachedBackgroundTasks';
 import { respond } from '../../../shared/utils/respond';
 
 /**
@@ -109,9 +111,12 @@ export class ScheduleController {
       new PrismaScheduleRepository(),
       new PrismaMinistryRepository(),
       ScheduleController.accessPolicy(),
-      new PrismaAssignmentRepository(),
-      new PrismaEventRepository(),
-      buildNotifier(),
+      new PublishNotification(
+        new PrismaAssignmentRepository(),
+        new PrismaEventRepository(),
+        buildNotifier(),
+      ),
+      new DetachedBackgroundTasks(),
     );
     const schedule = await useCase.execute({ id: req.params.id, institutionId, actor: { memberId, role } });
 

@@ -21,13 +21,15 @@ export class AppNotifier implements Notifier {
   ) {}
 
   async memberInvited(input: { to: string; memberName: string }): Promise<void> {
-    // E-mail-only: sem registro in-app (o convidado ainda não tem inbox). O nome
-    // da instituição vem do ambiente (MVP single-institution) — detalhe de infra,
-    // fora do domínio.
+    // E-mail-only: sem registro in-app (o convidado ainda não tem inbox). Nome da
+    // instituição e URL de login vêm do ambiente (MVP single-institution) —
+    // detalhe de infra, fora do domínio. A URL de login aponta para o início do
+    // fluxo Google OAuth que vincula a conta ao membro convidado.
     const institutionName = process.env.INSTITUTION_NAME?.trim() || 'sua instituição';
+    const loginUrl = process.env.APP_LOGIN_URL?.trim() || 'http://localhost:3001/auth/google';
     await this.emailService.send({
       to: input.to,
-      ...inviteEmail({ memberName: input.memberName, institutionName }),
+      ...inviteEmail({ memberName: input.memberName, institutionName, loginUrl }),
     });
   }
 
@@ -38,14 +40,15 @@ export class AppNotifier implements Notifier {
     eventName: string;
     startsAt: Date;
     positionName: string;
-  }): Promise<void> {
+  }): Promise<boolean> {
     await this.persist({
       memberId: input.memberId,
       type: 'ESCALADO',
       title: 'Você foi escalado',
       body: `${input.eventName} — função ${input.positionName}`,
     });
-    await this.emailService.send({
+    // Devolve se o e-mail saiu (o in-app já foi gravado acima, canal confiável).
+    return this.emailService.send({
       to: input.email,
       ...scheduledEmail({
         memberName: input.memberName,
@@ -53,6 +56,17 @@ export class AppNotifier implements Notifier {
         startsAt: input.startsAt,
         positionName: input.positionName,
       }),
+    });
+  }
+
+  async systemNotice(input: { memberId: string; title: string; body: string }): Promise<void> {
+    // In-app apenas (tipo SISTEMA): o canal que costuma falhar é o e-mail, então
+    // um aviso de falha de e-mail não deve depender de e-mail.
+    await this.persist({
+      memberId: input.memberId,
+      type: 'SISTEMA',
+      title: input.title,
+      body: input.body,
     });
   }
 

@@ -7,9 +7,13 @@ import { Notifier } from '../domain/services/Notifier';
  * Reusável entre suítes — evita reimplementar o fake em cada arquivo.
  */
 export class RecordingNotifier implements Notifier {
+  /** Controla o retorno de memberScheduled: true = e-mail "entregue"; false = falha. */
+  deliverScheduledEmail = true;
+
   invited: Array<{ to: string; memberName: string }> = [];
   scheduled: Array<{ memberId: string; email: string; eventName: string; positionName: string }> = [];
   conflicts: Array<{ adminId: string; adminEmail: string; memberName: string; eventName: string }> = [];
+  systemNotices: Array<{ memberId: string; title: string; body: string }> = [];
 
   async memberInvited(input: { to: string; memberName: string }): Promise<void> {
     this.invited.push(input);
@@ -22,13 +26,14 @@ export class RecordingNotifier implements Notifier {
     eventName: string;
     startsAt: Date;
     positionName: string;
-  }): Promise<void> {
+  }): Promise<boolean> {
     this.scheduled.push({
       memberId: input.memberId,
       email: input.email,
       eventName: input.eventName,
       positionName: input.positionName,
     });
+    return this.deliverScheduledEmail;
   }
 
   async unavailabilityConflict(input: {
@@ -45,5 +50,9 @@ export class RecordingNotifier implements Notifier {
       memberName: input.memberName,
       eventName: input.eventName,
     });
+  }
+
+  async systemNotice(input: { memberId: string; title: string; body: string }): Promise<void> {
+    this.systemNotices.push(input);
   }
 }
