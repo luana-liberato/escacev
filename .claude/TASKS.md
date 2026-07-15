@@ -306,14 +306,14 @@
 ### Infraestrutura de e-mail (RF08)
 - [ ] Configurar serviço de envio (Nodemailer + SMTP)
 - [ ] Criar templates de e-mail (convite, escalado, lembrete, indisponibilidade-conflito)
-- [ ] Entidade `Notificacao` (registro interno) + use case para criar/listar/marcar como lida
+- [x] Entidade `Notificacao` (registro interno) + use case para criar/listar/marcar como lida
 
 ### Gatilhos de notificação (RF08, RN08)
 - [ ] E-mail de **convite** ao cadastrar um novo membro
 - [ ] E-mail ao membro quando é **escalado** em um evento (na publicação)
 - [ ] **Lembrete** antes do evento (X horas antes — configurável)
 - [ ] Alerta ao admin quando membro registra **indisponibilidade** que conflita com escala existente
-- [ ] Endpoints internos: `GET /notificacoes`, `PATCH /notificacoes/:id/lida`
+- [x] Endpoints internos: `GET /notificacoes`, `PATCH /notificacoes/:id/lida`
 - [ ] Decidir mecanismo do lembrete (cron job / agendador na API)
 
 ---
