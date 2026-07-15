@@ -21,13 +21,15 @@ export class AppNotifier implements Notifier {
   ) {}
 
   async memberInvited(input: { to: string; memberName: string }): Promise<void> {
-    // E-mail-only: sem registro in-app (o convidado ainda não tem inbox). O nome
-    // da instituição vem do ambiente (MVP single-institution) — detalhe de infra,
-    // fora do domínio.
+    // E-mail-only: sem registro in-app (o convidado ainda não tem inbox). Nome da
+    // instituição e URL de login vêm do ambiente (MVP single-institution) —
+    // detalhe de infra, fora do domínio. A URL de login aponta para o início do
+    // fluxo Google OAuth que vincula a conta ao membro convidado.
     const institutionName = process.env.INSTITUTION_NAME?.trim() || 'sua instituição';
+    const loginUrl = process.env.APP_LOGIN_URL?.trim() || 'http://localhost:3001/auth/google';
     await this.emailService.send({
       to: input.to,
-      ...inviteEmail({ memberName: input.memberName, institutionName }),
+      ...inviteEmail({ memberName: input.memberName, institutionName, loginUrl }),
     });
   }
 
