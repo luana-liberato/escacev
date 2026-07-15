@@ -8,6 +8,9 @@ import { ListMemberUnavailabilitiesUseCase } from '../../../domain/use-cases/una
 import { DeleteUnavailabilityUseCase } from '../../../domain/use-cases/unavailabilities/DeleteUnavailabilityUseCase';
 import { PrismaUnavailabilityRepository } from '../../database/repositories/PrismaUnavailabilityRepository';
 import { PrismaMemberRepository } from '../../database/repositories/PrismaMemberRepository';
+import { PrismaAssignmentRepository } from '../../database/repositories/PrismaAssignmentRepository';
+import { PrismaMinistryMembershipRepository } from '../../database/repositories/PrismaMinistryMembershipRepository';
+import { buildNotifier } from '../../services/notifierFactory';
 import { respond } from '../../../shared/utils/respond';
 
 /**
@@ -22,7 +25,12 @@ export class UnavailabilityController {
     const { memberId } = UnavailabilityController.authUser(req);
     const { startsAt, endsAt, reason } = req.body;
 
-    const useCase = new CreateUnavailabilityUseCase(new PrismaUnavailabilityRepository());
+    const useCase = new CreateUnavailabilityUseCase(
+      new PrismaUnavailabilityRepository(),
+      new PrismaAssignmentRepository(),
+      new PrismaMinistryMembershipRepository(),
+      buildNotifier(),
+    );
     const unavailability = await useCase.execute({
       memberId,
       startsAt: UnavailabilityController.parseDate(startsAt, 'Data de início'),
