@@ -14,16 +14,12 @@
  */
 export interface Notifier {
   /**
-   * Convite para a instituição (e, opcionalmente, para um ministério).
-   * É e-mail-only: quem é convidado ainda não fez login, logo não há inbox
-   * in-app para receber — por isso não há registro de Notificacao aqui.
+   * Convite para a instituição. É e-mail-only: quem é convidado ainda não fez
+   * login, logo não há inbox in-app para receber — por isso não há registro de
+   * Notificacao aqui. O nome da instituição é resolvido pela implementação (no
+   * MVP single-institution vem do ambiente), não pelo domínio.
    */
-  memberInvited(input: {
-    to: string;
-    memberName: string;
-    institutionName: string;
-    ministryName?: string | null;
-  }): Promise<void>;
+  memberInvited(input: { to: string; memberName: string }): Promise<void>;
 
   /**
    * Membro escalado em um evento (na publicação da escala, RN04). Grava a

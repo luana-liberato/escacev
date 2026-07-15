@@ -129,15 +129,16 @@ describe('AppNotifier', () => {
     expect(email.sent[0].subject).toContain('Culto de Domingo');
   });
 
-  it('memberInvited: é e-mail-only (não grava notificação in-app)', async () => {
+  it('memberInvited: é e-mail-only (não grava notificação in-app) e usa INSTITUTION_NAME do ambiente', async () => {
     const { repo, email, notifier } = buildNotifier();
+    const prev = process.env.INSTITUTION_NAME;
+    process.env.INSTITUTION_NAME = 'Minha Igreja';
 
-    await notifier.memberInvited({
-      to: 'novo@ex.com',
-      memberName: 'Maria',
-      institutionName: 'Minha Igreja',
-      ministryName: 'Louvor',
-    });
+    try {
+      await notifier.memberInvited({ to: 'novo@ex.com', memberName: 'Maria' });
+    } finally {
+      process.env.INSTITUTION_NAME = prev;
+    }
 
     expect(repo.items).toHaveLength(0);
     expect(email.sent).toHaveLength(1);

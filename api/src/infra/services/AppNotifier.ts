@@ -20,20 +20,14 @@ export class AppNotifier implements Notifier {
     private readonly emailService: EmailService,
   ) {}
 
-  async memberInvited(input: {
-    to: string;
-    memberName: string;
-    institutionName: string;
-    ministryName?: string | null;
-  }): Promise<void> {
-    // E-mail-only: sem registro in-app (o convidado ainda não tem inbox).
+  async memberInvited(input: { to: string; memberName: string }): Promise<void> {
+    // E-mail-only: sem registro in-app (o convidado ainda não tem inbox). O nome
+    // da instituição vem do ambiente (MVP single-institution) — detalhe de infra,
+    // fora do domínio.
+    const institutionName = process.env.INSTITUTION_NAME?.trim() || 'sua instituição';
     await this.emailService.send({
       to: input.to,
-      ...inviteEmail({
-        memberName: input.memberName,
-        institutionName: input.institutionName,
-        ministryName: input.ministryName,
-      }),
+      ...inviteEmail({ memberName: input.memberName, institutionName }),
     });
   }
 
