@@ -18,6 +18,7 @@ import {
 } from '../../../repositories/MinistryMembershipRepository';
 import { AssignmentDetail, AssignmentRepository, MemberAssignmentContext } from '../../../repositories/AssignmentRepository';
 import { MinistryAccessPolicy, Actor } from '../../../services/MinistryAccessPolicy';
+import { RecordingNotifier } from '../../../../test/fakeNotifier';
 import { CreateScheduleUseCase } from '../CreateScheduleUseCase';
 import { GetScheduleUseCase } from '../GetScheduleUseCase';
 import { ListSchedulesUseCase } from '../ListSchedulesUseCase';
@@ -475,7 +476,7 @@ describe('PublishScheduleUseCase', () => {
     const s = await scenario();
     const schedule = await createdSchedule(s);
 
-    const published = await new PublishScheduleUseCase(s.scheduleRepo, s.ministryRepo, s.policy).execute({
+    const published = await new PublishScheduleUseCase(s.scheduleRepo, s.ministryRepo, s.policy, new FakeAssignmentRepository(), s.eventRepo, new RecordingNotifier()).execute({
       institutionId: INST, actor: ADMIN_GERAL, id: schedule.id,
     });
 
@@ -485,6 +486,42 @@ describe('PublishScheduleUseCase', () => {
     expect((await s.scheduleRepo.findById(schedule.id))?.status).toBe('PUBLICADA');
   });
 
+  it('ao publicar, notifica cada membro escalado (Fase 7)', async () => {
+    const s = await scenario();
+    const schedule = await createdSchedule(s);
+
+    // Monta uma alocação (membro + função) nesta escala para o join da notificação.
+    const assignmentRepo = new FakeAssignmentRepository();
+    const member = Member.create({ institutionId: INST, name: 'João', email: 'joao@example.com' });
+    const position = Position.create({ name: 'Recepção', ministryId: s.ministry.id });
+    assignmentRepo.members.push(member);
+    assignmentRepo.positions.push(position);
+    await assignmentRepo.save(
+      Assignment.create({ scheduleId: schedule.id, memberId: member.id, positionId: position.id }),
+    );
+    const notifier = new RecordingNotifier();
+
+    await new PublishScheduleUseCase(
+      s.scheduleRepo, s.ministryRepo, s.policy, assignmentRepo, s.eventRepo, notifier,
+    ).execute({ institutionId: INST, actor: ADMIN_GERAL, id: schedule.id });
+
+    expect(notifier.scheduled).toEqual([
+      { memberId: member.id, email: 'joao@example.com', eventName: s.event.name, positionName: 'Recepção' },
+    ]);
+  });
+
+  it('publicar escala vazia não notifica ninguém', async () => {
+    const s = await scenario();
+    const schedule = await createdSchedule(s);
+    const notifier = new RecordingNotifier();
+
+    await new PublishScheduleUseCase(
+      s.scheduleRepo, s.ministryRepo, s.policy, new FakeAssignmentRepository(), s.eventRepo, notifier,
+    ).execute({ institutionId: INST, actor: ADMIN_GERAL, id: schedule.id });
+
+    expect(notifier.scheduled).toHaveLength(0);
+  });
+
   it('ADMIN_MINISTERIO com isAdmin naquele ministério publica', async () => {
     const s = await scenario();
     s.membershipRepo.memberships.push(
@@ -492,7 +529,7 @@ describe('PublishScheduleUseCase', () => {
     );
     const schedule = await createdSchedule(s);
 
-    const published = await new PublishScheduleUseCase(s.scheduleRepo, s.ministryRepo, s.policy).execute({
+    const published = await new PublishScheduleUseCase(s.scheduleRepo, s.ministryRepo, s.policy, new FakeAssignmentRepository(), s.eventRepo, new RecordingNotifier()).execute({
       institutionId: INST, actor: { memberId: 'am', role: 'ADMIN_MINISTERIO' }, id: schedule.id,
     });
     expect(published.status).toBe('PUBLICADA');
@@ -501,7 +538,7 @@ describe('PublishScheduleUseCase', () => {
   it('409 ao republicar uma escala já publicada (preserva publicadaEm — RN07)', async () => {
     const s = await scenario();
     const schedule = await createdSchedule(s);
-    const publish = new PublishScheduleUseCase(s.scheduleRepo, s.ministryRepo, s.policy);
+    const publish = new PublishScheduleUseCase(s.scheduleRepo, s.ministryRepo, s.policy, new FakeAssignmentRepository(), s.eventRepo, new RecordingNotifier());
     const first = await publish.execute({ institutionId: INST, actor: ADMIN_GERAL, id: schedule.id });
 
     await expect(
@@ -516,7 +553,7 @@ describe('PublishScheduleUseCase', () => {
     const schedule = await createdSchedule(s);
 
     await expect(
-      new PublishScheduleUseCase(s.scheduleRepo, s.ministryRepo, s.policy).execute({
+      new PublishScheduleUseCase(s.scheduleRepo, s.ministryRepo, s.policy, new FakeAssignmentRepository(), s.eventRepo, new RecordingNotifier()).execute({
         institutionId: INST, actor: { memberId: 'am', role: 'ADMIN_MINISTERIO' }, id: schedule.id,
       }),
     ).rejects.toMatchObject({ statusCode: 403 });
@@ -528,7 +565,7 @@ describe('PublishScheduleUseCase', () => {
     const schedule = await createdSchedule(s);
 
     await expect(
-      new PublishScheduleUseCase(s.scheduleRepo, s.ministryRepo, s.policy).execute({
+      new PublishScheduleUseCase(s.scheduleRepo, s.ministryRepo, s.policy, new FakeAssignmentRepository(), s.eventRepo, new RecordingNotifier()).execute({
         institutionId: 'i2', actor: ADMIN_GERAL, id: schedule.id,
       }),
     ).rejects.toMatchObject({ statusCode: 404 });
@@ -537,7 +574,7 @@ describe('PublishScheduleUseCase', () => {
   it('404 quando o id não existe', async () => {
     const s = await scenario();
     await expect(
-      new PublishScheduleUseCase(s.scheduleRepo, s.ministryRepo, s.policy).execute({
+      new PublishScheduleUseCase(s.scheduleRepo, s.ministryRepo, s.policy, new FakeAssignmentRepository(), s.eventRepo, new RecordingNotifier()).execute({
         institutionId: INST, actor: ADMIN_GERAL, id: 'nao-existe',
       }),
     ).rejects.toMatchObject({ statusCode: 404 });

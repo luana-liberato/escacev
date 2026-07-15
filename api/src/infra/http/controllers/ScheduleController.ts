@@ -20,6 +20,7 @@ import { PrismaEventRepository } from '../../database/repositories/PrismaEventRe
 import { PrismaAssignmentRepository } from '../../database/repositories/PrismaAssignmentRepository';
 import { PrismaPositionCompatibilityRepository } from '../../database/repositories/PrismaPositionCompatibilityRepository';
 import { PrismaMinistryMembershipRepository } from '../../database/repositories/PrismaMinistryMembershipRepository';
+import { buildNotifier } from '../../services/notifierFactory';
 import { respond } from '../../../shared/utils/respond';
 
 /**
@@ -108,6 +109,9 @@ export class ScheduleController {
       new PrismaScheduleRepository(),
       new PrismaMinistryRepository(),
       ScheduleController.accessPolicy(),
+      new PrismaAssignmentRepository(),
+      new PrismaEventRepository(),
+      buildNotifier(),
     );
     const schedule = await useCase.execute({ id: req.params.id, institutionId, actor: { memberId, role } });
 
