@@ -1,45 +1,24 @@
-import { useEffect, useState } from 'react';
-import { getHealth } from '@/services/health';
+import { Navigate, Route, Routes } from 'react-router-dom';
+import { ProtectedRoute } from '@/components/ProtectedRoute';
+import AuthCallbackPage from '@/pages/AuthCallbackPage';
+import HomePage from '@/pages/HomePage';
+import LoginPage from '@/pages/LoginPage';
 
-type ConnState = 'carregando' | 'ok' | 'erro';
-
-const STYLES: Record<ConnState, { dot: string; label: string }> = {
-  carregando: { dot: 'bg-amber-400', label: 'Verificando conexão com a API...' },
-  ok: { dot: 'bg-emerald-500', label: 'API conectada' },
-  erro: { dot: 'bg-red-500', label: 'Sem conexão com a API' },
-};
-
+/**
+ * Rotas. `/login` e `/auth/callback` são públicas — o callback PRECISA ser, já
+ * que é ele quem cria a sessão. Todo o resto pende do ProtectedRoute.
+ */
 export default function App() {
-  const [state, setState] = useState<ConnState>('carregando');
-  const [message, setMessage] = useState('');
-
-  useEffect(() => {
-    getHealth()
-      .then(({ message: apiMessage }) => {
-        setState('ok');
-        setMessage(apiMessage);
-      })
-      .catch(() => {
-        setState('erro');
-        setMessage('Não foi possível conectar à API em GET /health.');
-      });
-  }, []);
-
-  const style = STYLES[state];
-
   return (
-    <main className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
-      <div className="w-full max-w-md rounded-2xl bg-white shadow-lg ring-1 ring-slate-200 p-8 text-center">
-        <h1 className="text-3xl font-bold text-slate-800">Escacev</h1>
-        <p className="mt-1 text-sm text-slate-500">Sistema de Gestão de Escalas</p>
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/auth/callback" element={<AuthCallbackPage />} />
 
-        <div className="mt-8 flex items-center justify-center gap-3">
-          <span className={`inline-block h-3 w-3 rounded-full ${style.dot}`} />
-          <span className="text-sm font-medium text-slate-700">{style.label}</span>
-        </div>
+      <Route element={<ProtectedRoute />}>
+        <Route path="/" element={<HomePage />} />
+      </Route>
 
-        {message && <p className="mt-3 text-xs text-slate-400">{message}</p>}
-      </div>
-    </main>
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }
