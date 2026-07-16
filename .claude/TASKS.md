@@ -68,7 +68,7 @@
   - [x] Vincular `Conta` ao `Membro` pelo e-mail, se houver convite pendente
   - [x] Emitir JWT com `{ memberId, institutionId, role }`
 - [x] Definir geração e assinatura do JWT (secret + expiração via `.env`)
-- [ ] Implementar logout (no front: descartar o token)
+- [x] Implementar logout (no front: descartar o token) — `clearToken()` + `AuthProvider`
 - [x] Tratar o caso de login com e-mail Google que não corresponde a nenhum membro convidado
 - [x] Evitar `Conta` órfã no fluxo 403: a `Conta` só é criada após confirmar o convite; o login também vincula Contas órfãs pré-existentes ao convite pendente
 
@@ -95,6 +95,13 @@
 - [x] Use case: desativar/remover membro (soft delete via `ativo`)
 - [x] Endpoints: `POST /membros`, `GET /membros`, `GET /membros/:id`, `PUT /membros/:id`, `DELETE /membros/:id`
 - [x] Disparar e-mail de convite ao criar membro (integra com Fase 7)
+- [ ] **`GET /membros/me` — o membro busca os próprios dados.** Hoje não existe: o JWT
+      carrega apenas `{ memberId, institutionId, role }` (sem o nome), e `GET /membros/:id`
+      exige `rbac('ADMIN_GERAL', 'ADMIN_MINISTERIO')` — ou seja, um `MEMBRO` **não
+      consegue ler o próprio cadastro**. Por isso o painel do front mostra o id em vez de
+      "Olá, Fulana". Deve ser member-scoped (só `auth`, sem `rbac`), resolvendo o membro
+      pelo `memberId` do JWT — o mesmo padrão de `GET /minhas-escalas` e `/notificacoes`.
+      Bloqueia as Telas do Membro (Fase 8). (achado da fatia vertical de login)
 
 ### Ministérios (RF03)
 > Escrita restrita ao `ADMIN_GERAL` neste bloco. A edição escopada pelo
@@ -320,18 +327,36 @@
 
 ## Fase 8 — Frontend 🔴
 
+> **Estratégia: fatia vertical, não camada horizontal.** Constrói-se uma jornada
+> inteira atravessando todas as camadas, em vez de uma camada completa por vez —
+> assim o caminho é validado cedo, e não na integração final. As pastas
+> (`components/`, `pages/`, `hooks/`) nascem com conteúdo; não se cria diretório
+> vazio à espera de uso.
+>
+> **Camada de contrato (`services/`) — CONCLUÍDA** na branch `feat/front-contrato`:
+> `http.ts` (axios + JWT + unwrap do envelope + `ApiError`), `types.ts` (espelham o
+> que a API **serializa**, não as entidades), `authToken.ts` e `ministries.ts`.
+> Ver o `web/CLAUDE.md` para os padrões do front.
+>
+> **Fatia vertical 1 (login → callback → sessão → rota protegida) — CONCLUÍDA** e
+> verificada de ponta a ponta com o admin do seed.
+
 ### Base
-- [ ] Configurar roteamento (React Router)
-- [ ] Configurar cliente HTTP (axios) com interceptor que injeta o JWT
-- [ ] Configurar contexto/estado de autenticação (usuário logado, perfil)
-- [ ] Implementar proteção de rotas por perfil
+- [x] Configurar roteamento (React Router)
+- [x] Configurar cliente HTTP (axios) com interceptor que injeta o JWT (`services/http.ts`)
+- [x] Configurar contexto/estado de autenticação (usuário logado, perfil)
+      (`hooks/authContext.ts` + `hooks/useAuth.ts` + `components/AuthProvider.tsx`)
+- [ ] Implementar proteção de rotas **por perfil** — hoje o `ProtectedRoute` só exige
+      **sessão**; o filtro por `role` entra quando houver tela que o exija. Lembrar que
+      é conveniência de UX: a permissão real (inclusive a escopada por ministério) é
+      decidida pela API, e o front trata o 403.
 - [ ] Layout base: sidebar de navegação + header com usuário logado
 - [ ] Tela de tratamento de erros e loading states reutilizáveis
 
 ### Autenticação
-- [ ] Tela de login com botão "Entrar com Google"
-- [ ] Tela de callback (recebe o token, redireciona para o painel)
-- [ ] Fluxo de logout
+- [x] Tela de login com botão "Entrar com Google" (com indicador de conexão da API)
+- [x] Tela de callback (recebe o token, redireciona para o painel)
+- [x] Fluxo de logout
 
 ### Telas de Gestão (Admin)
 - [ ] Listagem e CRUD de **ministérios**
@@ -417,6 +442,14 @@
 
 ## Fase 11 — Deploy e Produção 🔴
 
+- [ ] **Corrigir o ambiente da API no `docker-compose.yml`** — o serviço `api` declara as
+      variáveis **inline** e não usa `env_file`, então não recebe `JWT_SECRET`,
+      `GOOGLE_CLIENT_ID/SECRET`, `FRONTEND_URL` nem as de SMTP; o `.dockerignore` também
+      exclui o `.env`, que portanto não entra na imagem. Como `middlewares/auth.ts` faz
+      `new JwtService()` no escopo do módulo e o construtor lança sem `JWT_SECRET`, a API
+      containerizada deve quebrar já no boot. Provável correção: `env_file: ./api/.env`.
+      **Não verificado empiricamente** — hoje o dev roda a API por `npm run dev` no host
+      (só o Postgres está no Docker), então o caminho containerizado não é exercitado.
 - [ ] Escrever Dockerfile de produção da API
 - [ ] Escrever build de produção do frontend (Vite build → estáticos)
 - [ ] Configurar nginx na VPS: proxy reverso para a API + servir o frontend
@@ -435,6 +468,14 @@
 ## Fase 12 — Entregáveis do TCC e Documentação 🔴
 
 - [ ] Manter o CLAUDE.md e este TASKS.md atualizados
+- [ ] **Sincronizar a Seção 8 (env) do CLAUDE.md com o `.env.example`** — o `.env.example`
+      (na raiz) está correto e mais completo; a Seção 8 do CLAUDE.md não lista
+      `FRONTEND_URL`, `APP_LOGIN_URL`, `SEED_ADMIN_EMAIL` nem `SEED_ADMIN_NAME`. Quem
+      seguir o CLAUDE.md sozinho monta um `.env` incompleto e o login pelo front não
+      funciona (ver o item da `FRONTEND_URL` abaixo).
+- [ ] **Adicionar `VITE_API_URL` ao `.env.example`** — o `web/src/services/http.ts` a
+      consome (com fallback para `http://localhost:3001`, por isso passa despercebida em
+      dev). Em produção o front precisa dela apontando para a API pública.
 - [ ] Repositório com histórico de commits descritivos e tags por marco
 - [ ] Sistema acessível via HTTPS no dia da banca
 - [ ] **Validação intermediária** com o cliente (Apêndice A assinado)
