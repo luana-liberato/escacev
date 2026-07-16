@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getHealth } from './services/api';
+import { getHealth } from '@/services/health';
 
 type ConnState = 'carregando' | 'ok' | 'erro';
 
@@ -15,9 +15,9 @@ export default function App() {
 
   useEffect(() => {
     getHealth()
-      .then((res) => {
+      .then(({ message: apiMessage }) => {
         setState('ok');
-        setMessage(res.message);
+        setMessage(apiMessage);
       })
       .catch(() => {
         setState('erro');
