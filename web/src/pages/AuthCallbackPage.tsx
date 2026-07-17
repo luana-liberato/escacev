@@ -48,7 +48,7 @@ export default function AuthCallbackPage() {
   }, [searchParams, login, navigate]);
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-[18px] bg-white">
+    <main className="min-h-screen-safe flex flex-col items-center justify-center gap-[18px] bg-white px-5">
       <div
         aria-hidden="true"
         className="h-11 w-11 animate-spin-slow rounded-full border-4 border-line border-t-brand"
