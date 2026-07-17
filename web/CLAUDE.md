@@ -96,6 +96,16 @@ responsabilidade de quem formata, na borda da UI.
 O `role` do JWT (`ADMIN_GERAL` | `ADMIN_MINISTERIO` | `MEMBRO`) é o filtro **grosso**
 da navegação — decide o que aparece no menu e quais rotas o usuário abre.
 
+> ⚠️ **O `role` do token pode estar velho.** A API lê perfil e status do BANCO a cada
+> request (Seção 5 da raiz) — o token não. Se alguém for promovido, rebaixado ou
+> desativado, a API sabe na hora; o menu do front só depois de um novo login.
+>
+> Na prática isso é aceitável para promoção (o menu aparece no próximo login, e a API já
+> obedece antes) — mas o **desativado** é derrubado imediatamente, porque a API responde
+> 401 e o `setUnauthorizedHandler` do `http.ts` descarta a sessão.
+>
+> Se um dia o menu precisar reagir na hora, a fonte é o `GET /membros/me`, que lê o banco.
+
 **Ele não é a permissão real.** Um `ADMIN_MINISTERIO` só age nos ministérios onde tem
 `isAdmin`, e essa checagem fina mora no back (`MinistryAccessPolicy`). O front **não
 reimplementa** essa regra: chama a API e trata o `403` que vier. Esconder um botão é
