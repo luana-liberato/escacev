@@ -95,13 +95,12 @@
 - [x] Use case: desativar/remover membro (soft delete via `ativo`)
 - [x] Endpoints: `POST /membros`, `GET /membros`, `GET /membros/:id`, `PUT /membros/:id`, `DELETE /membros/:id`
 - [x] Disparar e-mail de convite ao criar membro (integra com Fase 7)
-- [ ] **`GET /membros/me` — o membro busca os próprios dados.** Hoje não existe: o JWT
-      carrega apenas `{ memberId, institutionId, role }` (sem o nome), e `GET /membros/:id`
-      exige `rbac('ADMIN_GERAL', 'ADMIN_MINISTERIO')` — ou seja, um `MEMBRO` **não
-      consegue ler o próprio cadastro**. Por isso o painel do front mostra o id em vez de
-      "Olá, Fulana". Deve ser member-scoped (só `auth`, sem `rbac`), resolvendo o membro
-      pelo `memberId` do JWT — o mesmo padrão de `GET /minhas-escalas` e `/notificacoes`.
-      Bloqueia as Telas do Membro (Fase 8). (achado da fatia vertical de login)
+- [x] **`GET /membros/me` — o membro busca os próprios dados** (PR #24). Member-scoped (só
+      `auth`, sem `rbac`), resolvendo pelo `memberId` do JWT — o JWT não carrega o nome e
+      `GET /membros/:id` exige admin, então um `MEMBRO` não lia o próprio cadastro.
+      Reusa o `GetMemberUseCase` e a projeção pública. A rota é registrada **antes** de
+      `/membros/:id` (senão o `:id` captura `"me"`), com teste travando a ordem.
+      Destravou o rodapé da sidebar do layout base. (achado da fatia vertical de login)
 
 ### Ministérios (RF03)
 > Escrita restrita ao `ADMIN_GERAL` neste bloco. A edição escopada pelo
@@ -350,7 +349,18 @@
       **sessão**; o filtro por `role` entra quando houver tela que o exija. Lembrar que
       é conveniência de UX: a permissão real (inclusive a escopada por ministério) é
       decidida pela API, e o front trata o 403.
-- [ ] Layout base: sidebar de navegação + header com usuário logado
+- [x] Layout base: sidebar de navegação + header com usuário logado — casca padrão de
+      todas as telas internas (`components/AppLayout.tsx`), conforme
+      `docs/design/layout_sidebar/`. Sidebar fixa ≥861px; drawer com hambúrguer e overlay
+      abaixo. Rodapé com nome/iniciais/papel via `GET /membros/me`. Menu, rotas e
+      cabeçalhos saem de `config/navigation.ts`.
+- [ ] 🔴 **Abrir `GET /escalas` ao MEMBRO** (decisão da cliente): ele precisa ver as
+      escalas do próprio ministério, não só onde está alocado. Hoje é
+      `rbac('ADMIN_GERAL', 'ADMIN_MINISTERIO')` e ele leva 403 — por isso "Escalas" está
+      fora do menu dele. Exige filtro por vínculo (`MembroMinisterio`) + `status =
+      PUBLICADA` (RN04: rascunho é invisível ao membro). Note que é diferente da **Agenda**
+      (`GET /minhas-escalas`, "onde EU estou escalado"), que já existe e já é aberta.
+      `GET /eventos` também é admin-only e cai na mesma pergunta.
 - [ ] Tela de tratamento de erros e loading states reutilizáveis
 
 ### Autenticação
