@@ -3,6 +3,11 @@ export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
+      screens: {
+        // Fronteira do layout base: sidebar fixa a partir de 861px; até 860px ela
+        // vira drawer com hambúrguer (docs/design/layout_sidebar/README.md).
+        nav: '861px',
+      },
       // Design tokens do handoff (docs/design/handoff.md).
       // Paleta inspirada na logo da igreja Ação Evangélica: teal + preto sobre creme.
       colors: {
