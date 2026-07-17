@@ -62,3 +62,20 @@ membershipRoutes.get(
   rbac('ADMIN_GERAL', 'ADMIN_MINISTERIO'),
   asyncHandler(controller.listMinistries),
 );
+
+/**
+ * Define os ministérios do membro como EXATAMENTE a lista recebida — o "salvar"
+ * dos chips do modal de edição.
+ *
+ * ADMIN_GERAL apenas, e aqui o rbac é a checagem FINAL, não um filtro grosso:
+ * mexer nos ministérios de alguém ATRAVESSA ministérios, então é escopo de
+ * INSTITUIÇÃO (Seção 1 do CLAUDE.md). Um ADMIN_MINISTERIO não pode tirar ninguém
+ * de um ministério que ele não administra — e como não há um ministério único
+ * para escopar, não existe MinistryAccessPolicy a aplicar no use case.
+ */
+membershipRoutes.put(
+  '/membros/:id/ministerios',
+  auth,
+  rbac('ADMIN_GERAL'),
+  asyncHandler(controller.setMinistries),
+);
