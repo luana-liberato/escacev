@@ -195,6 +195,80 @@ describe('GET /membros/me', () => {
   });
 });
 
+describe('PATCH /membros/me', () => {
+  /** Devolve o membro ao nome original — os outros testes dependem dele. */
+  async function restoreName(id: string, nome: string) {
+    await prisma.membro.update({ where: { id }, data: { nome } });
+  }
+
+  it('MEMBRO corrige o próprio nome (200)', async () => {
+    const res = await request(app)
+      .patch('/membros/me')
+      .set('Authorization', `Bearer ${membroToken}`)
+      .send({ name: 'Membro Corrigido' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.name).toBe('Membro Corrigido');
+
+    const row = await prisma.membro.findUnique({ where: { id: MEMBRO_ID } });
+    expect(row?.nome).toBe('Membro Corrigido');
+
+    await restoreName(MEMBRO_ID, 'Membro');
+  });
+
+  /**
+   * O teste que justifica o use case dedicado: o alvo é sempre o PRÓPRIO
+   * usuário, então aceitar `role` aqui seria escalada de privilégio. O
+   * UpdateMyNameUseCase não tem onde receber perfil — isto trava a fronteira.
+   */
+  it('MEMBRO não se promove mandando role no corpo (perfil intacto)', async () => {
+    const res = await request(app)
+      .patch('/membros/me')
+      .set('Authorization', `Bearer ${membroToken}`)
+      .send({ name: 'Tentativa', role: 'ADMIN_GERAL', active: false });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.role).toBe('MEMBRO');
+    expect(res.body.data.active).toBe(true);
+
+    const row = await prisma.membro.findUnique({ where: { id: MEMBRO_ID } });
+    expect(row?.perfil).toBe('MEMBRO');
+    expect(row?.ativo).toBe(true);
+
+    await restoreName(MEMBRO_ID, 'Membro');
+  });
+
+  it('ADMIN_GERAL também corrige o próprio nome (200)', async () => {
+    const res = await request(app)
+      .patch('/membros/me')
+      .set('Authorization', `Bearer ${adminGeralToken}`)
+      .send({ name: 'Admin Renomeado' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.name).toBe('Admin Renomeado');
+
+    await restoreName(ADMIN_GERAL_ID, 'Admin Geral');
+  });
+
+  it('rejeita nome vazio (400) — a validação é da entidade', async () => {
+    const res = await request(app)
+      .patch('/membros/me')
+      .set('Authorization', `Bearer ${membroToken}`)
+      .send({ name: '   ' });
+
+    expect(res.status).toBe(400);
+
+    const row = await prisma.membro.findUnique({ where: { id: MEMBRO_ID } });
+    expect(row?.nome).toBe('Membro');
+  });
+
+  it('sem token (401)', async () => {
+    const res = await request(app).patch('/membros/me').send({ name: 'X' });
+
+    expect(res.status).toBe(401);
+  });
+});
+
 describe('GET /membros/:id', () => {
   it('404 para membro de outra instituição (não vaza outro tenant)', async () => {
     const res = await request(app)

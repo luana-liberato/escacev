@@ -402,6 +402,32 @@
 
 ## Fase 9 — Funcionalidades Desejáveis 🟡
 
+### Remoção física de membro (🟡)
+> **Hoje o `DELETE /membros/:id` é soft delete** (`ativo = false`) e assim permanece — é o
+> comportamento certo para o caso real ("a pessoa saiu da igreja"): ela some das listas e
+> deixa de ser escalável, e as escalas passadas continuam íntegras.
+>
+> **O banco também impede o hard delete hoje:** seis FKs apontam para `Membro`
+> (`MembroMinisterio`, `Alocacao`, `Indisponibilidade`, `Troca.proponenteId`,
+> `Troca.alvoId`, `Notificacao`) e **nenhuma declara `onDelete`** — o default do Prisma é
+> `Restrict`, então apagar um membro escalado falha com erro de FK. A única exceção no
+> schema é `Membro.conta` (`onDelete: SetNull`).
+>
+> **Por que não apagar:** a `Alocacao` é o registro de quem serviu naquele culto. Apagar o
+> membro apaga a escala de um evento que já aconteceu — a escala de dezembro passaria a ter
+> um vocalista a menos, retroativamente. Não é o membro sumindo: é a história da igreja
+> sendo reescrita.
+- [ ] 🟡 **Delete condicional** — apagar de verdade só quando não há histórico (nenhuma
+      alocação/troca/indisponibilidade), e **409** quando há. Resolve o caso legítimo:
+      cadastro errado ou duplicado, que nunca foi escalado. Mesmo padrão do
+      `DELETE /ministerios/:id`, que já bloqueia com 409 pelo que é histórico.
+- [ ] 🟡 **Anonimização (LGPD)** — se um dia alguém exigir a remoção dos dados pessoais, a
+      saída não é apagar a linha: é anonimizar (nome vira "Membro removido", e-mail
+      limpo, `Conta` desvinculada). A `Alocacao` continua existindo, apontando para um
+      registro sem dado pessoal — a escala se preserva, a pessoa some. O
+      `onDelete: SetNull` da `Conta` já ajuda: apagá-la devolve o membro a convite
+      pendente sem quebrar nada.
+
 ### Planejamento de vagas em aberto (🟡 — o antigo `VagaEvento`, agora opcional)
 > No modelo essencial a alocação é direta (pessoa + função). Planejar vaga em aberto
 > — declarar a necessidade antes de ter a pessoa — passa a ser um recurso desejável.

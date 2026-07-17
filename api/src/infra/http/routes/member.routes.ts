@@ -34,6 +34,16 @@ memberRoutes.get(
  */
 memberRoutes.get('/membros/me', auth, asyncHandler(controller.showMe));
 
+/**
+ * O usuário corrige o PRÓPRIO nome — qualquer perfil, sem `rbac`. O nome do
+ * cadastro é o que o admin digitou no convite; sem esta rota, quem foi cadastrado
+ * errado dependeria de um ADMIN_GERAL para se corrigir.
+ *
+ * Também ANTES de '/membros/:id' — o PUT lá é exclusivo do ADMIN_GERAL e
+ * capturaria "me".
+ */
+memberRoutes.patch('/membros/me', auth, asyncHandler(controller.updateMe));
+
 // Buscar um membro — ADMIN_GERAL e ADMIN_MINISTERIO.
 memberRoutes.get(
   '/membros/:id',
