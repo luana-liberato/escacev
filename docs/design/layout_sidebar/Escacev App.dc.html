@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #FBF6EE; }
+  * { box-sizing: border-box; }
+  @media (max-width: 860px) {
+    .esc-sidebar { display: none !important; }
+    .esc-hamburger { display: flex !important; }
+  }
+</style>
+</helmet>
+
+<div style="font-family: 'Public Sans', sans-serif; color: #1A1A1A; background: #FBF6EE; min-height: 100vh;">
+
+  <div style="max-width: 1160px; margin: 0 auto; padding: 24px 24px 0;">
+    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+      <p style="font-size: 11px; color: #B7AF9F; text-transform: uppercase; letter-spacing: 0.04em; margin: 0 8px 0 0;">Protótipo · visualizar como</p>
+      <sc-for list="{{ roleSwitcher }}" as="r" hint-placeholder-count="3">
+        <button onclick="{{ r.onClick }}" style="{{ r.style }}">{{ r.label }}</button>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="max-width: 1160px; margin: 0 auto; padding: 16px 24px 60px;">
+    <div style="background: #FFFFFF; border: 1px solid #EAE2D4; border-radius: 20px; overflow: hidden; box-shadow: 0 20px 50px -30px rgba(26,26,26,0.25); min-height: 680px; display: flex; position: relative;">
+
+      <!-- sidebar (desktop) -->
+      <div class="esc-sidebar" style="width: 232px; flex-shrink: 0; background: #FFFFFF; border-right: 1px solid #EAE2D4; display: flex; flex-direction: column; padding: 24px 16px;">
+        <div style="display: flex; align-items: center; gap: 10px; padding: 0 8px 24px;">
+          <svg width="26" height="26" viewBox="0 0 52 52" style="flex-shrink: 0;"><polygon points="26,4 48,26 26,48 4,26" fill="#1C7C8C"/><polygon points="26,14 40,26 26,38 26,14" fill="#1A1A1A"/></svg>
+          <span style="font-family: 'Sora', sans-serif; font-weight: 800; font-size: 17px; color: #1A1A1A;">Escacev</span>
+        </div>
+        <sc-for list="{{ navItems }}" as="nav" hint-placeholder-count="4">
+          <button onclick="{{ nav.onClick }}" style="{{ nav.style }}" style-hover="background: #F5EFE2;">{{ nav.label }}</button>
+        </sc-for>
+        <div style="flex: 1;"></div>
+        <div style="display: flex; align-items: center; gap: 10px; padding: 12px 8px; border-top: 1px solid #EAE2D4;">
+          <div style="width: 32px; height: 32px; border-radius: 50%; background: #E3F0F1; color: #1C7C8C; font-weight: 700; font-size: 13px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">{{ user.initials }}</div>
+          <div style="min-width: 0;">
+            <p style="margin: 0; font-size: 13px; font-weight: 600; color: #1A1A1A; white-space: nowrap;">{{ user.name }}</p>
+            <p style="margin: 0; font-size: 11.5px; color: #837B6E;">{{ user.roleLabel }}</p>
+          </div>
+        </div>
+        <button style="margin-top: 4px; text-align: left; padding: 8px; border: none; background: none; font-family: 'Public Sans', sans-serif; font-size: 13px; color: #B7AF9F; cursor: pointer;">Sair</button>
+      </div>
+
+      <!-- mobile drawer -->
+      <sc-if value="{{ mobileMenuOpen }}" hint-placeholder-val="{{ false }}">
+        <div onclick="{{ closeMobileMenu }}" style="position: absolute; inset: 0; background: rgba(26,26,26,0.35); z-index: 5;"></div>
+        <div style="position: absolute; top: 0; left: 0; bottom: 0; width: 232px; background: #FFFFFF; z-index: 6; display: flex; flex-direction: column; padding: 24px 16px; box-shadow: 12px 0 30px rgba(26,26,26,0.15);">
+          <div style="display: flex; align-items: center; gap: 10px; padding: 0 8px 24px;">
+            <svg width="26" height="26" viewBox="0 0 52 52" style="flex-shrink: 0;"><polygon points="26,4 48,26 26,48 4,26" fill="#1C7C8C"/><polygon points="26,14 40,26 26,38 26,14" fill="#1A1A1A"/></svg>
+            <span style="font-family: 'Sora', sans-serif; font-weight: 800; font-size: 17px; color: #1A1A1A;">Escacev</span>
+          </div>
+          <sc-for list="{{ navItems }}" as="nav" hint-placeholder-count="4">
+            <button onclick="{{ nav.onClickMobile }}" style="{{ nav.style }}">{{ nav.label }}</button>
+          </sc-for>
+          <div style="flex: 1;"></div>
+          <div style="display: flex; align-items: center; gap: 10px; padding: 12px 8px; border-top: 1px solid #EAE2D4;">
+            <div style="width: 32px; height: 32px; border-radius: 50%; background: #E3F0F1; color: #1C7C8C; font-weight: 700; font-size: 13px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">{{ user.initials }}</div>
+            <div style="min-width: 0;">
+              <p style="margin: 0; font-size: 13px; font-weight: 600; color: #1A1A1A; white-space: nowrap;">{{ user.name }}</p>
+              <p style="margin: 0; font-size: 11.5px; color: #837B6E;">{{ user.roleLabel }}</p>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- main -->
+      <div style="flex: 1; min-width: 0; padding: 24px 28px 40px; display: flex; flex-direction: column; gap: 24px;">
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <button class="esc-hamburger" onclick="{{ openMobileMenu }}" style="display: none; width: 36px; height: 36px; border-radius: 10px; border: 1px solid #EAE2D4; background: #FFFFFF; align-items: center; justify-content: center; flex-direction: column; gap: 3px; cursor: pointer; flex-shrink: 0;">
+            <span style="width: 16px; height: 2px; background: #1A1A1A; border-radius: 1px;"></span>
+            <span style="width: 16px; height: 2px; background: #1A1A1A; border-radius: 1px;"></span>
+            <span style="width: 16px; height: 2px; background: #1A1A1A; border-radius: 1px;"></span>
+          </button>
+          <div style="flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;">
+            <div>
+              <h1 style="font-family: 'Sora', sans-serif; font-weight: 800; font-size: 22px; margin: 0; color: #1A1A1A;">{{ pageTitle }}</h1>
+              <p style="margin: 4px 0 0; font-size: 13.5px; color: #837B6E;">{{ pageSubtitle }}</p>
+            </div>
+          </div>
+        </div>
+
+        <sc-if value="{{ isAgenda }}" hint-placeholder-val="{{ true }}">
+          <div style="background: #FBF6EE; border: 1px dashed #EAE2D4; border-radius: 14px; padding: 40px 20px; text-align: center; color: #837B6E; font-size: 13.5px;">Conteúdo da Agenda entra aqui — próxima etapa.</div>
+        </sc-if>
+        <sc-if value="{{ isEventos }}" hint-placeholder-val="{{ false }}">
+          <div style="background: #FBF6EE; border: 1px dashed #EAE2D4; border-radius: 14px; padding: 40px 20px; text-align: center; color: #837B6E; font-size: 13.5px;">Conteúdo de Eventos (lista) entra aqui — próxima etapa.</div>
+        </sc-if>
+        <sc-if value="{{ isMinistries }}" hint-placeholder-val="{{ false }}">
+          <div style="background: #FBF6EE; border: 1px dashed #EAE2D4; border-radius: 14px; padding: 40px 20px; text-align: center; color: #837B6E; font-size: 13.5px;">Conteúdo de Ministérios entra aqui — próxima etapa.</div>
+        </sc-if>
+        <sc-if value="{{ isRoles }}" hint-placeholder-val="{{ false }}">
+          <div style="background: #FBF6EE; border: 1px dashed #EAE2D4; border-radius: 14px; padding: 40px 20px; text-align: center; color: #837B6E; font-size: 13.5px;">Conteúdo de Funções entra aqui — próxima etapa.</div>
+        </sc-if>
+        <sc-if value="{{ isMembers }}" hint-placeholder-val="{{ false }}">
+          <div style="background: #FBF6EE; border: 1px dashed #EAE2D4; border-radius: 14px; padding: 40px 20px; text-align: center; color: #837B6E; font-size: 13.5px;">Conteúdo de Membros entra aqui — próxima etapa.</div>
+        </sc-if>
+        <sc-if value="{{ isEscalas }}" hint-placeholder-val="{{ false }}">
+          <div style="background: #FBF6EE; border: 1px dashed #EAE2D4; border-radius: 14px; padding: 40px 20px; text-align: center; color: #837B6E; font-size: 13.5px;">Conteúdo de Escalas entra aqui — próxima etapa.</div>
+        </sc-if>
+      </div>
+    </div>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const ROLES = {
+  admin_geral: { label: 'Administrador geral', name: 'Ana Souza', initials: 'AS', nav: ['agenda', 'escalas', 'eventos', 'ministerios', 'membros', 'funcoes'] },
+  admin_grupo: { label: 'Administrador de grupo', name: 'Carlos Lima', initials: 'CL', nav: ['agenda', 'escalas', 'eventos', 'ministerios', 'membros', 'funcoes'] },
+  membro: { label: 'Membro', name: 'Beatriz Alves', initials: 'BA', nav: ['agenda', 'escalas', 'eventos', 'ministerios', 'membros', 'funcoes'] },
+};
+const NAV_LABELS = { agenda: 'Agenda', eventos: 'Eventos', ministerios: 'Ministérios', funcoes: 'Funções', membros: 'Membros', escalas: 'Escalas' };
+const PAGE_META = {
+  agenda: { title: 'Agenda', subtitle: 'Visão de calendário das escalas' },
+  eventos: { title: 'Eventos', subtitle: 'Lista de todas as escalas e eventos' },
+  ministerios: { title: 'Ministérios', subtitle: 'Grupos e equipes da sua igreja' },
+  funcoes: { title: 'Funções', subtitle: 'Papéis dentro de cada ministério' },
+  membros: { title: 'Membros', subtitle: 'Pessoas com acesso ao Escacev' },
+  escalas: { title: 'Escalas', subtitle: 'Designação de membros às funções em cada evento' },
+};
+
+class Component extends DCLogic {
+  state = { role: 'admin_geral', appView: 'agenda', mobileMenuOpen: false };
+
+  setRole = (role) => {
+    const nav = ROLES[role].nav;
+    this.setState({ role, appView: nav.includes(this.state.appView) ? this.state.appView : nav[0] });
+  };
+  goTo = (v) => this.setState({ appView: v, mobileMenuOpen: false });
+  openMobileMenu = () => this.setState({ mobileMenuOpen: true });
+  closeMobileMenu = () => this.setState({ mobileMenuOpen: false });
+
+  renderVals() {
+    const s = this.state;
+    const roleInfo = ROLES[s.role];
+
+    const roleSwitcher = Object.keys(ROLES).map(key => {
+      const active = s.role === key;
+      const style = `padding:7px 14px; border-radius:20px; border:1px solid ${active ? '#1A1A1A' : '#EAE2D4'}; background:${active ? '#1A1A1A' : '#FFFFFF'}; font-family:'Public Sans',sans-serif; font-weight:600; font-size:12px; color:${active ? '#FFFFFF' : '#1A1A1A'}; cursor:pointer; white-space:nowrap;`;
+      return { label: ROLES[key].label, style, onClick: () => this.setRole(key) };
+    });
+
+    const navItems = roleInfo.nav.map(key => {
+      const active = s.appView === key;
+      const style = `text-align:left; padding:10px 12px; border-radius:10px; border:none; background:${active ? '#F5EFE2' : 'transparent'}; font-family:'Public Sans',sans-serif; font-weight:600; font-size:14px; color:${active ? '#1A1A1A' : '#837B6E'}; cursor:pointer; margin-bottom:2px; white-space:nowrap;`;
+      return { label: NAV_LABELS[key], style, onClick: () => this.goTo(key), onClickMobile: () => this.goTo(key) };
+    });
+
+    return {
+      roleSwitcher,
+      navItems,
+      user: { name: roleInfo.name, initials: roleInfo.initials, roleLabel: roleInfo.label },
+      mobileMenuOpen: s.mobileMenuOpen,
+      openMobileMenu: this.openMobileMenu,
+      closeMobileMenu: this.closeMobileMenu,
+      pageTitle: PAGE_META[s.appView].title,
+      pageSubtitle: PAGE_META[s.appView].subtitle,
+      isAgenda: s.appView === 'agenda',
+      isEventos: s.appView === 'eventos',
+      isMinistries: s.appView === 'ministerios',
+      isRoles: s.appView === 'funcoes',
+      isMembers: s.appView === 'membros',
+      isEscalas: s.appView === 'escalas',
+    };
+  }
+}
+</script>
+</body>
+</html>

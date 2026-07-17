@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #FBF6EE; }
+  * { box-sizing: border-box; }
+  @keyframes esc-spin { to { transform: rotate(360deg); } }
+  @keyframes esc-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+  @media (max-width: 860px) {
+    .esc-sidebar { display: none !important; }
+    .esc-hamburger { display: flex !important; }
+  }
+</style>
+</helmet>
+
+<div style="font-family: 'Public Sans', sans-serif; color: #1A1A1A; background: #FBF6EE; min-height: 100vh;">
+
+  <!-- ===== BRAND GUIDE ===== -->
+  <div style="max-width: 1100px; margin: 0 auto; padding: 64px 32px 48px;">
+    <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 8px;">
+      <svg width="40" height="40" viewBox="0 0 52 52" style="flex-shrink: 0;"><polygon points="26,4 48,26 26,48 4,26" fill="#1C7C8C"/><polygon points="26,14 40,26 26,38 26,14" fill="#1A1A1A"/></svg>
+      <span style="font-family: 'Sora', sans-serif; font-weight: 800; font-size: 22px; letter-spacing: -0.02em; color: #1A1A1A;">Escacev</span>
+    </div>
+    <p style="font-size: 13px; color: #837B6E; margin: 0 0 40px; letter-spacing: 0.02em; text-transform: uppercase;">Identidade visual &amp; protótipo</p>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 40px; margin-bottom: 48px;">
+      <div>
+        <h2 style="font-family: 'Sora', sans-serif; font-size: 15px; font-weight: 700; margin: 0 0 14px; color: #837B6E; text-transform: uppercase; letter-spacing: 0.04em;">Logotipo</h2>
+        <div style="background: #FFFFFF; border: 1px solid #EAE2D4; border-radius: 16px; padding: 32px; display: flex; align-items: center; justify-content: center; gap: 16px;">
+          <svg width="54" height="54" viewBox="0 0 52 52" style="flex-shrink: 0;"><polygon points="26,4 48,26 26,48 4,26" fill="#1C7C8C"/><polygon points="26,14 40,26 26,38 26,14" fill="#1A1A1A"/></svg>
+          <span style="font-family: 'Sora', sans-serif; font-weight: 800; font-size: 36px; letter-spacing: -0.02em; color: #1A1A1A;">Escacev</span>
+        </div>
+        <p style="font-size: 13px; color: #837B6E; margin: 12px 0 0; line-height: 1.5;">Losango partido: duas metades complementares — os times que se revezam nas escalas dos ministérios.</p>
+
+      </div>
+
+      <div>
+        <h2 style="font-family: 'Sora', sans-serif; font-size: 15px; font-weight: 700; margin: 0 0 14px; color: #837B6E; text-transform: uppercase; letter-spacing: 0.04em;">Tipografia</h2>
+        <div style="background: #FFFFFF; border: 1px solid #EAE2D4; border-radius: 16px; padding: 24px 28px;">
+          <p style="font-family: 'Sora', sans-serif; font-weight: 800; font-size: 28px; margin: 0 0 4px; color: #1A1A1A;">Sora — títulos</p>
+          <p style="font-size: 13px; color: #837B6E; margin: 0 0 20px;">Aa Bb Cc · 600 / 700 / 800</p>
+          <p style="font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 20px; margin: 0 0 4px; color: #1A1A1A;">Public Sans — texto</p>
+          <p style="font-size: 13px; color: #837B6E; margin: 0;">Aa Bb Cc · 400 / 500 / 600 / 700 — legível e acessível</p>
+        </div>
+      </div>
+    </div>
+
+    <h2 style="font-family: 'Sora', sans-serif; font-size: 15px; font-weight: 700; margin: 0 0 14px; color: #837B6E; text-transform: uppercase; letter-spacing: 0.04em;">Paleta</h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 8px;">
+      <div style="background: #FFFFFF; border: 1px solid #EAE2D4; border-radius: 14px; overflow: hidden;">
+        <div style="height: 64px; background: #1C7C8C;"></div>
+        <div style="padding: 10px 12px;"><p style="margin: 0; font-size: 13px; font-weight: 600;">Teal</p><p style="margin: 0; font-size: 12px; color: #837B6E;">#1C7C8C</p></div>
+      </div>
+      <div style="background: #FFFFFF; border: 1px solid #EAE2D4; border-radius: 14px; overflow: hidden;">
+        <div style="height: 64px; background: #1A1A1A;"></div>
+        <div style="padding: 10px 12px;"><p style="margin: 0; font-size: 13px; font-weight: 600;">Preto</p><p style="margin: 0; font-size: 12px; color: #837B6E;">#1A1A1A</p></div>
+      </div>
+      <div style="background: #FFFFFF; border: 1px solid #EAE2D4; border-radius: 14px; overflow: hidden;">
+        <div style="height: 64px; background: #FBF6EE; border-bottom: 1px solid #EAE2D4;"></div>
+        <div style="padding: 10px 12px;"><p style="margin: 0; font-size: 13px; font-weight: 600;">Creme</p><p style="margin: 0; font-size: 12px; color: #837B6E;">#FBF6EE</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== PROTOTYPE FRAME ===== -->
+  <div style="max-width: 1100px; margin: 0 auto; padding: 0 32px 80px;">
+    <h2 style="font-family: 'Sora', sans-serif; font-size: 15px; font-weight: 700; margin: 0 0 14px; color: #837B6E; text-transform: uppercase; letter-spacing: 0.04em;">Protótipo</h2>
+    <div style="background: #FFFFFF; border: 1px solid #EAE2D4; border-radius: 20px; overflow: hidden; box-shadow: 0 20px 50px -30px rgba(42,39,35,0.25); min-height: 640px; position: relative;">
+
+      <sc-if value="{{ isLogin }}" hint-placeholder-val="{{ true }}">
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 640px; padding: 40px 20px; background: #FBF6EE; gap: 16px;">
+          <div style="background: #FFFFFF; border: 1px solid #EAE2D4; border-radius: 20px; padding: 48px 40px; width: 100%; max-width: 360px; text-align: center;">
+            <svg width="48" height="48" viewBox="0 0 52 52" style="margin: 0 auto 20px; display: block;"><polygon points="26,4 48,26 26,48 4,26" fill="#1C7C8C"/><polygon points="26,14 40,26 26,38 26,14" fill="#1A1A1A"/></svg>
+            <h1 style="font-family: 'Sora', sans-serif; font-weight: 800; font-size: 24px; margin: 0 0 8px; color: #1A1A1A;">Bem-vindo ao Escacev</h1>
+            <p style="font-size: 14px; color: #837B6E; margin: 0 0 32px; line-height: 1.5;">Gerencie as escalas do seu ministério, sem complicação.</p>
+            <sc-if value="{{ hasLoginError }}" hint-placeholder-val="{{ false }}">
+              <div style="background: #FDEDEB; border: 1px solid #F3C6BE; border-radius: 10px; padding: 12px 14px; margin-bottom: 20px; text-align: left; display: flex; gap: 10px; align-items: flex-start;">
+                <span style="width: 18px; height: 18px; border-radius: 50%; background: #C0392B; color: #FFFFFF; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px;">!</span>
+                <p style="margin: 0; font-size: 13px; color: #9B2C1E; line-height: 1.5;">{{ loginErrorMessage }}</p>
+              </div>
+            </sc-if>
+            <button onclick="{{ startLogin }}" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 13px 20px; border-radius: 12px; border: 1px solid #EAE2D4; background: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 15px; color: #1A1A1A; cursor: pointer;">
+              <span style="width: 18px; height: 18px; border-radius: 50%; background: conic-gradient(#1C7C8C 0turn 0.25turn, #1C7C8C 0.25turn 0.5turn, #D4A017 0.5turn 0.75turn, #1A1A1A 0.75turn 1turn); display: inline-block;"></span>
+              Entrar com Google
+            </button>
+            <p style="font-size: 12px; color: #B7AF9F; margin: 24px 0 0;">Acesso restrito a convidados da sua igreja.</p>
+          </div>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+            <p style="font-size: 11px; color: #B7AF9F; text-transform: uppercase; letter-spacing: 0.04em; margin: 0;">Protótipo · simular erro</p>
+            <div style="display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; max-width: 360px;">
+              <sc-for list="{{ errorSimOptions }}" as="opt" hint-placeholder-count="4">
+                <button onclick="{{ opt.onClick }}" style="{{ opt.style }}">{{ opt.label }}</button>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isCallback }}" hint-placeholder-val="{{ false }}">
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 640px; gap: 18px;">
+          <div style="width: 44px; height: 44px; border-radius: 50%; border: 4px solid #EAE2D4; border-top-color: #1C7C8C; animation: esc-spin 0.9s linear infinite;"></div>
+          <p style="font-family: 'Public Sans', sans-serif; font-weight: 500; font-size: 14px; color: #837B6E; animation: esc-pulse 1.6s ease-in-out infinite;">Conectando com o Google…</p>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isApp }}" hint-placeholder-val="{{ false }}">
+        <div style="display: flex; min-height: 640px; position: relative;">
+
+          <!-- sidebar -->
+          <div class="esc-sidebar" style="width: 232px; flex-shrink: 0; background: #FFFFFF; border-right: 1px solid #EAE2D4; display: flex; flex-direction: column; padding: 24px 16px;">
+            <div style="display: flex; align-items: center; gap: 10px; padding: 0 8px 24px;">
+              <svg width="26" height="26" viewBox="0 0 52 52" style="flex-shrink: 0;"><polygon points="26,4 48,26 26,48 4,26" fill="#1C7C8C"/><polygon points="26,14 40,26 26,38 26,14" fill="#1A1A1A"/></svg>
+              <span style="font-family: 'Sora', sans-serif; font-weight: 800; font-size: 17px; color: #1A1A1A;">Escacev</span>
+            </div>
+            <sc-for list="{{ navItems }}" as="nav" hint-placeholder-count="3">
+              <button onclick="{{ nav.onClick }}" style="{{ nav.style }}" style-hover="background: #F5EFE2;">{{ nav.label }}</button>
+            </sc-for>
+            <div style="flex: 1;"></div>
+            <div style="display: flex; align-items: center; gap: 10px; padding: 12px 8px; border-top: 1px solid #EAE2D4;">
+              <div style="width: 32px; height: 32px; border-radius: 50%; background: #E3F0F1; color: #1C7C8C; font-weight: 700; font-size: 13px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">AS</div>
+              <div style="min-width: 0;">
+                <p style="margin: 0; font-size: 13px; font-weight: 600; color: #1A1A1A; white-space: nowrap;">Ana Souza</p>
+                <p style="margin: 0; font-size: 11.5px; color: #837B6E;">Administrador geral</p>
+              </div>
+            </div>
+            <button onclick="{{ logout }}" style="margin-top: 4px; text-align: left; padding: 8px; border: none; background: none; font-family: 'Public Sans', sans-serif; font-size: 13px; color: #B7AF9F; cursor: pointer;">Sair</button>
+          </div>
+
+          <!-- mobile drawer -->
+          <sc-if value="{{ mobileMenuOpen }}" hint-placeholder-val="{{ false }}">
+            <div onclick="{{ closeMobileMenu }}" style="position: absolute; inset: 0; background: rgba(42,39,35,0.35); z-index: 5;"></div>
+            <div style="position: absolute; top: 0; left: 0; bottom: 0; width: 232px; background: #FFFFFF; z-index: 6; display: flex; flex-direction: column; padding: 24px 16px; box-shadow: 12px 0 30px rgba(42,39,35,0.15);">
+              <div style="display: flex; align-items: center; gap: 10px; padding: 0 8px 24px;">
+                <svg width="26" height="26" viewBox="0 0 52 52" style="flex-shrink: 0;"><polygon points="26,4 48,26 26,48 4,26" fill="#1C7C8C"/><polygon points="26,14 40,26 26,38 26,14" fill="#1A1A1A"/></svg>
+                <span style="font-family: 'Sora', sans-serif; font-weight: 800; font-size: 17px; color: #1A1A1A;">Escacev</span>
+              </div>
+              <sc-for list="{{ navItems }}" as="nav" hint-placeholder-count="3">
+                <button onclick="{{ nav.onClickMobile }}" style="{{ nav.style }}">{{ nav.label }}</button>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <!-- main -->
+          <div style="flex: 1; min-width: 0; padding: 24px 28px 40px; display: flex; flex-direction: column; gap: 24px;">
+            <div style="display: flex; align-items: center; gap: 14px;">
+              <button class="esc-hamburger" onclick="{{ openMobileMenu }}" style="display: none; width: 36px; height: 36px; border-radius: 10px; border: 1px solid #EAE2D4; background: #FFFFFF; align-items: center; justify-content: center; flex-direction: column; gap: 3px; cursor: pointer; flex-shrink: 0;">
+                <span style="width: 16px; height: 2px; background: #1A1A1A; border-radius: 1px;"></span>
+                <span style="width: 16px; height: 2px; background: #1A1A1A; border-radius: 1px;"></span>
+                <span style="width: 16px; height: 2px; background: #1A1A1A; border-radius: 1px;"></span>
+              </button>
+              <div style="flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;">
+                <div>
+                  <h1 style="font-family: 'Sora', sans-serif; font-weight: 800; font-size: 22px; margin: 0; color: #1A1A1A;">{{ pageTitle }}</h1>
+                  <p style="margin: 4px 0 0; font-size: 13.5px; color: #837B6E;">{{ pageSubtitle }}</p>
+                </div>
+                <button onclick="{{ pageAction }}" style="display: flex; align-items: center; gap: 6px; padding: 10px 16px; border-radius: 10px; border: none; background: #1C7C8C; color: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13.5px; cursor: pointer; white-space: nowrap;" style-hover="background: #145F6B;">
+                  <span style="font-size: 16px; line-height: 1;">+</span>{{ pageActionLabel }}
+                </button>
+              </div>
+            </div>
+
+            <!-- MINISTERIOS -->
+            <sc-if value="{{ isMinistries }}" hint-placeholder-val="{{ false }}">
+              <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px;">
+                <sc-for list="{{ ministries }}" as="m" hint-placeholder-count="4">
+                  <div style="background: #FFFFFF; border: 1px solid #EAE2D4; border-radius: 14px; padding: 18px;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                      <span style="width: 10px; height: 10px; border-radius: 50%; background: {{ m.color }}; flex-shrink: 0;"></span>
+                      <p style="margin: 0; font-weight: 700; font-size: 15px; color: #1A1A1A;">{{ m.name }}</p>
+                    </div>
+                    <p style="margin: 0 0 12px; font-size: 13px; color: #837B6E; line-height: 1.5;">{{ m.description }}</p>
+                    <p style="margin: 0 0 14px; font-size: 12px; color: #B7AF9F;">{{ m.memberCount }} membros</p>
+                    <div style="display: flex; gap: 14px;">
+                      <button onclick="{{ m.onEdit }}" style="border: none; background: none; padding: 0; font-family: 'Public Sans', sans-serif; font-size: 13px; font-weight: 600; color: #1C7C8C; cursor: pointer;">Editar</button>
+                      <sc-if value="{{ m.confirmingDelete }}" hint-placeholder-val="{{ false }}">
+                        <button onclick="{{ m.onConfirmDelete }}" style="border: none; background: none; padding: 0; font-family: 'Public Sans', sans-serif; font-size: 13px; font-weight: 600; color: #C0392B; cursor: pointer;">Confirmar exclusão</button>
+                        <button onclick="{{ m.onCancelDelete }}" style="border: none; background: none; padding: 0; font-family: 'Public Sans', sans-serif; font-size: 13px; font-weight: 600; color: #B7AF9F; cursor: pointer;">Cancelar</button>
+                      </sc-if>
+                      <sc-if value="{{ m.notConfirmingDelete }}" hint-placeholder-val="{{ true }}">
+                        <button onclick="{{ m.onDelete }}" style="border: none; background: none; padding: 0; font-family: 'Public Sans', sans-serif; font-size: 13px; font-weight: 600; color: #B7AF9F; cursor: pointer;">Excluir</button>
+                      </sc-if>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+
+            <!-- FUNCOES -->
+            <sc-if value="{{ isRoles }}" hint-placeholder-val="{{ false }}">
+              <div>
+                <div style="display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;">
+                  <sc-for list="{{ ministryFilters }}" as="f" hint-placeholder-count="4">
+                    <button onclick="{{ f.onClick }}" style="{{ f.style }}">{{ f.label }}</button>
+                  </sc-for>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                  <sc-for list="{{ visibleRoles }}" as="r" hint-placeholder-count="4">
+                    <div style="background: #FFFFFF; border: 1px solid #EAE2D4; border-radius: 12px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                      <div style="flex: 1; min-width: 160px;">
+                        <p style="margin: 0; font-weight: 700; font-size: 14px; color: #1A1A1A;">{{ r.name }}</p>
+                        <p style="margin: 2px 0 0; font-size: 12.5px; color: #837B6E;">{{ r.description }}</p>
+                      </div>
+                      <span style="font-size: 11.5px; font-weight: 600; padding: 4px 10px; border-radius: 20px; background: {{ r.ministryTagBg }}; color: {{ r.ministryTagColor }};">{{ r.ministryName }}</span>
+                      <button onclick="{{ r.onEdit }}" style="border: none; background: none; padding: 0; font-family: 'Public Sans', sans-serif; font-size: 13px; font-weight: 600; color: #1C7C8C; cursor: pointer;">Editar</button>
+                      <button onclick="{{ r.onDelete }}" style="border: none; background: none; padding: 0; font-family: 'Public Sans', sans-serif; font-size: 13px; font-weight: 600; color: #B7AF9F; cursor: pointer;">Excluir</button>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-if>
+
+            <!-- MEMBROS -->
+            <sc-if value="{{ isMembers }}" hint-placeholder-val="{{ false }}">
+              <div>
+                <input value="{{ memberSearch }}" oninput="{{ onMemberSearch }}" placeholder="Buscar por nome ou e-mail" style="width: 100%; max-width: 320px; padding: 10px 14px; border-radius: 10px; border: 1px solid #EAE2D4; font-family: 'Public Sans', sans-serif; font-size: 13.5px; margin-bottom: 16px; background: #FFFFFF;" />
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                  <sc-for list="{{ visibleMembers }}" as="mem" hint-placeholder-count="4">
+                    <div style="background: #FFFFFF; border: 1px solid #EAE2D4; border-radius: 12px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                      <div style="width: 34px; height: 34px; border-radius: 50%; background: #F5EFE2; color: #1A1A1A; font-weight: 700; font-size: 13px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">{{ mem.initials }}</div>
+                      <div style="flex: 1; min-width: 160px;">
+                        <p style="margin: 0; font-weight: 700; font-size: 14px; color: #1A1A1A;">{{ mem.name }}</p>
+                        <p style="margin: 2px 0 0; font-size: 12.5px; color: #837B6E;">{{ mem.email }} · {{ mem.ministryName }}</p>
+                      </div>
+                      <span style="font-size: 11.5px; font-weight: 600; padding: 4px 10px; border-radius: 20px; background: {{ mem.roleTagBg }}; color: {{ mem.roleTagColor }};">{{ mem.role }}</span>
+                      <span style="font-size: 11.5px; font-weight: 600; padding: 4px 10px; border-radius: 20px; background: {{ mem.statusTagBg }}; color: {{ mem.statusTagColor }};">{{ mem.status }}</span>
+                      <button onclick="{{ mem.onEdit }}" style="border: none; background: none; padding: 0; font-family: 'Public Sans', sans-serif; font-size: 13px; font-weight: 600; color: #1C7C8C; cursor: pointer;">Editar</button>
+                      <button onclick="{{ mem.onDelete }}" style="border: none; background: none; padding: 0; font-family: 'Public Sans', sans-serif; font-size: 13px; font-weight: 600; color: #B7AF9F; cursor: pointer;">Remover</button>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-if>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- MODAL: ministerio -->
+      <sc-if value="{{ ministryModal.open }}" hint-placeholder-val="{{ false }}">
+        <div style="position: absolute; inset: 0; background: rgba(42,39,35,0.4); display: flex; align-items: center; justify-content: center; z-index: 20; padding: 20px;">
+          <div style="background: #FFFFFF; border-radius: 16px; padding: 28px; width: 100%; max-width: 380px;">
+            <h3 style="font-family: 'Sora', sans-serif; font-weight: 700; font-size: 18px; margin: 0 0 18px; color: #1A1A1A;">{{ ministryModal.title }}</h3>
+            <label style="font-size: 12.5px; font-weight: 600; color: #837B6E; display: block; margin-bottom: 6px;">Nome</label>
+            <input value="{{ ministryModal.name }}" oninput="{{ ministryModal.onNameChange }}" style="width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #EAE2D4; font-family: 'Public Sans', sans-serif; font-size: 14px; margin-bottom: 14px;" />
+            <label style="font-size: 12.5px; font-weight: 600; color: #837B6E; display: block; margin-bottom: 6px;">Descrição</label>
+            <input value="{{ ministryModal.description }}" oninput="{{ ministryModal.onDescriptionChange }}" style="width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #EAE2D4; font-family: 'Public Sans', sans-serif; font-size: 14px; margin-bottom: 14px;" />
+            <label style="font-size: 12.5px; font-weight: 600; color: #837B6E; display: block; margin-bottom: 8px;">Cor</label>
+            <div style="display: flex; gap: 8px; margin-bottom: 22px;">
+              <sc-for list="{{ colorOptions }}" as="c" hint-placeholder-count="5">
+                <button onclick="{{ c.onSelect }}" style="{{ c.style }}"></button>
+              </sc-for>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 10px;">
+              <button onclick="{{ ministryModal.onCancel }}" style="padding: 10px 16px; border-radius: 10px; border: 1px solid #EAE2D4; background: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13.5px; color: #1A1A1A; cursor: pointer;">Cancelar</button>
+              <button onclick="{{ ministryModal.onSave }}" style="padding: 10px 16px; border-radius: 10px; border: none; background: #1C7C8C; color: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13.5px; cursor: pointer;">Salvar</button>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- MODAL: funcao -->
+      <sc-if value="{{ roleModal.open }}" hint-placeholder-val="{{ false }}">
+        <div style="position: absolute; inset: 0; background: rgba(42,39,35,0.4); display: flex; align-items: center; justify-content: center; z-index: 20; padding: 20px;">
+          <div style="background: #FFFFFF; border-radius: 16px; padding: 28px; width: 100%; max-width: 380px;">
+            <h3 style="font-family: 'Sora', sans-serif; font-weight: 700; font-size: 18px; margin: 0 0 18px; color: #1A1A1A;">{{ roleModal.title }}</h3>
+            <label style="font-size: 12.5px; font-weight: 600; color: #837B6E; display: block; margin-bottom: 6px;">Ministério</label>
+            <select value="{{ roleModal.ministryId }}" onchange="{{ roleModal.onMinistryChange }}" style="width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #EAE2D4; font-family: 'Public Sans', sans-serif; font-size: 14px; margin-bottom: 14px; background: #FFFFFF;">
+              <sc-for list="{{ ministries }}" as="m" hint-placeholder-count="4">
+                <option value="{{ m.id }}">{{ m.name }}</option>
+              </sc-for>
+            </select>
+            <label style="font-size: 12.5px; font-weight: 600; color: #837B6E; display: block; margin-bottom: 6px;">Nome da função</label>
+            <input value="{{ roleModal.name }}" oninput="{{ roleModal.onNameChange }}" style="width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #EAE2D4; font-family: 'Public Sans', sans-serif; font-size: 14px; margin-bottom: 14px;" />
+            <label style="font-size: 12.5px; font-weight: 600; color: #837B6E; display: block; margin-bottom: 6px;">Descrição</label>
+            <input value="{{ roleModal.description }}" oninput="{{ roleModal.onDescriptionChange }}" style="width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #EAE2D4; font-family: 'Public Sans', sans-serif; font-size: 14px; margin-bottom: 22px;" />
+            <div style="display: flex; justify-content: flex-end; gap: 10px;">
+              <button onclick="{{ roleModal.onCancel }}" style="padding: 10px 16px; border-radius: 10px; border: 1px solid #EAE2D4; background: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13.5px; color: #1A1A1A; cursor: pointer;">Cancelar</button>
+              <button onclick="{{ roleModal.onSave }}" style="padding: 10px 16px; border-radius: 10px; border: none; background: #1C7C8C; color: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13.5px; cursor: pointer;">Salvar</button>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- MODAL: membro -->
+      <sc-if value="{{ memberModal.open }}" hint-placeholder-val="{{ false }}">
+        <div style="position: absolute; inset: 0; background: rgba(42,39,35,0.4); display: flex; align-items: center; justify-content: center; z-index: 20; padding: 20px;">
+          <div style="background: #FFFFFF; border-radius: 16px; padding: 28px; width: 100%; max-width: 380px;">
+            <h3 style="font-family: 'Sora', sans-serif; font-weight: 700; font-size: 18px; margin: 0 0 18px; color: #1A1A1A;">{{ memberModal.title }}</h3>
+            <label style="font-size: 12.5px; font-weight: 600; color: #837B6E; display: block; margin-bottom: 6px;">Nome</label>
+            <input value="{{ memberModal.name }}" oninput="{{ memberModal.onNameChange }}" style="width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #EAE2D4; font-family: 'Public Sans', sans-serif; font-size: 14px; margin-bottom: 14px;" />
+            <label style="font-size: 12.5px; font-weight: 600; color: #837B6E; display: block; margin-bottom: 6px;">E-mail</label>
+            <input value="{{ memberModal.email }}" oninput="{{ memberModal.onEmailChange }}" style="width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #EAE2D4; font-family: 'Public Sans', sans-serif; font-size: 14px; margin-bottom: 14px;" />
+            <label style="font-size: 12.5px; font-weight: 600; color: #837B6E; display: block; margin-bottom: 6px;">Papel</label>
+            <select value="{{ memberModal.role }}" onchange="{{ memberModal.onRoleChange }}" style="width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #EAE2D4; font-family: 'Public Sans', sans-serif; font-size: 14px; margin-bottom: 14px; background: #FFFFFF;">
+              <option value="Administrador geral">Administrador geral</option>
+              <option value="Administrador de grupo">Administrador de grupo</option>
+              <option value="Membro">Membro</option>
+            </select>
+            <label style="font-size: 12.5px; font-weight: 600; color: #837B6E; display: block; margin-bottom: 6px;">Ministério</label>
+            <select value="{{ memberModal.ministryId }}" onchange="{{ memberModal.onMinistryChange }}" style="width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #EAE2D4; font-family: 'Public Sans', sans-serif; font-size: 14px; margin-bottom: 22px; background: #FFFFFF;">
+              <sc-for list="{{ ministries }}" as="m" hint-placeholder-count="4">
+                <option value="{{ m.id }}">{{ m.name }}</option>
+              </sc-for>
+            </select>
+            <div style="display: flex; justify-content: flex-end; gap: 10px;">
+              <button onclick="{{ memberModal.onCancel }}" style="padding: 10px 16px; border-radius: 10px; border: 1px solid #EAE2D4; background: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13.5px; color: #1A1A1A; cursor: pointer;">Cancelar</button>
+              <button onclick="{{ memberModal.onSave }}" style="padding: 10px 16px; border-radius: 10px; border: none; background: #1C7C8C; color: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13.5px; cursor: pointer;">{{ memberModal.saveLabel }}</button>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+    </div>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const COLOR_SWATCHES = ['#1C7C8C', '#1A1A1A', '#C9962D', '#8E5B9E', '#3E7CB1'];
+
+class Component extends DCLogic {
+  state = {
+    view: 'login',
+    loginError: null,
+    appView: 'ministerios',
+    mobileMenuOpen: false,
+    memberSearch: '',
+    roleFilter: 'all',
+    ministries: [
+      { id: 'm1', name: 'Louvor', description: 'Equipe de música e adoração', color: '#1C7C8C', memberCount: 12, confirmingDelete: false },
+      { id: 'm2', name: 'Infantil', description: 'Cuidado e ensino das crianças', color: '#C9962D', memberCount: 8, confirmingDelete: false },
+      { id: 'm3', name: 'Recepção', description: 'Acolhimento na entrada', color: '#1A1A1A', memberCount: 6, confirmingDelete: false },
+      { id: 'm4', name: 'Mídia', description: 'Som, transmissão e projeção', color: '#3E7CB1', memberCount: 5, confirmingDelete: false },
+    ],
+    roles: [
+      { id: 'r1', ministryId: 'm1', name: 'Vocal', description: 'Canto e harmonização' },
+      { id: 'r2', ministryId: 'm1', name: 'Ministro de louvor', description: 'Conduz o momento de adoração' },
+      { id: 'r3', ministryId: 'm1', name: 'Guitarra', description: 'Base e solos' },
+      { id: 'r4', ministryId: 'm2', name: 'Contadora de história', description: 'Ensina a lição da semana' },
+      { id: 'r5', ministryId: 'm2', name: 'Auxiliar de sala', description: 'Apoio e cuidado das turmas' },
+      { id: 'r6', ministryId: 'm3', name: 'Boas-vindas', description: 'Recebe e orienta visitantes' },
+      { id: 'r7', ministryId: 'm3', name: 'Porteiro', description: 'Organiza entrada e saída' },
+      { id: 'r8', ministryId: 'm4', name: 'Operador de som', description: 'Mixagem durante o culto' },
+      { id: 'r9', ministryId: 'm4', name: 'Transmissão live', description: 'Cuida do culto on-line' },
+    ],
+    members: [
+      { id: 'u1', name: 'Ana Souza', email: 'ana@escacev.com', role: 'Administrador geral', ministryId: 'm1', status: 'Ativo' },
+      { id: 'u2', name: 'Carlos Lima', email: 'carlos@escacev.com', role: 'Administrador de grupo', ministryId: 'm2', status: 'Ativo' },
+      { id: 'u3', name: 'Beatriz Alves', email: 'bia@escacev.com', role: 'Membro', ministryId: 'm3', status: 'Ativo' },
+      { id: 'u4', name: 'Diego Farias', email: 'diego@escacev.com', role: 'Membro', ministryId: 'm4', status: 'Convite enviado' },
+    ],
+    ministryModal: { open: false, editingId: null, name: '', description: '', color: COLOR_SWATCHES[0] },
+    roleModal: { open: false, editingId: null, name: '', description: '', ministryId: 'm1' },
+    memberModal: { open: false, editingId: null, name: '', email: '', role: 'Membro', ministryId: 'm1' },
+  };
+
+  startLogin = () => {
+    this.setState({ view: 'callback', loginError: null });
+    setTimeout(() => this.setState({ view: 'app' }), 1300);
+  };
+  simulateLoginError = (key) => this.setState({ loginError: key });
+  logout = () => this.setState({ view: 'login', appView: 'ministerios' });
+  openMobileMenu = () => this.setState({ mobileMenuOpen: true });
+  closeMobileMenu = () => this.setState({ mobileMenuOpen: false });
+  goTo = (v) => this.setState({ appView: v, mobileMenuOpen: false });
+
+  openMinistryModal = (id) => {
+    const m = id ? this.state.ministries.find(x => x.id === id) : null;
+    this.setState({ ministryModal: { open: true, editingId: id, name: m ? m.name : '', description: m ? m.description : '', color: m ? m.color : COLOR_SWATCHES[0] } });
+  };
+  saveMinistry = () => {
+    const mm = this.state.ministryModal;
+    if (!mm.name.trim()) return;
+    if (mm.editingId) {
+      this.setState({ ministries: this.state.ministries.map(m => m.id === mm.editingId ? { ...m, name: mm.name, description: mm.description, color: mm.color } : m), ministryModal: { ...mm, open: false } });
+    } else {
+      this.setState({ ministries: [...this.state.ministries, { id: 'm' + Date.now(), name: mm.name, description: mm.description, color: mm.color, memberCount: 0, confirmingDelete: false }], ministryModal: { ...mm, open: false } });
+    }
+  };
+  askDeleteMinistry = (id) => this.setState({ ministries: this.state.ministries.map(m => m.id === id ? { ...m, confirmingDelete: true } : m) });
+  cancelDeleteMinistry = (id) => this.setState({ ministries: this.state.ministries.map(m => m.id === id ? { ...m, confirmingDelete: false } : m) });
+  deleteMinistry = (id) => this.setState({ ministries: this.state.ministries.filter(m => m.id !== id) });
+
+  openRoleModal = (id) => {
+    const r = id ? this.state.roles.find(x => x.id === id) : null;
+    this.setState({ roleModal: { open: true, editingId: id, name: r ? r.name : '', description: r ? r.description : '', ministryId: r ? r.ministryId : (this.state.ministries[0] ? this.state.ministries[0].id : 'm1') } });
+  };
+  saveRole = () => {
+    const rm = this.state.roleModal;
+    if (!rm.name.trim()) return;
+    if (rm.editingId) {
+      this.setState({ roles: this.state.roles.map(r => r.id === rm.editingId ? { ...r, name: rm.name, description: rm.description, ministryId: rm.ministryId } : r), roleModal: { ...rm, open: false } });
+    } else {
+      this.setState({ roles: [...this.state.roles, { id: 'r' + Date.now(), name: rm.name, description: rm.description, ministryId: rm.ministryId }], roleModal: { ...rm, open: false } });
+    }
+  };
+  deleteRole = (id) => this.setState({ roles: this.state.roles.filter(r => r.id !== id) });
+
+  openMemberModal = (id) => {
+    const mem = id ? this.state.members.find(x => x.id === id) : null;
+    this.setState({ memberModal: { open: true, editingId: id, name: mem ? mem.name : '', email: mem ? mem.email : '', role: mem ? mem.role : 'Membro', ministryId: mem ? mem.ministryId : (this.state.ministries[0] ? this.state.ministries[0].id : 'm1') } });
+  };
+  saveMember = () => {
+    const mm = this.state.memberModal;
+    if (!mm.name.trim() || !mm.email.trim()) return;
+    if (mm.editingId) {
+      this.setState({ members: this.state.members.map(m => m.id === mm.editingId ? { ...m, name: mm.name, email: mm.email, role: mm.role, ministryId: mm.ministryId } : m), memberModal: { ...mm, open: false } });
+    } else {
+      this.setState({ members: [...this.state.members, { id: 'u' + Date.now(), name: mm.name, email: mm.email, role: mm.role, ministryId: mm.ministryId, status: 'Convite enviado' }], memberModal: { ...mm, open: false } });
+    }
+  };
+  deleteMember = (id) => this.setState({ members: this.state.members.filter(m => m.id !== id) });
+
+  initials(name) {
+    return name.split(' ').filter(Boolean).slice(0, 2).map(p => p[0].toUpperCase()).join('');
+  }
+  ministryName(id) {
+    const m = this.state.ministries.find(x => x.id === id);
+    return m ? m.name : '—';
+  }
+  ministryTagColors(id) {
+    const m = this.state.ministries.find(x => x.id === id);
+    const color = m ? m.color : '#837B6E';
+    return { bg: color + '22', fg: color };
+  }
+  roleTagColors(role) {
+    if (role === 'Administrador geral') return { bg: '#FBE6DE', fg: '#C4431E' };
+    if (role === 'Administrador de grupo') return { bg: '#E3F0F1', fg: '#1C7C8C' };
+    return { bg: '#EFEBE3', fg: '#6B6456' };
+  }
+  statusTagColors(status) {
+    return status === 'Ativo' ? { bg: '#E3F0F1', fg: '#1C7C8C' } : { bg: '#FCEEE3', fg: '#B5651D' };
+  }
+
+  renderVals() {
+    const s = this.state;
+    const LOGIN_ERRORS = {
+      auth_failed: 'Falha na autenticação com o Google. Tente novamente.',
+      no_email: 'Conta Google sem e-mail disponível. Use uma conta com e-mail público para continuar.',
+      not_authorized: 'Usuário não autorizado — solicite um convite ao administrador do seu ministério.',
+      api_error: 'Não foi possível concluir o login (googleSub é obrigatório | E-mail é obrigatório). Tente novamente em instantes.',
+    };
+    const errorSimDefs = [
+      { key: 'auth_failed', label: 'Falha na autenticação' },
+      { key: 'no_email', label: 'Sem e-mail' },
+      { key: 'not_authorized', label: 'Não autorizado' },
+      { key: 'api_error', label: 'Erro da API' },
+      { key: null, label: 'Limpar' },
+    ];
+    const errorSimOptions = errorSimDefs.map(o => {
+      const active = s.loginError === o.key;
+      const style = `padding:6px 12px; border-radius:20px; border:1px solid ${active ? '#1A1A1A' : '#EAE2D4'}; background:${active ? '#1A1A1A' : '#FFFFFF'}; font-family:'Public Sans',sans-serif; font-weight:600; font-size:11.5px; color:${active ? '#FFFFFF' : '#837B6E'}; cursor:pointer;`;
+      return { label: o.label, style, onClick: () => this.simulateLoginError(o.key) };
+    });
+    const navDefs = [
+      { key: 'ministerios', label: 'Ministérios' },
+      { key: 'funcoes', label: 'Funções' },
+      { key: 'membros', label: 'Membros' },
+    ];
+    const navItems = navDefs.map(n => {
+      const active = s.appView === n.key;
+      const style = `text-align:left; padding:10px 12px; border-radius:10px; border:none; background:${active ? '#F5EFE2' : 'transparent'}; font-family:'Public Sans',sans-serif; font-weight:600; font-size:14px; color:${active ? '#2A2723' : '#837B6E'}; cursor:pointer; margin-bottom:2px;`;
+      return { label: n.label, style, onClick: () => this.goTo(n.key), onClickMobile: () => this.goTo(n.key) };
+    });
+
+    const ministryFilterDefs = [{ id: 'all', name: 'Todos' }, ...s.ministries];
+    const ministryFilters = ministryFilterDefs.map(m => {
+      const active = s.roleFilter === m.id;
+      const style = `padding:7px 14px; border-radius:20px; border:1px solid ${active ? '#2A2723' : '#EAE2D4'}; background:${active ? '#2A2723' : '#FFFFFF'}; font-family:'Public Sans',sans-serif; font-weight:600; font-size:12.5px; color:${active ? '#FFFFFF' : '#2A2723'}; cursor:pointer;`;
+      return { label: m.name, style, onClick: () => this.setState({ roleFilter: m.id }) };
+    });
+
+    const visibleRoles = s.roles.filter(r => s.roleFilter === 'all' || r.ministryId === s.roleFilter).map(r => {
+      const tag = this.ministryTagColors(r.ministryId);
+      return { ...r, ministryName: this.ministryName(r.ministryId), ministryTagBg: tag.bg, ministryTagColor: tag.fg, onEdit: () => this.openRoleModal(r.id), onDelete: () => this.deleteRole(r.id) };
+    });
+
+    const q = s.memberSearch.trim().toLowerCase();
+    const visibleMembers = s.members.filter(m => !q || m.name.toLowerCase().includes(q) || m.email.toLowerCase().includes(q)).map(m => {
+      const roleTag = this.roleTagColors(m.role);
+      const statusTag = this.statusTagColors(m.status);
+      return { ...m, initials: this.initials(m.name), ministryName: this.ministryName(m.ministryId), roleTagBg: roleTag.bg, roleTagColor: roleTag.fg, statusTagBg: statusTag.bg, statusTagColor: statusTag.fg, onEdit: () => this.openMemberModal(m.id), onDelete: () => this.deleteMember(m.id) };
+    });
+
+    const ministries = s.ministries.map(m => ({
+      ...m,
+      notConfirmingDelete: !m.confirmingDelete,
+      onEdit: () => this.openMinistryModal(m.id),
+      onDelete: () => this.askDeleteMinistry(m.id),
+      onConfirmDelete: () => this.deleteMinistry(m.id),
+      onCancelDelete: () => this.cancelDeleteMinistry(m.id),
+    }));
+
+    const pageMeta = {
+      ministerios: { title: 'Ministérios', subtitle: 'Grupos e equipes da sua igreja', actionLabel: 'Novo ministério', action: () => this.openMinistryModal(null) },
+      funcoes: { title: 'Funções', subtitle: 'Papéis dentro de cada ministério', actionLabel: 'Nova função', action: () => this.openRoleModal(null) },
+      membros: { title: 'Membros', subtitle: 'Pessoas com acesso ao Escacev', actionLabel: 'Convidar membro', action: () => this.openMemberModal(null) },
+    }[s.appView];
+
+    const colorOptions = COLOR_SWATCHES.map(c => ({
+      onSelect: () => this.setState({ ministryModal: { ...s.ministryModal, color: c } }),
+      style: `width:30px; height:30px; border-radius:50%; background:${c}; border:${s.ministryModal.color === c ? '3px solid #2A2723' : '2px solid #FFFFFF'}; cursor:pointer;`,
+    }));
+
+    return {
+      isLogin: s.view === 'login',
+      isCallback: s.view === 'callback',
+      isApp: s.view === 'app',
+      isMinistries: s.appView === 'ministerios',
+      isRoles: s.appView === 'funcoes',
+      isMembers: s.appView === 'membros',
+      startLogin: this.startLogin,
+      hasLoginError: !!s.loginError,
+      loginErrorMessage: s.loginError ? LOGIN_ERRORS[s.loginError] : '',
+      errorSimOptions,
+      logout: this.logout,
+      openMobileMenu: this.openMobileMenu,
+      closeMobileMenu: this.closeMobileMenu,
+      mobileMenuOpen: s.mobileMenuOpen,
+      navItems,
+      pageTitle: pageMeta.title,
+      pageSubtitle: pageMeta.subtitle,
+      pageActionLabel: pageMeta.actionLabel,
+      pageAction: pageMeta.action,
+      ministries,
+      ministryFilters,
+      visibleRoles,
+      memberSearch: s.memberSearch,
+      onMemberSearch: (e) => this.setState({ memberSearch: e.target.value }),
+      visibleMembers,
+      colorOptions,
+      ministryModal: {
+        ...s.ministryModal,
+        title: s.ministryModal.editingId ? 'Editar ministério' : 'Novo ministério',
+        onNameChange: (e) => this.setState({ ministryModal: { ...s.ministryModal, name: e.target.value } }),
+        onDescriptionChange: (e) => this.setState({ ministryModal: { ...s.ministryModal, description: e.target.value } }),
+        onCancel: () => this.setState({ ministryModal: { ...s.ministryModal, open: false } }),
+        onSave: this.saveMinistry,
+      },
+      roleModal: {
+        ...s.roleModal,
+        title: s.roleModal.editingId ? 'Editar função' : 'Nova função',
+        onNameChange: (e) => this.setState({ roleModal: { ...s.roleModal, name: e.target.value } }),
+        onDescriptionChange: (e) => this.setState({ roleModal: { ...s.roleModal, description: e.target.value } }),
+        onMinistryChange: (e) => this.setState({ roleModal: { ...s.roleModal, ministryId: e.target.value } }),
+        onCancel: () => this.setState({ roleModal: { ...s.roleModal, open: false } }),
+        onSave: this.saveRole,
+      },
+      memberModal: {
+        ...s.memberModal,
+        title: s.memberModal.editingId ? 'Editar membro' : 'Convidar membro',
+        saveLabel: s.memberModal.editingId ? 'Salvar' : 'Enviar convite',
+        onNameChange: (e) => this.setState({ memberModal: { ...s.memberModal, name: e.target.value } }),
+        onEmailChange: (e) => this.setState({ memberModal: { ...s.memberModal, email: e.target.value } }),
+        onRoleChange: (e) => this.setState({ memberModal: { ...s.memberModal, role: e.target.value } }),
+        onMinistryChange: (e) => this.setState({ memberModal: { ...s.memberModal, ministryId: e.target.value } }),
+        onCancel: () => this.setState({ memberModal: { ...s.memberModal, open: false } }),
+        onSave: this.saveMember,
+      },
+    };
+  }
+}
+</script>
+</body>
+</html>
