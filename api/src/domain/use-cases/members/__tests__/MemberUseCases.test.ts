@@ -1,5 +1,13 @@
 import { Member } from '../../../entities/Member';
+import { Ministry } from '../../../entities/Ministry';
+import { MinistryMembership } from '../../../entities/MinistryMembership';
 import { MemberRepository } from '../../../repositories/MemberRepository';
+import {
+  MemberMinistryLink,
+  MemberMinistryView,
+  MinistryMemberView,
+  MinistryMembershipRepository,
+} from '../../../repositories/MinistryMembershipRepository';
 import { RecordingNotifier } from '../../../../test/fakeNotifier';
 import { CreateMemberUseCase } from '../CreateMemberUseCase';
 import { ListMembersUseCase } from '../ListMembersUseCase';
@@ -139,12 +147,40 @@ describe('GetMemberUseCase', () => {
   });
 });
 
+/** Só o que o UpdateMemberUseCase usa: ler os vínculos do membro e regravá-los. */
+class FakeMembershipRepo implements MinistryMembershipRepository {
+  memberships: MinistryMembership[] = [];
+  async findByMemberAndMinistry(): Promise<MinistryMembership | null> {
+    return null;
+  }
+  async findMembersByMinistry(): Promise<MinistryMemberView[]> {
+    return [];
+  }
+  async findMinistriesByMember(memberId: string): Promise<MemberMinistryView[]> {
+    return this.memberships
+      .filter((m) => m.memberId === memberId)
+      .map((membership) => ({ membership, ministry: {} as Ministry }));
+  }
+  async save(m: MinistryMembership): Promise<MinistryMembership> {
+    this.memberships.push(m);
+    return m;
+  }
+  async update(m: MinistryMembership): Promise<MinistryMembership> {
+    this.memberships = this.memberships.map((x) => (x.id === m.id ? m : x));
+    return m;
+  }
+  async delete(): Promise<void> {}
+  async replaceForMember(_memberId: string, _links: MemberMinistryLink[]): Promise<void> {
+    throw new Error('replaceForMember não é usado neste teste');
+  }
+}
+
 describe('UpdateMemberUseCase', () => {
   it('atualiza nome e perfil do membro do próprio tenant', async () => {
     const repo = new FakeMemberRepository();
     const member = await new CreateMemberUseCase(repo, new RecordingNotifier()).execute(base);
 
-    const updated = await new UpdateMemberUseCase(repo).execute({
+    const updated = await new UpdateMemberUseCase(repo, new FakeMembershipRepo()).execute({
       id: member.id,
       institutionId: INST,
       name: 'João Atualizado',
@@ -155,12 +191,78 @@ describe('UpdateMemberUseCase', () => {
     expect(updated.role).toBe('ADMIN_MINISTERIO');
   });
 
+  /**
+   * Sem isso o estado fica mentiroso: o banco diria que a pessoa administra o
+   * Louvor, a tela mostraria "Louvor · admin", e o `rbac` a barraria antes da
+   * MinistryAccessPolicy rodar — um admin sem poder.
+   */
+  it('rebaixar para MEMBRO limpa o isAdmin de todos os vínculos', async () => {
+    const repo = new FakeMemberRepository();
+    const membershipRepo = new FakeMembershipRepo();
+    const member = await new CreateMemberUseCase(repo, new RecordingNotifier()).execute({
+      ...base,
+      role: 'ADMIN_MINISTERIO',
+    });
+    await membershipRepo.save(
+      MinistryMembership.create({ memberId: member.id, ministryId: 'min-1', isAdmin: true }),
+    );
+    await membershipRepo.save(
+      MinistryMembership.create({ memberId: member.id, ministryId: 'min-2', isAdmin: true }),
+    );
+
+    await new UpdateMemberUseCase(repo, membershipRepo).execute({
+      id: member.id,
+      institutionId: INST,
+      role: 'MEMBRO',
+    });
+
+    expect(membershipRepo.memberships.map((m) => m.isAdmin)).toEqual([false, false]);
+  });
+
+  it('promover NÃO inventa vínculo: o sistema não sabe de qual ministério', async () => {
+    const repo = new FakeMemberRepository();
+    const membershipRepo = new FakeMembershipRepo();
+    const member = await new CreateMemberUseCase(repo, new RecordingNotifier()).execute(base);
+
+    await new UpdateMemberUseCase(repo, membershipRepo).execute({
+      id: member.id,
+      institutionId: INST,
+      role: 'ADMIN_MINISTERIO',
+    });
+
+    expect(membershipRepo.memberships).toHaveLength(0);
+  });
+
+  it('ADMIN_GERAL mantém os vínculos e o isAdmin (participa e é escalável)', async () => {
+    const repo = new FakeMemberRepository();
+    const membershipRepo = new FakeMembershipRepo();
+    const member = await new CreateMemberUseCase(repo, new RecordingNotifier()).execute({
+      ...base,
+      role: 'ADMIN_MINISTERIO',
+    });
+    await membershipRepo.save(
+      MinistryMembership.create({ memberId: member.id, ministryId: 'min-1', isAdmin: true }),
+    );
+
+    await new UpdateMemberUseCase(repo, membershipRepo).execute({
+      id: member.id,
+      institutionId: INST,
+      role: 'ADMIN_GERAL',
+    });
+
+    expect(membershipRepo.memberships[0].isAdmin).toBe(true);
+  });
+
   it('404 ao tentar atualizar membro de outra instituição', async () => {
     const repo = new FakeMemberRepository();
     const member = await new CreateMemberUseCase(repo, new RecordingNotifier()).execute(base);
 
     await expect(
-      new UpdateMemberUseCase(repo).execute({ id: member.id, institutionId: 'i2', name: 'X' }),
+      new UpdateMemberUseCase(repo, new FakeMembershipRepo()).execute({
+        id: member.id,
+        institutionId: 'i2',
+        name: 'X',
+      }),
     ).rejects.toMatchObject({ statusCode: 404 });
   });
 });

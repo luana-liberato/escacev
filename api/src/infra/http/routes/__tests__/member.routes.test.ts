@@ -330,3 +330,68 @@ describe('DELETE /membros/:id', () => {
     expect(res.status).toBe(403);
   });
 });
+
+/**
+ * O perfil e o status vêm do BANCO a cada request, não do JWT. Estes testes
+ * travam a razão da mudança: sem eles, promover não promovia e desativar não
+ * desativava — os dois só valeriam no próximo login, até 7 dias depois.
+ */
+describe('auth — perfil e status vêm do banco, não do token', () => {
+  afterEach(async () => {
+    // Devolve o membro ao estado das fixtures.
+    await prisma.membro.update({
+      where: { id: MEMBRO_ID },
+      data: { perfil: 'MEMBRO', ativo: true },
+    });
+  });
+
+  it('promover vale IMEDIATAMENTE, sem token novo', async () => {
+    // Token antigo, emitido quando ele ainda era MEMBRO.
+    const tokenAntigo = membroToken;
+
+    const antes = await request(app).get('/membros').set('Authorization', `Bearer ${tokenAntigo}`);
+    expect(antes.status).toBe(403); // MEMBRO não lista
+
+    await prisma.membro.update({ where: { id: MEMBRO_ID }, data: { perfil: 'ADMIN_GERAL' } });
+
+    const depois = await request(app).get('/membros').set('Authorization', `Bearer ${tokenAntigo}`);
+    expect(depois.status).toBe(200); // mesmo token, novo poder
+  });
+
+  it('rebaixar vale IMEDIATAMENTE: o perfil do token é ignorado', async () => {
+    // Token FORJADO dizendo ADMIN_GERAL para quem é MEMBRO no banco.
+    const tokenMentiroso = signTestToken({
+      memberId: MEMBRO_ID,
+      institutionId: INST_ID,
+      role: 'ADMIN_GERAL',
+    });
+
+    const res = await request(app).get('/membros').set('Authorization', `Bearer ${tokenMentiroso}`);
+
+    expect(res.status).toBe(403); // o banco manda: ele é MEMBRO
+  });
+
+  /** O caso grave: antes, desligar alguém não desligava por até 7 dias. */
+  it('membro desativado perde o acesso na hora (401)', async () => {
+    await prisma.membro.update({ where: { id: MEMBRO_ID }, data: { ativo: false } });
+
+    const res = await request(app)
+      .get('/membros/me')
+      .set('Authorization', `Bearer ${membroToken}`);
+
+    expect(res.status).toBe(401);
+    expect(res.body.message).toContain('desativado');
+  });
+
+  it('token válido de membro que não existe mais: 401', async () => {
+    const token = signTestToken({
+      memberId: 'test-mbr-inexistente',
+      institutionId: INST_ID,
+      role: 'ADMIN_GERAL',
+    });
+
+    const res = await request(app).get('/membros').set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(401);
+  });
+});

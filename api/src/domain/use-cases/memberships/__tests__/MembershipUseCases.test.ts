@@ -7,6 +7,7 @@ import {
   MinistryBlockingDependencies,
 } from '../../../repositories/MinistryRepository';
 import {
+  MemberMinistryLink,
   MinistryMembershipRepository,
   MinistryMemberView,
   MemberMinistryView,
@@ -19,6 +20,7 @@ import { SetMembershipAdminUseCase } from '../SetMembershipAdminUseCase';
 import { RemoveMemberFromMinistryUseCase } from '../RemoveMemberFromMinistryUseCase';
 import { ListMembershipsUseCase } from '../ListMembershipsUseCase';
 import { InviteMemberToMinistryUseCase } from '../InviteMemberToMinistryUseCase';
+import { SetMemberMinistriesUseCase } from '../SetMemberMinistriesUseCase';
 
 // --- Fakes em memória (nível unitário, sem banco) ---
 
@@ -113,6 +115,37 @@ class FakeMembershipRepository implements MinistryMembershipRepository {
   async delete(id: string): Promise<void> {
     this.deleted.push(id);
     this.memberships = this.memberships.filter((x) => x.id !== id);
+  }
+  /**
+   * Espelha a semântica do Prisma: remove o que saiu, cria o que entrou e ajusta
+   * o isAdmin de quem mudou de papel. O fake precisa refletir isso, senão o teste
+   * passaria por um motivo errado.
+   */
+  async replaceForMember(memberId: string, links: MemberMinistryLink[]): Promise<void> {
+    const wanted = new Map(links.map((l) => [l.ministryId, l.isAdmin]));
+
+    this.memberships = this.memberships
+      .filter((x) => x.memberId !== memberId || wanted.has(x.ministryId))
+      .map((x) =>
+        x.memberId === memberId && wanted.get(x.ministryId) !== x.isAdmin
+          ? MinistryMembership.restore({ ...x, isAdmin: wanted.get(x.ministryId)! })
+          : x,
+      );
+
+    const currentIds = this.memberships
+      .filter((x) => x.memberId === memberId)
+      .map((x) => x.ministryId);
+    for (const link of links) {
+      if (!currentIds.includes(link.ministryId)) {
+        this.memberships.push(
+          MinistryMembership.create({
+            memberId,
+            ministryId: link.ministryId,
+            isAdmin: link.isAdmin,
+          }),
+        );
+      }
+    }
   }
 }
 
@@ -223,7 +256,7 @@ describe('SetMembershipAdminUseCase', () => {
     await s.membershipRepo.save(
       MinistryMembership.create({ memberId: s.member.id, ministryId: s.ministry.id }),
     );
-    const useCase = new SetMembershipAdminUseCase(s.membershipRepo, s.ministryRepo, s.policy);
+    const useCase = new SetMembershipAdminUseCase(s.membershipRepo, s.ministryRepo, s.policy, s.memberRepo);
 
     const promoted = await useCase.execute({
       institutionId: INST,
@@ -246,7 +279,7 @@ describe('SetMembershipAdminUseCase', () => {
 
   it('404 quando o vínculo não existe', async () => {
     const s = await scenario();
-    const useCase = new SetMembershipAdminUseCase(s.membershipRepo, s.ministryRepo, s.policy);
+    const useCase = new SetMembershipAdminUseCase(s.membershipRepo, s.ministryRepo, s.policy, s.memberRepo);
 
     await expect(
       useCase.execute({
@@ -433,5 +466,412 @@ describe('InviteMemberToMinistryUseCase', () => {
     });
 
     expect(result.membership.isAdmin).toBe(true);
+  });
+});
+
+
+describe('SetMemberMinistriesUseCase', () => {
+  /** Cenário com dois ministérios extras, para exercitar entrada e saída. */
+  async function multiMinistryScenario() {
+    const s = await scenario();
+    const infantil = Ministry.create({ institutionId: INST, name: 'Infantil' });
+    const midia = Ministry.create({ institutionId: INST, name: 'Mídia' });
+    await s.ministryRepo.save(infantil);
+    await s.ministryRepo.save(midia);
+
+    const useCase = new SetMemberMinistriesUseCase(s.membershipRepo, s.memberRepo, s.ministryRepo);
+    return { ...s, infantil, midia, useCase };
+  }
+
+  const linksOf = (repo: FakeMembershipRepository, memberId: string) =>
+    repo.memberships
+      .filter((m) => m.memberId === memberId)
+      .map((m) => ({ ministryId: m.ministryId, isAdmin: m.isAdmin }))
+      .sort((a, b) => a.ministryId.localeCompare(b.ministryId));
+
+  it('substitui o conjunto: remove o que saiu e cria o que entrou', async () => {
+    const s = await multiMinistryScenario();
+    await s.membershipRepo.save(
+      MinistryMembership.create({ memberId: s.member.id, ministryId: s.ministry.id }),
+    );
+    await s.membershipRepo.save(
+      MinistryMembership.create({ memberId: s.member.id, ministryId: s.infantil.id }),
+    );
+
+    // Sai o Infantil, entra a Mídia; o Louvor permanece.
+    await s.useCase.execute({
+      institutionId: INST,
+      memberId: s.member.id,
+      ministries: [{ ministryId: s.ministry.id }, { ministryId: s.midia.id }],
+    });
+
+    expect(linksOf(s.membershipRepo, s.member.id)).toEqual(
+      [
+        { ministryId: s.ministry.id, isAdmin: false },
+        { ministryId: s.midia.id, isAdmin: false },
+      ].sort((a, b) => a.ministryId.localeCompare(b.ministryId)),
+    );
+  });
+
+  /**
+   * O caso que motivou o endpoint carregar o isAdmin: sem isto, um
+   * ADMIN_MINISTERIO ficaria com o perfil global mas sem administrar nada — e
+   * levaria 403 da MinistryAccessPolicy em toda ação escopada.
+   */
+  it('promove: marcar isAdmin num vínculo que já existia', async () => {
+    const s = await multiMinistryScenario();
+    await s.membershipRepo.save(
+      MinistryMembership.create({ memberId: s.member.id, ministryId: s.ministry.id }),
+    );
+
+    await s.useCase.execute({
+      institutionId: INST,
+      memberId: s.member.id,
+      ministries: [{ ministryId: s.ministry.id, isAdmin: true }],
+    });
+
+    expect(linksOf(s.membershipRepo, s.member.id)).toEqual([
+      { ministryId: s.ministry.id, isAdmin: true },
+    ]);
+  });
+
+  it('rebaixa: desmarcar isAdmin de quem administrava', async () => {
+    const s = await multiMinistryScenario();
+    await s.membershipRepo.save(
+      MinistryMembership.create({
+        memberId: s.member.id,
+        ministryId: s.ministry.id,
+        isAdmin: true,
+      }),
+    );
+
+    await s.useCase.execute({
+      institutionId: INST,
+      memberId: s.member.id,
+      ministries: [{ ministryId: s.ministry.id, isAdmin: false }],
+    });
+
+    expect(linksOf(s.membershipRepo, s.member.id)).toEqual([
+      { ministryId: s.ministry.id, isAdmin: false },
+    ]);
+  });
+
+  it('cria o vínculo novo já como admin', async () => {
+    const s = await multiMinistryScenario();
+
+    await s.useCase.execute({
+      institutionId: INST,
+      memberId: s.member.id,
+      ministries: [{ ministryId: s.midia.id, isAdmin: true }],
+    });
+
+    expect(linksOf(s.membershipRepo, s.member.id)).toEqual([
+      { ministryId: s.midia.id, isAdmin: true },
+    ]);
+  });
+
+  it('isAdmin ausente vira participante (não herda o que estava lá)', async () => {
+    const s = await multiMinistryScenario();
+    await s.membershipRepo.save(
+      MinistryMembership.create({
+        memberId: s.member.id,
+        ministryId: s.ministry.id,
+        isAdmin: true,
+      }),
+    );
+
+    // A lista é a fonte da verdade: sem isAdmin, o vínculo é de participação.
+    await s.useCase.execute({
+      institutionId: INST,
+      memberId: s.member.id,
+      ministries: [{ ministryId: s.ministry.id }],
+    });
+
+    expect(linksOf(s.membershipRepo, s.member.id)).toEqual([
+      { ministryId: s.ministry.id, isAdmin: false },
+    ]);
+  });
+
+  it('lista vazia remove o membro de todos os ministérios', async () => {
+    const s = await multiMinistryScenario();
+    await s.membershipRepo.save(
+      MinistryMembership.create({ memberId: s.member.id, ministryId: s.ministry.id }),
+    );
+
+    await s.useCase.execute({ institutionId: INST, memberId: s.member.id, ministries: [] });
+
+    expect(linksOf(s.membershipRepo, s.member.id)).toEqual([]);
+  });
+
+  it('ministério repetido não duplica o vínculo (o último vence)', async () => {
+    const s = await multiMinistryScenario();
+
+    await s.useCase.execute({
+      institutionId: INST,
+      memberId: s.member.id,
+      ministries: [
+        { ministryId: s.ministry.id, isAdmin: false },
+        { ministryId: s.ministry.id, isAdmin: true },
+      ],
+    });
+
+    expect(linksOf(s.membershipRepo, s.member.id)).toEqual([
+      { ministryId: s.ministry.id, isAdmin: true },
+    ]);
+  });
+
+  it('404 para ministério de outra instituição (não cruza o tenant)', async () => {
+    const s = await multiMinistryScenario();
+    const foreign = Ministry.create({ institutionId: 'outra-inst', name: 'De Fora' });
+    await s.ministryRepo.save(foreign);
+
+    await expect(
+      s.useCase.execute({
+        institutionId: INST,
+        memberId: s.member.id,
+        ministries: [{ ministryId: foreign.id }],
+      }),
+    ).rejects.toThrow('Ministério não encontrado');
+
+    expect(linksOf(s.membershipRepo, s.member.id)).toEqual([]);
+  });
+
+  it('404 para membro de outra instituição', async () => {
+    const s = await multiMinistryScenario();
+
+    await expect(
+      s.useCase.execute({ institutionId: 'outra-inst', memberId: s.member.id, ministries: [] }),
+    ).rejects.toThrow('Membro não encontrado');
+  });
+
+  it('400 quando ministries não é uma lista', async () => {
+    const s = await multiMinistryScenario();
+
+    await expect(
+      s.useCase.execute({ institutionId: INST, memberId: s.member.id, ministries: 'louvor' }),
+    ).rejects.toThrow('ministries deve ser uma lista de vínculos');
+  });
+
+  it('400 quando isAdmin não é booleano', async () => {
+    const s = await multiMinistryScenario();
+
+    await expect(
+      s.useCase.execute({
+        institutionId: INST,
+        memberId: s.member.id,
+        ministries: [{ ministryId: s.ministry.id, isAdmin: 'sim' }],
+      }),
+    ).rejects.toThrow('isAdmin deve ser um booleano');
+  });
+});
+
+describe('SetMemberMinistriesUseCase — perfil derivado', () => {
+  async function derivationScenario(role: 'MEMBRO' | 'ADMIN_MINISTERIO' | 'ADMIN_GERAL') {
+    const memberRepo = new FakeMemberRepository();
+    const ministryRepo = new FakeMinistryRepository();
+    const membershipRepo = new FakeMembershipRepository();
+
+    const ministry = Ministry.create({ institutionId: INST, name: 'Louvor' });
+    await ministryRepo.save(ministry);
+    const member = Member.create({
+      institutionId: INST,
+      name: 'João',
+      email: 'joao@example.com',
+      role,
+    });
+    await memberRepo.save(member);
+
+    const useCase = new SetMemberMinistriesUseCase(membershipRepo, memberRepo, ministryRepo);
+    return { memberRepo, ministryRepo, membershipRepo, ministry, member, useCase };
+  }
+
+  const roleOf = async (repo: FakeMemberRepository, id: string) =>
+    (await repo.findById(id))?.role;
+
+  /**
+   * A razão de derivar: "administrador de grupo" não diz de QUAL grupo. Marcar
+   * admin num ministério é o que torna alguém admin de grupo — não um select.
+   */
+  it('marcar admin num ministério promove o MEMBRO a ADMIN_MINISTERIO', async () => {
+    const s = await derivationScenario('MEMBRO');
+
+    await s.useCase.execute({
+      institutionId: INST,
+      memberId: s.member.id,
+      ministries: [{ ministryId: s.ministry.id, isAdmin: true }],
+    });
+
+    expect(await roleOf(s.memberRepo, s.member.id)).toBe('ADMIN_MINISTERIO');
+  });
+
+  it('deixar de administrar todos rebaixa o ADMIN_MINISTERIO a MEMBRO', async () => {
+    const s = await derivationScenario('ADMIN_MINISTERIO');
+    await s.membershipRepo.save(
+      MinistryMembership.create({
+        memberId: s.member.id,
+        ministryId: s.ministry.id,
+        isAdmin: true,
+      }),
+    );
+
+    // Continua participando, mas não administra mais.
+    await s.useCase.execute({
+      institutionId: INST,
+      memberId: s.member.id,
+      ministries: [{ ministryId: s.ministry.id, isAdmin: false }],
+    });
+
+    expect(await roleOf(s.memberRepo, s.member.id)).toBe('MEMBRO');
+  });
+
+  it('participar sem administrar não promove ninguém', async () => {
+    const s = await derivationScenario('MEMBRO');
+
+    await s.useCase.execute({
+      institutionId: INST,
+      memberId: s.member.id,
+      ministries: [{ ministryId: s.ministry.id, isAdmin: false }],
+    });
+
+    expect(await roleOf(s.memberRepo, s.member.id)).toBe('MEMBRO');
+  });
+
+  /**
+   * O poder do ADMIN_GERAL é da INSTITUIÇÃO e não vem de vínculo — participar de
+   * um ministério (ser escalável, Seção 1 do CLAUDE.md) não pode rebaixá-lo.
+   */
+  it('ADMIN_GERAL não é rebaixado ao participar sem administrar', async () => {
+    const s = await derivationScenario('ADMIN_GERAL');
+
+    await s.useCase.execute({
+      institutionId: INST,
+      memberId: s.member.id,
+      ministries: [{ ministryId: s.ministry.id, isAdmin: false }],
+    });
+
+    expect(await roleOf(s.memberRepo, s.member.id)).toBe('ADMIN_GERAL');
+  });
+
+  it('ADMIN_GERAL não é rebaixado ao sair de todos os ministérios', async () => {
+    const s = await derivationScenario('ADMIN_GERAL');
+
+    await s.useCase.execute({ institutionId: INST, memberId: s.member.id, ministries: [] });
+
+    expect(await roleOf(s.memberRepo, s.member.id)).toBe('ADMIN_GERAL');
+  });
+});
+
+/**
+ * A derivação precisa valer em TODA porta que mexe em isAdmin — não só no
+ * SetMemberMinistries. É por aqui que o botão "Promover" do admin de grupo passa.
+ */
+describe('SetMembershipAdminUseCase — deriva o perfil', () => {
+  it('promover no vínculo torna o MEMBRO um ADMIN_MINISTERIO (senão seria admin sem poder)', async () => {
+    const s = await scenario();
+    await s.membershipRepo.save(
+      MinistryMembership.create({ memberId: s.member.id, ministryId: s.ministry.id }),
+    );
+
+    await new SetMembershipAdminUseCase(
+      s.membershipRepo,
+      s.ministryRepo,
+      s.policy,
+      s.memberRepo,
+    ).execute({
+      institutionId: INST,
+      actor: ADMIN_GERAL,
+      ministryId: s.ministry.id,
+      memberId: s.member.id,
+      isAdmin: true,
+    });
+
+    expect((await s.memberRepo.findById(s.member.id))?.role).toBe('ADMIN_MINISTERIO');
+  });
+
+  it('rebaixar no único vínculo devolve a MEMBRO', async () => {
+    const s = await scenario();
+    await s.membershipRepo.save(
+      MinistryMembership.create({
+        memberId: s.member.id,
+        ministryId: s.ministry.id,
+        isAdmin: true,
+      }),
+    );
+    await s.memberRepo.update(s.member.update({ role: 'ADMIN_MINISTERIO' }));
+
+    await new SetMembershipAdminUseCase(
+      s.membershipRepo,
+      s.ministryRepo,
+      s.policy,
+      s.memberRepo,
+    ).execute({
+      institutionId: INST,
+      actor: ADMIN_GERAL,
+      ministryId: s.ministry.id,
+      memberId: s.member.id,
+      isAdmin: false,
+    });
+
+    expect((await s.memberRepo.findById(s.member.id))?.role).toBe('MEMBRO');
+  });
+
+  it('quem ainda administra OUTRO ministério continua ADMIN_MINISTERIO', async () => {
+    const s = await scenario();
+    const infantil = Ministry.create({ institutionId: INST, name: 'Infantil' });
+    await s.ministryRepo.save(infantil);
+    await s.membershipRepo.save(
+      MinistryMembership.create({
+        memberId: s.member.id,
+        ministryId: s.ministry.id,
+        isAdmin: true,
+      }),
+    );
+    await s.membershipRepo.save(
+      MinistryMembership.create({ memberId: s.member.id, ministryId: infantil.id, isAdmin: true }),
+    );
+    await s.memberRepo.update(s.member.update({ role: 'ADMIN_MINISTERIO' }));
+
+    // Perde o Louvor, mas segue admin do Infantil.
+    await new SetMembershipAdminUseCase(
+      s.membershipRepo,
+      s.ministryRepo,
+      s.policy,
+      s.memberRepo,
+    ).execute({
+      institutionId: INST,
+      actor: ADMIN_GERAL,
+      ministryId: s.ministry.id,
+      memberId: s.member.id,
+      isAdmin: false,
+    });
+
+    expect((await s.memberRepo.findById(s.member.id))?.role).toBe('ADMIN_MINISTERIO');
+  });
+
+  it('ADMIN_GERAL não é rebaixado ao perder o admin de um ministério', async () => {
+    const s = await scenario();
+    await s.membershipRepo.save(
+      MinistryMembership.create({
+        memberId: s.member.id,
+        ministryId: s.ministry.id,
+        isAdmin: true,
+      }),
+    );
+    await s.memberRepo.update(s.member.update({ role: 'ADMIN_GERAL' }));
+
+    await new SetMembershipAdminUseCase(
+      s.membershipRepo,
+      s.ministryRepo,
+      s.policy,
+      s.memberRepo,
+    ).execute({
+      institutionId: INST,
+      actor: ADMIN_GERAL,
+      ministryId: s.ministry.id,
+      memberId: s.member.id,
+      isAdmin: false,
+    });
+
+    expect((await s.memberRepo.findById(s.member.id))?.role).toBe('ADMIN_GERAL');
   });
 });
