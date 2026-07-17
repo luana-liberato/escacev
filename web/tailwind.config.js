@@ -34,6 +34,25 @@ export default {
           border: '#F3C6BE',
           text: '#9B2C1E',
         },
+        // Toast de sucesso: reusa brand-soft no fundo e brand-hover no texto; só
+        // a borda é um tom próprio.
+        toast: {
+          'success-border': '#BFE0E2',
+        },
+        // Tags de perfil do membro (docs/design/crud_membros).
+        role: {
+          'geral-bg': '#FBE6DE',
+          'geral-fg': '#C4431E',
+          'grupo-bg': '#E3F0F1',
+          'grupo-fg': '#1C7C8C',
+          'membro-bg': '#EFEBE3',
+          'membro-fg': '#6B6456',
+        },
+        // Tag de status "Convite pendente".
+        pending: {
+          bg: '#FCEEE3',
+          fg: '#B5651D',
+        },
       },
       fontFamily: {
         display: ['Sora', 'sans-serif'], // títulos
@@ -44,6 +63,10 @@ export default {
       boxShadow: {
         panel: '0 20px 50px -30px rgba(42, 39, 35, 0.25)',
         drawer: '12px 0 30px rgba(42, 39, 35, 0.15)',
+        toast: '0 12px 30px -12px rgba(26, 26, 26, 0.3)',
+      },
+      spacing: {
+        4.5: '18px', // padding horizontal do toast
       },
       backgroundColor: {
         overlay: 'rgba(42, 39, 35, 0.4)', // fundo de modal
