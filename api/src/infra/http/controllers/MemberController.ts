@@ -6,6 +6,7 @@ import { CreateMemberUseCase } from '../../../domain/use-cases/members/CreateMem
 import { ListMembersUseCase } from '../../../domain/use-cases/members/ListMembersUseCase';
 import { GetMemberUseCase } from '../../../domain/use-cases/members/GetMemberUseCase';
 import { UpdateMemberUseCase } from '../../../domain/use-cases/members/UpdateMemberUseCase';
+import { UpdateMyNameUseCase } from '../../../domain/use-cases/members/UpdateMyNameUseCase';
 import { DeactivateMemberUseCase } from '../../../domain/use-cases/members/DeactivateMemberUseCase';
 import { PrismaMemberRepository } from '../../database/repositories/PrismaMemberRepository';
 import { buildNotifier } from '../../services/notifierFactory';
@@ -53,6 +54,23 @@ export class MemberController {
     const member = await useCase.execute({ id: memberId, institutionId });
 
     respond(res, 200, MemberController.serialize(member), 'Membro encontrado');
+  };
+
+  /**
+   * PATCH /membros/me — o usuário corrige o PRÓPRIO nome. Qualquer perfil.
+   *
+   * Só o `name` é lido do corpo. `role` e `active` são ignorados de propósito, e
+   * o use case sequer tem onde recebê-los — o alvo é sempre o próprio usuário, e
+   * aceitar perfil aqui seria escalada de privilégio.
+   */
+  updateMe = async (req: Request, res: Response): Promise<void> => {
+    const { memberId, institutionId } = MemberController.authUser(req);
+    const { name } = req.body;
+
+    const useCase = new UpdateMyNameUseCase(new PrismaMemberRepository());
+    const member = await useCase.execute({ memberId, institutionId, name });
+
+    respond(res, 200, MemberController.serialize(member), 'Nome atualizado');
   };
 
   // GET /membros/:id — busca um membro da própria instituição.
