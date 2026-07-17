@@ -77,7 +77,7 @@ Permissão Escopada e reutilizada em funções, associações e escalas.
 | Front-end | React 18 + Tailwind CSS |
 | Banco | PostgreSQL 16 |
 | ORM | Prisma |
-| Auth | Google OAuth 2.0 + JWT stateless |
+| Auth | Google OAuth 2.0 + JWT (identidade no token; **perfil e status vêm do banco** — ver Seção 5) |
 | E-mail | Nodemailer + Mailtrap (dev) / SendGrid (prod) |
 | Deploy | Docker + Docker Compose + nginx + Let's Encrypt |
 | Lint | ESLint + Prettier |
@@ -265,7 +265,20 @@ private static toEntity(row: MembroRow): Member {
 **Único método de login: Google OAuth 2.0.** Não existe cadastro por e-mail/senha.
 
 ```typescript
-// Middleware auth: valida JWT → injeta req.user = { memberId, institutionId, role }
+// Middleware auth: valida o JWT → busca o Membro no banco → injeta
+//   req.user = { memberId, institutionId, role }
+//
+// O JWT prova QUEM é a pessoa; o PERFIL e o STATUS vêm do banco, a cada request.
+// O `role` que viaja no token é IGNORADO — existe só por compatibilidade.
+//
+// Por quê: o perfil muda. Promover alguém e ler o papel do token significava que
+// a promoção só valia no próximo login (até JWT_EXPIRES_IN = 7d depois) — o menu
+// não aparecia e o rbac barrava. E o caso grave: DESATIVAR não desativava, o
+// membro seguia usando o sistema com o token antigo. Isso era falha de segurança.
+// O custo é uma consulta indexada por request.
+//
+// Membro desativado → 401 (não 403), para o front derrubar a sessão e devolvê-lo
+// ao login em vez de deixá-lo "logado" colecionando erros.
 // Middleware rbac: verifica se req.user.role está na lista permitida
 
 // Exemplos de uso nas rotas:
