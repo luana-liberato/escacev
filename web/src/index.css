@@ -1,3 +1,22 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer utilities {
+  /**
+   * Altura de tela cheia que não mente no celular.
+   *
+   * `100vh` no navegador móvel ignora a barra de endereço: vale mais que a área
+   * visível, então uma tela centralizada fica deslocada e ganha um scroll
+   * fantasma. `100svh` é a altura estável (com a barra à mostra).
+   *
+   * As duas declarações são de propósito, nesta ordem: o navegador usa a última
+   * que entende, então quem não conhece `svh` fica com o `vh`. Não dá para fazer
+   * isso com duas classes do Tailwind — quem venceria dependeria da ordem no CSS
+   * gerado, não da ordem no HTML.
+   */
+  .min-h-screen-safe {
+    min-height: 100vh;
+    min-height: 100svh;
+  }
+}

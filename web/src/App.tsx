@@ -1,45 +1,39 @@
-import { useEffect, useState } from 'react';
-import { getHealth } from './services/api';
+import { Navigate, Route, Routes } from 'react-router-dom';
+import AppLayout from '@/components/AppLayout';
+import { ProtectedRoute } from '@/components/ProtectedRoute';
+import { DEFAULT_PATH, NAV_ITEMS } from '@/config/navigation';
+import AuthCallbackPage from '@/pages/AuthCallbackPage';
+import LoginPage from '@/pages/LoginPage';
+import PlaceholderPage from '@/pages/PlaceholderPage';
 
-type ConnState = 'carregando' | 'ok' | 'erro';
-
-const STYLES: Record<ConnState, { dot: string; label: string }> = {
-  carregando: { dot: 'bg-amber-400', label: 'Verificando conexão com a API...' },
-  ok: { dot: 'bg-emerald-500', label: 'API conectada' },
-  erro: { dot: 'bg-red-500', label: 'Sem conexão com a API' },
-};
-
+/**
+ * Rotas. `/login` e `/auth/callback` são públicas — o callback PRECISA ser, já
+ * que é ele quem cria a sessão.
+ *
+ * Todo o resto exige sessão e vive dentro do AppLayout, que é a casca padrão de
+ * todas as telas internas (sidebar + header). As telas internas saem do mesmo
+ * mapa de navegação que alimenta o menu — assim rota, item de menu e cabeçalho
+ * nunca saem de sincronia.
+ *
+ * O menu já é filtrado por perfil, mas as ROTAS ainda não: um MEMBRO que digitar
+ * /ministerios abre a tela e leva 403 da API. Só vira problema quando as telas
+ * reais existirem — hoje são placeholders.
+ */
 export default function App() {
-  const [state, setState] = useState<ConnState>('carregando');
-  const [message, setMessage] = useState('');
-
-  useEffect(() => {
-    getHealth()
-      .then((res) => {
-        setState('ok');
-        setMessage(res.message);
-      })
-      .catch(() => {
-        setState('erro');
-        setMessage('Não foi possível conectar à API em GET /health.');
-      });
-  }, []);
-
-  const style = STYLES[state];
-
   return (
-    <main className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
-      <div className="w-full max-w-md rounded-2xl bg-white shadow-lg ring-1 ring-slate-200 p-8 text-center">
-        <h1 className="text-3xl font-bold text-slate-800">Escacev</h1>
-        <p className="mt-1 text-sm text-slate-500">Sistema de Gestão de Escalas</p>
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/auth/callback" element={<AuthCallbackPage />} />
 
-        <div className="mt-8 flex items-center justify-center gap-3">
-          <span className={`inline-block h-3 w-3 rounded-full ${style.dot}`} />
-          <span className="text-sm font-medium text-slate-700">{style.label}</span>
-        </div>
+      <Route element={<ProtectedRoute />}>
+        <Route element={<AppLayout />}>
+          {NAV_ITEMS.map((item) => (
+            <Route key={item.path} path={item.path} element={<PlaceholderPage />} />
+          ))}
+        </Route>
+      </Route>
 
-        {message && <p className="mt-3 text-xs text-slate-400">{message}</p>}
-      </div>
-    </main>
+      <Route path="*" element={<Navigate to={DEFAULT_PATH} replace />} />
+    </Routes>
   );
 }

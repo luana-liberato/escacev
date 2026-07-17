@@ -68,7 +68,7 @@
   - [x] Vincular `Conta` ao `Membro` pelo e-mail, se houver convite pendente
   - [x] Emitir JWT com `{ memberId, institutionId, role }`
 - [x] Definir geração e assinatura do JWT (secret + expiração via `.env`)
-- [ ] Implementar logout (no front: descartar o token)
+- [x] Implementar logout (no front: descartar o token) — `clearToken()` + `AuthProvider`
 - [x] Tratar o caso de login com e-mail Google que não corresponde a nenhum membro convidado
 - [x] Evitar `Conta` órfã no fluxo 403: a `Conta` só é criada após confirmar o convite; o login também vincula Contas órfãs pré-existentes ao convite pendente
 
@@ -95,6 +95,12 @@
 - [x] Use case: desativar/remover membro (soft delete via `ativo`)
 - [x] Endpoints: `POST /membros`, `GET /membros`, `GET /membros/:id`, `PUT /membros/:id`, `DELETE /membros/:id`
 - [x] Disparar e-mail de convite ao criar membro (integra com Fase 7)
+- [x] **`GET /membros/me` — o membro busca os próprios dados** (PR #24). Member-scoped (só
+      `auth`, sem `rbac`), resolvendo pelo `memberId` do JWT — o JWT não carrega o nome e
+      `GET /membros/:id` exige admin, então um `MEMBRO` não lia o próprio cadastro.
+      Reusa o `GetMemberUseCase` e a projeção pública. A rota é registrada **antes** de
+      `/membros/:id` (senão o `:id` captura `"me"`), com teste travando a ordem.
+      Destravou o rodapé da sidebar do layout base. (achado da fatia vertical de login)
 
 ### Ministérios (RF03)
 > Escrita restrita ao `ADMIN_GERAL` neste bloco. A edição escopada pelo
@@ -320,18 +326,56 @@
 
 ## Fase 8 — Frontend 🔴
 
+> **Estratégia: fatia vertical, não camada horizontal.** Constrói-se uma jornada
+> inteira atravessando todas as camadas, em vez de uma camada completa por vez —
+> assim o caminho é validado cedo, e não na integração final. As pastas
+> (`components/`, `pages/`, `hooks/`) nascem com conteúdo; não se cria diretório
+> vazio à espera de uso.
+>
+> **Camada de contrato (`services/`) — CONCLUÍDA** na branch `feat/front-contrato`:
+> `http.ts` (axios + JWT + unwrap do envelope + `ApiError`), `types.ts` (espelham o
+> que a API **serializa**, não as entidades), `authToken.ts` e `ministries.ts`.
+> Ver o `web/CLAUDE.md` para os padrões do front.
+>
+> **Fatia vertical 1 (login → callback → sessão → rota protegida) — CONCLUÍDA** e
+> verificada de ponta a ponta com o admin do seed.
+
 ### Base
-- [ ] Configurar roteamento (React Router)
-- [ ] Configurar cliente HTTP (axios) com interceptor que injeta o JWT
-- [ ] Configurar contexto/estado de autenticação (usuário logado, perfil)
-- [ ] Implementar proteção de rotas por perfil
-- [ ] Layout base: sidebar de navegação + header com usuário logado
-- [ ] Tela de tratamento de erros e loading states reutilizáveis
+- [x] Configurar roteamento (React Router)
+- [x] Configurar cliente HTTP (axios) com interceptor que injeta o JWT (`services/http.ts`)
+- [x] Configurar contexto/estado de autenticação (usuário logado, perfil)
+      (`hooks/authContext.ts` + `hooks/useAuth.ts` + `components/AuthProvider.tsx`)
+- [x] Implementar proteção de rotas **por perfil** — o `ProtectedRoute` exige sessão e
+      checa o `roles` do `config/navigation.ts`; rota que o perfil não alcança redireciona
+      para a primeira tela dele (não para uma constante, o que viraria loop). É
+      conveniência de UX: a permissão real — inclusive a escopada por ministério
+      (`isAdmin`) — é decidida pela API, e o front trata o 403.
+- [x] Layout base: sidebar de navegação + header com usuário logado — casca padrão de
+      todas as telas internas (`components/AppLayout.tsx`), conforme
+      `docs/design/layout_sidebar/`. Sidebar fixa ≥861px; drawer com hambúrguer e overlay
+      abaixo. Rodapé com nome/iniciais/papel via `GET /membros/me`. Menu, rotas e
+      cabeçalhos saem de `config/navigation.ts`.
+- [ ] 🔴 **Abrir `GET /escalas` ao MEMBRO** (decisão da cliente): ele precisa ver as
+      escalas do próprio ministério, não só onde está alocado. Hoje é
+      `rbac('ADMIN_GERAL', 'ADMIN_MINISTERIO')` e ele leva 403 — por isso "Escalas" está
+      fora do menu dele. Exige filtro por vínculo (`MembroMinisterio`) + `status =
+      PUBLICADA` (RN04: rascunho é invisível ao membro). Note que é diferente da **Agenda**
+      (`GET /minhas-escalas`, "onde EU estou escalado"), que já existe e já é aberta.
+      `GET /eventos` também é admin-only e cai na mesma pergunta.
+- [ ] Tela de tratamento de erros e loading states reutilizáveis — **adiado de propósito
+      até a primeira tela de conteúdo (Ministérios)**. Extrair antes seria adivinhar a
+      forma: spinner de página ou skeleton no lugar do conteúdo? Erro como banner, card ou
+      estado vazio? 403 x 404 x "servidor fora" se parecem? Já existem três estados de
+      carregamento no código (callback, skeleton do nome na sidebar, e o antigo indicador
+      do login) e nenhum se pareceu o bastante para virar componente. Quando a segunda ou
+      terceira tela repetir o padrão, ele se extrai sozinho — já validado.
+      (Mesma lição do `types.ts`: os 7 tipos sem consumidor seguem não verificados, e
+      dos 4 verificados, 4 estavam errados.)
 
 ### Autenticação
-- [ ] Tela de login com botão "Entrar com Google"
-- [ ] Tela de callback (recebe o token, redireciona para o painel)
-- [ ] Fluxo de logout
+- [x] Tela de login com botão "Entrar com Google" (com indicador de conexão da API)
+- [x] Tela de callback (recebe o token, redireciona para o painel)
+- [x] Fluxo de logout
 
 ### Telas de Gestão (Admin)
 - [ ] Listagem e CRUD de **ministérios**
@@ -417,6 +461,14 @@
 
 ## Fase 11 — Deploy e Produção 🔴
 
+- [ ] **Corrigir o ambiente da API no `docker-compose.yml`** — o serviço `api` declara as
+      variáveis **inline** e não usa `env_file`, então não recebe `JWT_SECRET`,
+      `GOOGLE_CLIENT_ID/SECRET`, `FRONTEND_URL` nem as de SMTP; o `.dockerignore` também
+      exclui o `.env`, que portanto não entra na imagem. Como `middlewares/auth.ts` faz
+      `new JwtService()` no escopo do módulo e o construtor lança sem `JWT_SECRET`, a API
+      containerizada deve quebrar já no boot. Provável correção: `env_file: ./api/.env`.
+      **Não verificado empiricamente** — hoje o dev roda a API por `npm run dev` no host
+      (só o Postgres está no Docker), então o caminho containerizado não é exercitado.
 - [ ] Escrever Dockerfile de produção da API
 - [ ] Escrever build de produção do frontend (Vite build → estáticos)
 - [ ] Configurar nginx na VPS: proxy reverso para a API + servir o frontend
@@ -435,6 +487,14 @@
 ## Fase 12 — Entregáveis do TCC e Documentação 🔴
 
 - [ ] Manter o CLAUDE.md e este TASKS.md atualizados
+- [ ] **Sincronizar a Seção 8 (env) do CLAUDE.md com o `.env.example`** — o `.env.example`
+      (na raiz) está correto e mais completo; a Seção 8 do CLAUDE.md não lista
+      `FRONTEND_URL`, `APP_LOGIN_URL`, `SEED_ADMIN_EMAIL` nem `SEED_ADMIN_NAME`. Quem
+      seguir o CLAUDE.md sozinho monta um `.env` incompleto e o login pelo front não
+      funciona (ver o item da `FRONTEND_URL` abaixo).
+- [ ] **Adicionar `VITE_API_URL` ao `.env.example`** — o `web/src/services/http.ts` a
+      consome (com fallback para `http://localhost:3001`, por isso passa despercebida em
+      dev). Em produção o front precisa dela apontando para a API pública.
 - [ ] Repositório com histórico de commits descritivos e tags por marco
 - [ ] Sistema acessível via HTTPS no dia da banca
 - [ ] **Validação intermediária** com o cliente (Apêndice A assinado)
