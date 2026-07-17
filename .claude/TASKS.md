@@ -345,10 +345,11 @@
 - [x] Configurar cliente HTTP (axios) com interceptor que injeta o JWT (`services/http.ts`)
 - [x] Configurar contexto/estado de autenticação (usuário logado, perfil)
       (`hooks/authContext.ts` + `hooks/useAuth.ts` + `components/AuthProvider.tsx`)
-- [ ] Implementar proteção de rotas **por perfil** — hoje o `ProtectedRoute` só exige
-      **sessão**; o filtro por `role` entra quando houver tela que o exija. Lembrar que
-      é conveniência de UX: a permissão real (inclusive a escopada por ministério) é
-      decidida pela API, e o front trata o 403.
+- [x] Implementar proteção de rotas **por perfil** — o `ProtectedRoute` exige sessão e
+      checa o `roles` do `config/navigation.ts`; rota que o perfil não alcança redireciona
+      para a primeira tela dele (não para uma constante, o que viraria loop). É
+      conveniência de UX: a permissão real — inclusive a escopada por ministério
+      (`isAdmin`) — é decidida pela API, e o front trata o 403.
 - [x] Layout base: sidebar de navegação + header com usuário logado — casca padrão de
       todas as telas internas (`components/AppLayout.tsx`), conforme
       `docs/design/layout_sidebar/`. Sidebar fixa ≥861px; drawer com hambúrguer e overlay
@@ -361,7 +362,15 @@
       PUBLICADA` (RN04: rascunho é invisível ao membro). Note que é diferente da **Agenda**
       (`GET /minhas-escalas`, "onde EU estou escalado"), que já existe e já é aberta.
       `GET /eventos` também é admin-only e cai na mesma pergunta.
-- [ ] Tela de tratamento de erros e loading states reutilizáveis
+- [ ] Tela de tratamento de erros e loading states reutilizáveis — **adiado de propósito
+      até a primeira tela de conteúdo (Ministérios)**. Extrair antes seria adivinhar a
+      forma: spinner de página ou skeleton no lugar do conteúdo? Erro como banner, card ou
+      estado vazio? 403 x 404 x "servidor fora" se parecem? Já existem três estados de
+      carregamento no código (callback, skeleton do nome na sidebar, e o antigo indicador
+      do login) e nenhum se pareceu o bastante para virar componente. Quando a segunda ou
+      terceira tela repetir o padrão, ele se extrai sozinho — já validado.
+      (Mesma lição do `types.ts`: os 7 tipos sem consumidor seguem não verificados, e
+      dos 4 verificados, 4 estavam errados.)
 
 ### Autenticação
 - [x] Tela de login com botão "Entrar com Google" (com indicador de conexão da API)
