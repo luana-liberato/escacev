@@ -8,11 +8,14 @@ import type { UserRole } from '@/services/types';
  * rotas abrem. NÃO é a permissão real: quem decide é a API, e o front trata o 403
  * (Seção 4 do CLAUDE.md do web). Esconder um item é conveniência, nunca garantia.
  *
- * DIVERGÊNCIA DELIBERADA DO HANDOFF: o protótipo declara o MESMO menu para os três
- * perfis ("nav é igual para os três nesta versão"), mas a API responde 403 a um
- * MEMBRO em cinco dos seis itens. Mostrar tudo a todos entregaria um menu onde
- * quase nada funciona. Decidido com a cliente: o membro não vê Ministérios,
- * Membros nem Funções.
+ * O menu do MEMBRO (Agenda, Escalas, Eventos) vem da tabela de atores do handoff
+ * de Membros (docs/design/crud_membros/README.md) — a 2ª rodada dava os seis itens
+ * a todos, o que era erro: a API responde 403 a um MEMBRO em cinco deles.
+ *
+ * ⚠️ Escalas e Eventos ainda dão 403 para o MEMBRO: as duas rotas são
+ * `rbac('ADMIN_GERAL', 'ADMIN_MINISTERIO')`. O menu já reflete a decisão de
+ * produto; a API é que precisa alcançá-la (pendência 🔴 na Fase 8 do TASKS.md).
+ * Enquanto isso, as telas são placeholders e ninguém sente.
  */
 export interface NavItem {
   path: string;
@@ -43,19 +46,18 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'Escalas',
     title: 'Escalas',
     subtitle: 'Designação de membros às funções em cada evento',
-    // PENDENTE NA API: o membro precisa ver as escalas do próprio ministério
-    // (decisão da cliente), mas GET /escalas é rbac('ADMIN_GERAL',
-    // 'ADMIN_MINISTERIO') — hoje ele leva 403. Enquanto a API não abrir com
-    // filtro por vínculo + status PUBLICADA, o item fica só para admins.
-    roles: ADMINS,
+    // ⚠️ A API ainda dá 403 ao MEMBRO aqui (GET /escalas é rbac de admin). O menu
+    // segue a decisão de produto — ele precisa ver as escalas do próprio
+    // ministério; falta a API abrir com filtro por vínculo + PUBLICADA (RN04).
+    roles: ALL_ROLES,
   },
   {
     path: '/eventos',
     label: 'Eventos',
     title: 'Eventos',
     subtitle: 'Lista de todas as escalas e eventos',
-    // GET /eventos também é admin-only.
-    roles: ADMINS,
+    // ⚠️ Mesma situação: GET /eventos é admin-only na API.
+    roles: ALL_ROLES,
   },
   {
     path: '/ministerios',
