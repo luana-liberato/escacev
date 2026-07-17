@@ -135,6 +135,66 @@ describe('GET /membros', () => {
   });
 });
 
+describe('GET /membros/me', () => {
+  /**
+   * A razão de existir da rota: o JWT carrega só { memberId, institutionId,
+   * role } e o GET /membros/:id exige admin — sem esta rota, um MEMBRO não
+   * conseguiria ler o próprio nome.
+   *
+   * Este teste também prova a ORDEM de registro: se '/membros/:id' viesse antes,
+   * ele capturaria "me" e o rbac responderia 403 aqui.
+   */
+  it('MEMBRO lê os próprios dados (200) — o que /membros/:id nega a ele', async () => {
+    const res = await request(app)
+      .get('/membros/me')
+      .set('Authorization', `Bearer ${membroToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data).toMatchObject({
+      id: MEMBRO_ID,
+      name: 'Membro',
+      email: 'mb@test.members',
+      role: 'MEMBRO',
+      active: true,
+    });
+  });
+
+  it('o MEMBRO continua sem poder ler o cadastro alheio por /membros/:id (403)', async () => {
+    const res = await request(app)
+      .get(`/membros/${ADMIN_GERAL_ID}`)
+      .set('Authorization', `Bearer ${membroToken}`);
+
+    expect(res.status).toBe(403);
+  });
+
+  it('ADMIN_GERAL também lê os próprios dados (200)', async () => {
+    const res = await request(app)
+      .get('/membros/me')
+      .set('Authorization', `Bearer ${adminGeralToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.id).toBe(ADMIN_GERAL_ID);
+    expect(res.body.data.role).toBe('ADMIN_GERAL');
+  });
+
+  it('não vaza accountId nem institutionId (projeção pública)', async () => {
+    const res = await request(app)
+      .get('/membros/me')
+      .set('Authorization', `Bearer ${membroToken}`);
+
+    expect(res.body.data).not.toHaveProperty('accountId');
+    expect(res.body.data).not.toHaveProperty('institutionId');
+    expect(res.body.data).toHaveProperty('pending');
+  });
+
+  it('sem token (401)', async () => {
+    const res = await request(app).get('/membros/me');
+
+    expect(res.status).toBe(401);
+  });
+});
+
 describe('GET /membros/:id', () => {
   it('404 para membro de outra instituição (não vaza outro tenant)', async () => {
     const res = await request(app)
