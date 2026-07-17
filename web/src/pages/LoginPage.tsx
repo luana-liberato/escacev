@@ -1,37 +1,19 @@
-import { useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router-dom';
+import { Logo } from '@/components/Logo';
 import { useAuth } from '@/hooks/useAuth';
 import { googleLoginUrl } from '@/services/http';
-import { getHealth } from '@/services/health';
-
-type ApiState = 'checking' | 'up' | 'down';
-
-const API_STATE_STYLES: Record<ApiState, { dot: string; label: string }> = {
-  checking: { dot: 'bg-amber-400', label: 'Verificando conexão com a API...' },
-  up: { dot: 'bg-emerald-500', label: 'API conectada' },
-  down: { dot: 'bg-red-500', label: 'Sem conexão com a API' },
-};
+import { loginErrorMessage } from './loginErrors';
 
 /**
- * Único ponto de entrada: Google OAuth (Seção 5 da raiz). Não existe formulário
- * de e-mail/senha.
+ * Ponto de entrada: o único método de autenticação é o Google OAuth (Seção 5 da
+ * raiz) — não existe formulário de e-mail/senha.
  *
- * O status da API fica aqui de propósito: se ela estiver fora, o login falharia
- * no meio do fluxo do Google, longe daqui — melhor avisar antes do clique.
+ * Layout conforme docs/design/handoff.md (tela 1).
  */
 export default function LoginPage() {
   const { user } = useAuth();
-  const [apiState, setApiState] = useState<ApiState>('checking');
-
-  useEffect(() => {
-    let active = true;
-    getHealth()
-      .then(() => active && setApiState('up'))
-      .catch(() => active && setApiState('down'));
-    return () => {
-      active = false;
-    };
-  }, []);
+  const [searchParams] = useSearchParams();
+  const errorMessage = loginErrorMessage(searchParams.get('error'));
 
   // Já logado não vê login.
   if (user) {
@@ -44,27 +26,52 @@ export default function LoginPage() {
     window.location.href = googleLoginUrl;
   };
 
-  const style = API_STATE_STYLES[apiState];
-
   return (
-    <main className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
-      <div className="w-full max-w-md rounded-2xl bg-white shadow-lg ring-1 ring-slate-200 p-8 text-center">
-        <h1 className="text-3xl font-bold text-slate-800">Escacev</h1>
-        <p className="mt-1 text-sm text-slate-500">Sistema de Gestão de Escalas</p>
+    <main className="flex min-h-screen items-center justify-center bg-cream px-5 py-10">
+      <div className="w-full max-w-[360px] rounded-[20px] border border-line bg-white px-10 py-12 text-center">
+        <Logo size={48} className="mx-auto mb-5 block" />
+
+        <h1 className="font-display text-2xl font-extrabold leading-tight text-ink">
+          Bem-vindo ao Escacev
+        </h1>
+        <p className="mt-2 text-sm leading-[1.5] text-muted">
+          Gerencie as escalas do seu ministério, sem complicação.
+        </p>
+
+        {errorMessage && (
+          <div
+            role="alert"
+            className="mt-8 flex items-start gap-2.5 rounded-[10px] border border-alert-border bg-alert-bg px-3.5 py-3 text-left"
+          >
+            <span
+              aria-hidden="true"
+              className="mt-px flex h-[18px] w-[18px] flex-shrink-0 items-center justify-center rounded-full bg-danger text-xs font-bold text-white"
+            >
+              !
+            </span>
+            <p className="text-[13px] leading-[1.5] text-alert-text">{errorMessage}</p>
+          </div>
+        )}
 
         <button
           type="button"
           onClick={startGoogleLogin}
-          disabled={apiState === 'down'}
-          className="mt-8 w-full rounded-lg bg-slate-800 px-4 py-3 text-sm font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+          className={`flex w-full items-center justify-center gap-2.5 rounded-xl border border-line bg-white px-5 py-[13px] text-[15px] font-semibold text-ink transition hover:bg-highlight ${
+            errorMessage ? 'mt-5' : 'mt-8'
+          }`}
         >
+          <span
+            aria-hidden="true"
+            className="inline-block h-[18px] w-[18px] rounded-full"
+            style={{
+              backgroundImage:
+                'conic-gradient(#1C7C8C 0turn 0.25turn, #1C7C8C 0.25turn 0.5turn, #D4A017 0.5turn 0.75turn, #1A1A1A 0.75turn 1turn)',
+            }}
+          />
           Entrar com Google
         </button>
 
-        <div className="mt-6 flex items-center justify-center gap-2">
-          <span className={`inline-block h-2 w-2 rounded-full ${style.dot}`} />
-          <span className="text-xs text-slate-400">{style.label}</span>
-        </div>
+        <p className="mt-6 text-xs text-faint">Acesso restrito a convidados da sua igreja.</p>
       </div>
     </main>
   );
