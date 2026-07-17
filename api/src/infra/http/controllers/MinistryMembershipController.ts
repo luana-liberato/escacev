@@ -13,6 +13,7 @@ import { InviteMemberToMinistryUseCase } from '../../../domain/use-cases/members
 import { SetMembershipAdminUseCase } from '../../../domain/use-cases/memberships/SetMembershipAdminUseCase';
 import { RemoveMemberFromMinistryUseCase } from '../../../domain/use-cases/memberships/RemoveMemberFromMinistryUseCase';
 import { ListMembershipsUseCase } from '../../../domain/use-cases/memberships/ListMembershipsUseCase';
+import { SetMemberMinistriesUseCase } from '../../../domain/use-cases/memberships/SetMemberMinistriesUseCase';
 import { CreateMemberUseCase } from '../../../domain/use-cases/members/CreateMemberUseCase';
 import { MinistryAccessPolicy } from '../../../domain/services/MinistryAccessPolicy';
 import { PrismaMinistryMembershipRepository } from '../../database/repositories/PrismaMinistryMembershipRepository';
@@ -96,6 +97,7 @@ export class MinistryMembershipController {
       new PrismaMinistryMembershipRepository(),
       new PrismaMinistryRepository(),
       MinistryMembershipController.accessPolicy(),
+      new PrismaMemberRepository(),
     );
     const membership = await useCase.execute({
       institutionId,
@@ -144,6 +146,36 @@ export class MinistryMembershipController {
       200,
       views.map(MinistryMembershipController.serializeMemberView),
       'Membros do ministério listados',
+    );
+  };
+
+  /**
+   * PUT /membros/:id/ministerios — define os vínculos do membro como EXATAMENTE
+   * a lista recebida. É o "salvar" dos chips do modal de edição.
+   *
+   * Corpo: `{ ministries: [{ ministryId, isAdmin? }] }`. O front manda a lista
+   * final; o servidor calcula o diff e aplica numa transação. Lista vazia é
+   * válida — tira o membro de todos.
+   */
+  setMinistries = async (req: Request, res: Response): Promise<void> => {
+    const { institutionId } = MinistryMembershipController.authUser(req);
+
+    const useCase = new SetMemberMinistriesUseCase(
+      new PrismaMinistryMembershipRepository(),
+      new PrismaMemberRepository(),
+      new PrismaMinistryRepository(),
+    );
+    const views = await useCase.execute({
+      institutionId,
+      memberId: req.params.id,
+      ministries: req.body?.ministries,
+    });
+
+    respond(
+      res,
+      200,
+      views.map(MinistryMembershipController.serializeMinistryView),
+      'Ministérios do membro atualizados',
     );
   };
 

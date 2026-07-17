@@ -73,6 +73,11 @@ class FakeMembershipRepo implements MinistryMembershipRepository {
     return m;
   }
   async delete(): Promise<void> {}
+
+  /** Não exercido aqui: lança para não passar despercebido se alguém passar a chamá-lo. */
+  async replaceForMember(): Promise<void> {
+    throw new Error("replaceForMember não é usado neste teste");
+  }
 }
 
 /** Constrói o CreateUnavailabilityUseCase com fakes padrão (sem alertas) ou os fornecidos. */

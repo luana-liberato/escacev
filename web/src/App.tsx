@@ -4,6 +4,7 @@ import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { DEFAULT_PATH, NAV_ITEMS } from '@/config/navigation';
 import AuthCallbackPage from '@/pages/AuthCallbackPage';
 import LoginPage from '@/pages/LoginPage';
+import MembersPage from '@/pages/members/MembersPage';
 import PlaceholderPage from '@/pages/PlaceholderPage';
 
 /**
@@ -27,7 +28,10 @@ export default function App() {
 
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
-          {NAV_ITEMS.map((item) => (
+          <Route path="/membros" element={<MembersPage />} />
+          {/* As demais saem do mapa de navegação e seguem como placeholder até a
+              sua vez chegar. */}
+          {NAV_ITEMS.filter((item) => item.path !== '/membros').map((item) => (
             <Route key={item.path} path={item.path} element={<PlaceholderPage />} />
           ))}
         </Route>

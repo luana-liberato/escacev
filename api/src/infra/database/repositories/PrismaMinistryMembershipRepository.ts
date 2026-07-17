@@ -7,6 +7,7 @@ import { Member } from '../../../domain/entities/Member';
 import { Ministry } from '../../../domain/entities/Ministry';
 import { MinistryMembership } from '../../../domain/entities/MinistryMembership';
 import {
+  MemberMinistryLink,
   MemberMinistryView,
   MinistryMemberView,
   MinistryMembershipRepository,
@@ -73,6 +74,49 @@ export class PrismaMinistryMembershipRepository implements MinistryMembershipRep
 
   async delete(id: string): Promise<void> {
     await prisma.membroMinisterio.delete({ where: { id } });
+  }
+
+  async replaceForMember(memberId: string, links: MemberMinistryLink[]): Promise<void> {
+    const current = await prisma.membroMinisterio.findMany({
+      where: { membroId: memberId },
+      select: { ministerioId: true, isAdmin: true },
+    });
+    const wanted = new Map(links.map((link) => [link.ministryId, link.isAdmin]));
+
+    const toRemove = current
+      .filter((row) => !wanted.has(row.ministerioId))
+      .map((row) => row.ministerioId);
+    const toAdd = links.filter(
+      (link) => !current.some((row) => row.ministerioId === link.ministryId),
+    );
+    // Permaneceu, mas trocou de papel: promovido ou rebaixado.
+    const toUpdate = current.filter(
+      (row) => wanted.has(row.ministerioId) && wanted.get(row.ministerioId) !== row.isAdmin,
+    );
+
+    // Nada mudou: evita abrir transação à toa.
+    if (toRemove.length === 0 && toAdd.length === 0 && toUpdate.length === 0) return;
+
+    await prisma.$transaction([
+      ...(toRemove.length > 0
+        ? [
+            prisma.membroMinisterio.deleteMany({
+              where: { membroId: memberId, ministerioId: { in: toRemove } },
+            }),
+          ]
+        : []),
+      ...toAdd.map((link) =>
+        prisma.membroMinisterio.create({
+          data: { membroId: memberId, ministerioId: link.ministryId, isAdmin: link.isAdmin },
+        }),
+      ),
+      ...toUpdate.map((row) =>
+        prisma.membroMinisterio.update({
+          where: { membroId_ministerioId: { membroId: memberId, ministerioId: row.ministerioId } },
+          data: { isAdmin: wanted.get(row.ministerioId)! },
+        }),
+      ),
+    ]);
   }
 
   // Colunas em português (schema.prisma) → entidade em inglês.

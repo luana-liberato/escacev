@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { getMyMember } from '@/services/members';
 import type { Member } from '@/services/types';
 
 interface CurrentMemberState {
   member: Member | null;
   loading: boolean;
+  /** Atualiza o nome já carregado, sem refetch — o PATCH /membros/me já devolveu o valor novo. */
+  setName: (name: string) => void;
 }
 
 /**
@@ -39,7 +41,11 @@ export function useCurrentMember(): CurrentMemberState {
     };
   }, []);
 
-  return { member, loading };
+  const setName = useCallback((name: string) => {
+    setMember((current) => (current ? { ...current, name } : current));
+  }, []);
+
+  return { member, loading, setName };
 }
 
 /**

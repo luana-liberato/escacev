@@ -37,6 +37,11 @@ class FakeMembershipRepository implements MinistryMembershipRepository {
     return m;
   }
   async delete(): Promise<void> {}
+
+  /** Não exercido aqui: lança para não passar despercebido se alguém passar a chamá-lo. */
+  async replaceForMember(): Promise<void> {
+    throw new Error("replaceForMember não é usado neste teste");
+  }
 }
 
 const MINISTRY_ID = 'min-1';

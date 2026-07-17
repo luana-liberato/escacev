@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { SidebarContent } from '@/components/SidebarContent';
 import { navItemByPath } from '@/config/navigation';
+import { PageActionSlotContext } from '@/hooks/pageActionContext';
 
 /**
  * Layout base de TODAS as telas internas: sidebar de navegação + header com o
@@ -19,6 +20,9 @@ import { navItemByPath } from '@/config/navigation';
  */
 export default function AppLayout() {
   const [menuOpen, setMenuOpen] = useState(false);
+  // Guardado em estado, não em ref: o filho precisa RE-RENDERIZAR quando o nó
+  // existir. Com ref, o portal nunca apareceria no primeiro paint.
+  const [actionSlot, setActionSlot] = useState<HTMLElement | null>(null);
   const { pathname } = useLocation();
   const page = navItemByPath(pathname);
 
@@ -73,13 +77,15 @@ export default function AppLayout() {
               <h1 className="font-display text-[22px] font-extrabold text-ink">{page?.title}</h1>
               <p className="mt-1 text-[13.5px] text-muted">{page?.subtitle}</p>
             </div>
-            {/* O handoff prevê que cada tela injete aqui a sua ação primária
-                (botão "+"). O slot entra quando a primeira tela precisar dele —
-                não se cria encaixe para quem ainda não chegou. */}
+            {/* Onde cada tela injeta a sua ação primária (o botão "+"), via
+                portal. O layout não conhece tela nenhuma. */}
+            <div ref={setActionSlot} />
           </div>
         </div>
 
-        <Outlet />
+        <PageActionSlotContext.Provider value={actionSlot}>
+          <Outlet />
+        </PageActionSlotContext.Provider>
       </div>
     </div>
   );

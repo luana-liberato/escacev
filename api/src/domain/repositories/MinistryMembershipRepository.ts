@@ -21,6 +21,15 @@ export interface MemberMinistryView {
 }
 
 /**
+ * Um vínculo desejado: participar de um ministério e, opcionalmente, administrá-lo.
+ * É a forma que a tela edita — os dois são a mesma decisão do admin.
+ */
+export interface MemberMinistryLink {
+  ministryId: string;
+  isAdmin: boolean;
+}
+
+/**
  * Abstração de persistência do vínculo Membro↔Ministério. Use cases dependem
  * desta interface, nunca do PrismaClient diretamente (Seção 4.2 do CLAUDE.md).
  * O escopo por instituição é validado nos use cases (via Ministry/Member).
@@ -41,4 +50,18 @@ export interface MinistryMembershipRepository {
   update(membership: MinistryMembership): Promise<MinistryMembership>;
   /** Remove o vínculo. */
   delete(id: string): Promise<void>;
+  /**
+   * Define os vínculos de um membro como EXATAMENTE `links`, numa transação —
+   * remove os que saíram, cria os que entraram e ajusta o `isAdmin` dos que
+   * mudaram de papel. Ou tudo, ou nada.
+   *
+   * Existe porque a tela edita o conjunto inteiro de uma vez: fazer o diff no
+   * cliente e disparar N chamadas deixaria o membro meio-associado se uma delas
+   * falhasse, sem como desfazer as anteriores.
+   *
+   * A lista é a FONTE DA VERDADE, inclusive do `isAdmin` — participar de um
+   * ministério e administrá-lo são a mesma edição na tela, então precisam ser a
+   * mesma escrita aqui. Vínculo que permanece com o mesmo papel não é tocado.
+   */
+  replaceForMember(memberId: string, links: MemberMinistryLink[]): Promise<void>;
 }

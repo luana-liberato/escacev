@@ -78,6 +78,18 @@
 - [x] Middleware global `errorHandler`: capturar `AppError` e formatar resposta
 - [x] Definir os três perfis no enum: `ADMIN_GERAL`, `ADMIN_MINISTERIO`, `MEMBRO`
 - [ ] Garantir que rotas de membro restrinjam acesso apenas aos próprios dados quando aplicável
+- [x] **Perfil e status vêm do BANCO, não do JWT** — o middleware `auth` valida o token
+      (que prova QUEM é a pessoa) e busca o `Membro` a cada request. O `role` do token é
+      ignorado.
+      **Motivo:** o perfil muda. Promover alguém e ler o papel do token fazia a promoção
+      só valer no próximo login — até 7 dias (`JWT_EXPIRES_IN`) — porque o menu não
+      aparecia e o `rbac` barrava. Com a derivação de perfil (marcar "admin" num
+      ministério promove), o papel ficou ainda mais dinâmico.
+      **E o caso grave:** DESATIVAR não desativava — o membro seguia usando o sistema com
+      o token antigo por dias. Falha de segurança, não de UX. Agora recebe **401** (não
+      403) para o front derrubar a sessão.
+      Custo: uma consulta indexada por request. Trade-off aceito conscientemente — o JWT
+      deixa de ser 100% stateless. (achado ao construir a tela de Membros)
 
 ---
 
