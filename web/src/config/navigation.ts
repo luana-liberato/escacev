@@ -64,7 +64,10 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'Ministérios',
     title: 'Ministérios',
     subtitle: 'Grupos e equipes da sua igreja',
-    roles: ADMINS,
+    // Aberto ao MEMBRO (handoff v4): ele vê só os ministérios de que participa,
+    // via GET /ministerios/cards (escopado no servidor). As telas de gestão de
+    // membros/funções seguem admin-only.
+    roles: ALL_ROLES,
   },
   {
     path: '/membros',

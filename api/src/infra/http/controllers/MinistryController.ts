@@ -4,6 +4,7 @@ import { AppError } from '../../../shared/errors/AppError';
 import { Ministry } from '../../../domain/entities/Ministry';
 import { CreateMinistryUseCase } from '../../../domain/use-cases/ministries/CreateMinistryUseCase';
 import { ListMinistriesUseCase } from '../../../domain/use-cases/ministries/ListMinistriesUseCase';
+import { ListMinistryCardsUseCase } from '../../../domain/use-cases/ministries/ListMinistryCardsUseCase';
 import { GetMinistryUseCase } from '../../../domain/use-cases/ministries/GetMinistryUseCase';
 import { UpdateMinistryUseCase } from '../../../domain/use-cases/ministries/UpdateMinistryUseCase';
 import { DeleteMinistryUseCase } from '../../../domain/use-cases/ministries/DeleteMinistryUseCase';
@@ -32,6 +33,26 @@ export class MinistryController {
     const ministries = await useCase.execute({ institutionId });
 
     respond(res, 200, ministries.map(MinistryController.serialize), 'Ministérios listados');
+  };
+
+  /**
+   * GET /ministerios/cards — o read model da tela de Ministérios, escopado por
+   * papel. `auth`-only (sem `rbac`): o MEMBRO também vê a tela, só os ministérios
+   * dele. institutionId, memberId e role vêm do JWT.
+   *
+   * Devolve, por card: nome, descrição, quem administra e se o próprio usuário
+   * administra — tudo pronto, numa chamada só.
+   */
+  listCards = async (req: Request, res: Response): Promise<void> => {
+    const { institutionId, memberId, role } = MinistryController.authUser(req);
+
+    const useCase = new ListMinistryCardsUseCase(
+      new PrismaMinistryRepository(),
+      new PrismaMinistryMembershipRepository(),
+    );
+    const cards = await useCase.execute({ institutionId, memberId, role });
+
+    respond(res, 200, cards, 'Ministérios visíveis listados');
   };
 
   // GET /ministerios/:id — busca um ministério da própria instituição.

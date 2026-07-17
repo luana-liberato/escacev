@@ -217,3 +217,76 @@ describe('DELETE /ministerios/:id', () => {
     expect(res.body.message).toContain('escalas');
   });
 });
+
+/**
+ * GET /ministerios/cards — o read model da tela, escopado por papel. A razão de
+ * existir: o MEMBRO precisa VER a tela, e todo o resto de /ministerios é
+ * admin-only. Estes testes travam o escopo por ator e o enriquecimento (admins +
+ * "você administra").
+ */
+describe('GET /ministerios/cards', () => {
+  afterEach(async () => {
+    // Remove vínculos que os testes deste bloco criam para o MEMBRO.
+    await prisma.membroMinisterio.deleteMany({ where: { membroId: MEMBRO_ID } });
+  });
+
+  it('MEMBRO enxerga a tela (200, não 403) — o que /ministerios nega a ele', async () => {
+    const res = await request(app)
+      .get('/ministerios/cards')
+      .set('Authorization', `Bearer ${membroToken}`);
+
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.data)).toBe(true);
+  });
+
+  it('MEMBRO vê só os ministérios de que participa, com quem administra', async () => {
+    await prisma.membroMinisterio.create({
+      data: { membroId: MEMBRO_ID, ministerioId: SCOPED_MINISTRY_ID, isAdmin: false },
+    });
+
+    const res = await request(app)
+      .get('/ministerios/cards')
+      .set('Authorization', `Bearer ${membroToken}`);
+
+    expect(res.body.data).toHaveLength(1);
+    const card = res.body.data[0];
+    expect(card.id).toBe(SCOPED_MINISTRY_ID);
+    expect(card.isCurrentUserAdmin).toBe(false); // participa, não administra
+    // ADMIN_SCOPED é admin do Louvor (fixture) — aparece na linha de administradores.
+    expect(card.admins.map((a: { id: string }) => a.id)).toContain(ADMIN_SCOPED_ID);
+  });
+
+  it('ADMIN_GERAL vê TODOS os ministérios da instituição', async () => {
+    const res = await request(app)
+      .get('/ministerios/cards')
+      .set('Authorization', `Bearer ${adminGeralToken}`);
+
+    const ids = res.body.data.map((c: { id: string }) => c.id);
+    expect(ids).toContain(SCOPED_MINISTRY_ID);
+    expect(ids).toContain(OTHER_MINISTRY_ID);
+    expect(ids).not.toContain(FOREIGN_MINISTRY_ID); // outro tenant, nunca
+  });
+
+  it('ADMIN_MINISTERIO vê só os que participa; o que administra vem com o badge', async () => {
+    const res = await request(app)
+      .get('/ministerios/cards')
+      .set('Authorization', `Bearer ${adminScopedToken}`);
+
+    expect(res.body.data).toHaveLength(1);
+    expect(res.body.data[0].id).toBe(SCOPED_MINISTRY_ID);
+    expect(res.body.data[0].isCurrentUserAdmin).toBe(true);
+  });
+
+  it('sem token (401)', async () => {
+    const res = await request(app).get('/ministerios/cards');
+    expect(res.status).toBe(401);
+  });
+
+  it('a rota vem antes de /ministerios/:id — "cards" não é tratado como id', async () => {
+    // Se o :id capturasse "cards", um ADMIN daria 404 (ministério inexistente).
+    const res = await request(app)
+      .get('/ministerios/cards')
+      .set('Authorization', `Bearer ${adminGeralToken}`);
+    expect(res.status).toBe(200);
+  });
+});
