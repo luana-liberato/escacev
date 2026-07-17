@@ -392,8 +392,34 @@
 ### Telas de Gestão (Admin)
 - [ ] Listagem e CRUD de **ministérios**
 - [ ] Listagem e CRUD de **funções** por ministério
-- [ ] Listagem e CRUD de **membros** (com envio de convite)
-- [ ] Tela de associação de membros a ministérios
+- [x] Listagem e CRUD de **membros** (com envio de convite) — tela completa (PR #27,
+      `web/src/pages/members/`): lista com filtro/busca, convite (dois fluxos — admin geral
+      na instituição, admin de grupo escopado no ministério), edição, "Promover a admin
+      geral" com confirmação, "Promover" do admin de grupo em dois passos, toast global e
+      "Meu perfil". Perfil `ADMIN_MINISTERIO` **derivado** de administrar algum ministério
+      (não é campo). Ao construir, corrigidos dois bugs de auth (ver Fase 2).
+- [ ] 🔴 **Guarda de auto-alteração de perfil na API** — hoje o admin geral **se
+      rebaixar** é bloqueado só pela TELA (`MemberModal` esconde o botão para si mesmo).
+      A API não impede: `PUT /membros/:id` aceita `role` para qualquer id, inclusive o
+      próprio. Se o admin geral for o único e se rebaixar, **a instituição fica sem ninguém
+      que a administre** — e ninguém promove de volta, porque promover exige ser admin
+      geral. Lockout permanente. A regra tem que ir para o `UpdateMemberUseCase`,
+      comparando o alvo com o `memberId` do JWT. Mesmo princípio da sessão toda: esconder
+      o botão é conveniência; quem protege é o back. (achado ao construir a tela)
+- [ ] **Botão "Rebaixar para Membro"** no modal de edição (handoff v3, linha 82) — o
+      "desfazer" do poder administrativo num clique: zera `isGeneralAdmin` e **todos** os
+      `adminMinistryIds` de uma vez, preservando a participação nos ministérios. Aparece
+      quando a pessoa é admin geral ou administra algum ministério, e não é sobre si mesmo.
+      **A regra já existe na API** (o `UpdateMemberUseCase` limpa o `isAdmin` ao receber
+      `role: MEMBRO`, testado) — falta só o botão no front. O "Promover a admin geral" já
+      entrou no PR #27; este é o par que ficou.
+- [ ] **Derivação do `SetMembershipAdminUseCase` — testes passam mas não provados por
+      mutação.** O `strictNullChecks` resistiu às tentativas de mutação, então lá há testes
+      verdes sem a prova de que pegam o bug (nas outras duas portas a mutação funcionou).
+      Revisar se vale reforçar. (achado no PR #27)
+- [ ] Tela de associação de membros a ministérios — **parcialmente coberta pela tela de
+      Membros:** o modal de edição já associa/desassocia via chips (`PUT
+      /membros/:id/ministerios`). Uma tela dedicada só se a associação em massa pedir.
 - [ ] Tela da **matriz de compatibilidade** de funções
 - [ ] Listagem e CRUD de **eventos** (calendário da instituição)
 - [ ] **Calendário** de eventos (visualização mensal/semanal ou lista)
