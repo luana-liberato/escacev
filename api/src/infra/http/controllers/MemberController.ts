@@ -9,6 +9,7 @@ import { UpdateMemberUseCase } from '../../../domain/use-cases/members/UpdateMem
 import { UpdateMyNameUseCase } from '../../../domain/use-cases/members/UpdateMyNameUseCase';
 import { DeactivateMemberUseCase } from '../../../domain/use-cases/members/DeactivateMemberUseCase';
 import { PrismaMemberRepository } from '../../database/repositories/PrismaMemberRepository';
+import { PrismaMinistryMembershipRepository } from '../../database/repositories/PrismaMinistryMembershipRepository';
 import { buildNotifier } from '../../services/notifierFactory';
 import { respond } from '../../../shared/utils/respond';
 
@@ -88,7 +89,10 @@ export class MemberController {
     const { institutionId } = MemberController.authUser(req);
     const { name, role, active } = req.body;
 
-    const useCase = new UpdateMemberUseCase(new PrismaMemberRepository());
+    const useCase = new UpdateMemberUseCase(
+      new PrismaMemberRepository(),
+      new PrismaMinistryMembershipRepository(),
+    );
     const member = await useCase.execute({
       id: req.params.id,
       institutionId,
