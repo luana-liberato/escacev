@@ -23,6 +23,17 @@ memberRoutes.get(
   asyncHandler(controller.list),
 );
 
+/**
+ * Os PRÓPRIOS dados do usuário autenticado — member-scoped: só `auth`, sem
+ * `rbac`. Todo perfil precisa se enxergar (nome, e-mail), e o `GET /membros/:id`
+ * abaixo exige admin. O id vem do JWT, então ninguém lê cadastro alheio aqui.
+ *
+ * DEVE vir ANTES de '/membros/:id': o Express casa na ordem de registro, e o
+ * `:id` capturaria "me" — o rbac então bloquearia o MEMBRO com 403. Mesmo cuidado
+ * de '/funcoes/compatibilidade' antes de '/funcoes/:id' (ver routes/index.ts).
+ */
+memberRoutes.get('/membros/me', auth, asyncHandler(controller.showMe));
+
 // Buscar um membro — ADMIN_GERAL e ADMIN_MINISTERIO.
 memberRoutes.get(
   '/membros/:id',

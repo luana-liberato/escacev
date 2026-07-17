@@ -33,6 +33,28 @@ export class MemberController {
     respond(res, 200, members.map(MemberController.serialize), 'Membros listados');
   };
 
+  /**
+   * GET /membros/me — o usuário autenticado busca os PRÓPRIOS dados.
+   *
+   * Member-scoped: sem `rbac`, porque todo perfil precisa se enxergar — o
+   * `GET /membros/:id` exige admin, então um MEMBRO não conseguia ler o próprio
+   * cadastro. O JWT carrega só `{ memberId, institutionId, role }`; nome e e-mail
+   * saem daqui.
+   *
+   * Não há parâmetro: o id vem do JWT, então ninguém lê o cadastro alheio por
+   * esta rota. Reusa o GetMemberUseCase — a checagem de tenant dele é redundante
+   * aqui (o membro é do próprio tenant por definição), mas o custo é zero e
+   * duplicar a busca não se justifica.
+   */
+  showMe = async (req: Request, res: Response): Promise<void> => {
+    const { memberId, institutionId } = MemberController.authUser(req);
+
+    const useCase = new GetMemberUseCase(new PrismaMemberRepository());
+    const member = await useCase.execute({ id: memberId, institutionId });
+
+    respond(res, 200, MemberController.serialize(member), 'Membro encontrado');
+  };
+
   // GET /membros/:id — busca um membro da própria instituição.
   show = async (req: Request, res: Response): Promise<void> => {
     const { institutionId } = MemberController.authUser(req);
