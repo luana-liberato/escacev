@@ -23,6 +23,16 @@ ministryRoutes.get(
   asyncHandler(controller.list),
 );
 
+/**
+ * Read model da tela de Ministérios (cards), escopado por papel — `auth`-only,
+ * porque o MEMBRO também vê a tela (só os ministérios dele). O escopo é decidido
+ * no use case, não pelo rbac.
+ *
+ * DEVE vir ANTES de '/ministerios/:id': o Express casa na ordem, e o `:id`
+ * capturaria "cards" (mesmo cuidado de '/membros/me' e '/funcoes/compatibilidade').
+ */
+ministryRoutes.get('/ministerios/cards', auth, asyncHandler(controller.listCards));
+
 // Buscar um ministério — ADMIN_GERAL e ADMIN_MINISTERIO.
 ministryRoutes.get(
   '/ministerios/:id',
