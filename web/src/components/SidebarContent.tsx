@@ -1,19 +1,22 @@
+import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { Logo } from '@/components/Logo';
+import { ProfileModal } from '@/components/ProfileModal';
 import { ROLE_LABELS, navItemsFor } from '@/config/navigation';
 import { initialsOf, useCurrentMember } from '@/hooks/useCurrentMember';
 import { useAuth } from '@/hooks/useAuth';
 
 /**
- * Miolo da sidebar: marca, navegação e o bloco do usuário. Um componente só
- * porque o desktop e o drawer mobile mostram exatamente o mesmo conteúdo — no
- * handoff o markup é duplicado; aqui não precisa ser.
+ * Miolo da sidebar: marca, navegação e o bloco "Meu perfil". Um componente só
+ * porque o desktop e o drawer mobile mostram o mesmo conteúdo — no handoff o
+ * markup é duplicado; aqui não precisa ser.
  *
  * `onNavigate` fecha o drawer ao clicar num item (no desktop não é passado).
  */
 export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const { user, logout } = useAuth();
-  const { member, loading } = useCurrentMember();
+  const { member, loading, setName } = useCurrentMember();
+  const [profileOpen, setProfileOpen] = useState(false);
 
   if (!user) return null; // ProtectedRoute já garante; guarda só para estreitar o tipo.
 
@@ -45,11 +48,17 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 
       <div className="flex-1" />
 
-      <div className="flex items-center gap-2.5 border-t border-line px-2 py-3">
+      {/* Bloco clicável: abre "Meu perfil". O Sair fica FORA dele — sair e editar
+          o nome são ações diferentes e não podem compartilhar alvo de clique. */}
+      <button
+        type="button"
+        onClick={() => setProfileOpen(true)}
+        className="flex items-center gap-2.5 border-t border-line px-2 py-3 text-left transition hover:bg-highlight"
+      >
         <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-brand-soft text-[13px] font-bold text-brand">
           {member ? initialsOf(member.name) : ''}
         </div>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           {/* O papel vem do JWT e aparece na hora; o nome depende do /membros/me. */}
           {loading ? (
             <div className="h-3.5 w-24 animate-pulse rounded bg-highlight" />
@@ -60,7 +69,23 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           )}
           <p className="text-[11.5px] text-muted">{ROLE_LABELS[user.role]}</p>
         </div>
-      </div>
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          aria-hidden="true"
+          className="flex-shrink-0 opacity-50"
+        >
+          <path
+            d="M17 3a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"
+            stroke="#1A1A1A"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </button>
 
       <button
         type="button"
@@ -69,6 +94,14 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       >
         Sair
       </button>
+
+      {profileOpen && member && (
+        <ProfileModal
+          currentName={member.name}
+          onClose={() => setProfileOpen(false)}
+          onSaved={setName}
+        />
+      )}
     </>
   );
 }
