@@ -69,8 +69,22 @@ responsabilidade de quem formata, na borda da UI.
 
 - Login **só** com Google (Seção 5 da raiz). Não existe formulário de e-mail/senha.
 - Fluxo: o front manda o browser para `GET /auth/google` na API (navegação real, não
-  XHR) → a API redireciona para o Google → callback → a API redireciona para
-  `FRONTEND_URL?token=<jwt>`. A tela de callback lê `?token`, guarda e redireciona.
+  XHR) → a API redireciona para o Google → callback → a API redireciona para a
+  `FRONTEND_URL` (hoje `/auth/callback`) com o resultado na query.
+- **O `window.location.href` do login destrói o app**: o navegador sai, e o que volta é
+  um carregamento do zero. Nada sobrevive além do que está no endereço. Por isso o
+  resultado viaja na query, e por isso a `LoginPage` não faz request nenhuma — ela só
+  empurra o navegador. É a exceção; toda outra tela fala com a API via `services/`.
+- **Sucesso → `?token=<jwt>`**: o callback guarda e manda para `/`.
+- **Falha → `?error=<chave>`** (`auth_failed` | `no_email` | `not_authorized` |
+  `api_error`): o callback **repassa** para `/login?error=`, que exibe o banner. A API
+  conhece um endereço só (a `FRONTEND_URL`), então é o callback que roteia — e o erro
+  de autenticação tem um lugar único para ser exibido.
+- A API manda a **chave**, não a frase: o front decide o texto (`pages/loginErrors.ts`).
+  Evita expor mensagem na barra de endereço e impede forjar um aviso falso num link.
+  Chave desconhecida não vira banner.
+- Se a `FRONTEND_URL` estiver vazia, a API **não redireciona**: devolve token e erros em
+  JSON e o front nunca é acionado. É o modo "API sem front" do `.env.example`.
 - **Logout é local:** o JWT é stateless e não há endpoint de logout — descartar o
   token é tudo. Não invente `POST /logout`.
 - O `institutionId` vive **dentro** do JWT. O front nunca o envia em body nem em query.
