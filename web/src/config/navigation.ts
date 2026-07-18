@@ -12,10 +12,10 @@ import type { UserRole } from '@/services/types';
  * de Membros (docs/design/crud_membros/README.md) — a 2ª rodada dava os seis itens
  * a todos, o que era erro: a API responde 403 a um MEMBRO em cinco deles.
  *
- * ⚠️ Escalas e Eventos ainda dão 403 para o MEMBRO: as duas rotas são
- * `rbac('ADMIN_GERAL', 'ADMIN_MINISTERIO')`. O menu já reflete a decisão de
- * produto; a API é que precisa alcançá-la (pendência 🔴 na Fase 8 do TASKS.md).
- * Enquanto isso, as telas são placeholders e ninguém sente.
+ * ⚠️ Escalas ainda dá 403 para o MEMBRO: a rota é `rbac` de admin. O menu já
+ * reflete a decisão de produto; falta a API abrir com filtro por vínculo +
+ * PUBLICADA (RN04) — pendência 🔴 da Fase 8 no TASKS.md. Eventos já foi
+ * liberado: GET /eventos aceita o MEMBRO (leitura), então a tela funciona.
  */
 export interface NavItem {
   path: string;
@@ -55,8 +55,9 @@ export const NAV_ITEMS: NavItem[] = [
     path: '/eventos',
     label: 'Eventos',
     title: 'Eventos',
-    subtitle: 'Lista de todas as escalas e eventos',
-    // ⚠️ Mesma situação: GET /eventos é admin-only na API.
+    subtitle: 'Calendário de eventos da instituição',
+    // GET /eventos é aberto a qualquer autenticado; o MEMBRO vê a lista em modo
+    // leitura (a EventsPage gateia os botões de gestão por papel).
     roles: ALL_ROLES,
   },
   {
