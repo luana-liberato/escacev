@@ -206,3 +206,49 @@ describe('DELETE /funcoes/:id', () => {
     expect(res.status).toBe(403);
   });
 });
+
+/**
+ * GET /funcoes — catálogo de todas as funções da instituição, com o nome do
+ * ministério. Insumo da tela de Funções e dos toggles de compatibilidade (que
+ * mostram todas as funções, não só as do escopo do admin de grupo).
+ */
+describe('GET /funcoes (catálogo da instituição)', () => {
+  it('ADMIN_GERAL lista todas as funções da instituição, com o nome do ministério', async () => {
+    await newPosition('Vocal Catalogo');
+
+    const res = await request(app)
+      .get('/funcoes')
+      .set('Authorization', `Bearer ${adminGeralToken}`);
+
+    expect(res.status).toBe(200);
+    const found = res.body.data.find((f: { name: string }) => f.name === 'Vocal Catalogo');
+    expect(found).toMatchObject({ ministryId: MINISTRY_ID, ministryName: 'Louvor' });
+  });
+
+  it('ADMIN_MINISTERIO também lista o catálogo inteiro (não escopado — o par pode cruzar ministérios)', async () => {
+    const res = await request(app)
+      .get('/funcoes')
+      .set('Authorization', `Bearer ${adminUnscopedToken}`);
+
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.data)).toBe(true);
+  });
+
+  it('não vaza funções de outra instituição', async () => {
+    await prisma.funcao.create({ data: { ministerioId: FOREIGN_MINISTRY_ID, nome: 'Alheia Catalogo' } });
+
+    const res = await request(app)
+      .get('/funcoes')
+      .set('Authorization', `Bearer ${adminGeralToken}`);
+
+    const names = res.body.data.map((f: { name: string }) => f.name);
+    expect(names).not.toContain('Alheia Catalogo');
+  });
+
+  it('MEMBRO não acessa (403)', async () => {
+    const res = await request(app)
+      .get('/funcoes')
+      .set('Authorization', `Bearer ${membroToken}`);
+    expect(res.status).toBe(403);
+  });
+});

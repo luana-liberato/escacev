@@ -31,6 +31,16 @@ positionRoutes.get(
   asyncHandler(controller.list),
 );
 
+// Catálogo de TODAS as funções da instituição (com nome do ministério) — insumo
+// da tela de Funções e dos toggles de compatibilidade. Leitura não escopada:
+// ADMIN_GERAL e ADMIN_MINISTERIO. Path exato, não colide com /funcoes/:id.
+positionRoutes.get(
+  '/funcoes',
+  auth,
+  rbac('ADMIN_GERAL', 'ADMIN_MINISTERIO'),
+  asyncHandler(controller.listAll),
+);
+
 // Editar função — ADMIN_GERAL ou admin escopado do ministério da função (guarda no use case).
 positionRoutes.put(
   '/funcoes/:id',
