@@ -115,7 +115,9 @@ export default function MembersPage() {
         value={search}
         onChange={(event) => setSearch(event.target.value)}
         placeholder="Buscar por nome ou e-mail"
-        className="mb-4 w-full max-w-[320px] rounded-[10px] border border-line bg-white px-3.5 py-2.5 text-[13.5px]"
+        // Largura total no celular; teto de 320px só a partir de sm — no mobile
+        // aproveita a tela inteira em vez de deixar espaço morto à direita.
+        className="mb-4 w-full rounded-[10px] border border-line bg-white px-3.5 py-2.5 text-[13.5px] sm:max-w-[320px]"
       />
 
       {loading && <p className="text-[13.5px] text-muted">Carregando membros...</p>}
@@ -144,9 +146,13 @@ export default function MembersPage() {
                 {initialsOf(row.name)}
               </div>
 
-              <div className="min-w-[160px] flex-1">
-                <p className="text-sm font-bold text-ink">{row.name}</p>
-                <p className="mt-0.5 text-[12.5px] text-muted">{row.email}</p>
+              {/* min-w-0 (não 160px): num celular estreito o piso de 160px forçava
+                  overflow e jogava as ações para uma quebra torta. Deixando a
+                  coluna encolher e truncando, avatar + nome + ações cabem na
+                  linha 1, e as tags quebram para a de baixo (basis-full). */}
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-bold text-ink">{row.name}</p>
+                <p className="truncate text-[12.5px] text-muted">{row.email}</p>
               </div>
 
               {/* Quebra para a linha de baixo: as tags variam de largura e não
@@ -192,7 +198,7 @@ export default function MembersPage() {
                   <button
                     type="button"
                     onClick={() => setModal({ open: true, member: row })}
-                    className="text-[13px] font-semibold text-brand transition hover:text-brand-hover"
+                    className="-mx-1 -my-2 px-1 py-2 text-[13px] font-semibold text-brand transition hover:text-brand-hover"
                   >
                     Editar
                   </button>
@@ -205,7 +211,7 @@ export default function MembersPage() {
                   <button
                     type="button"
                     onClick={() => setPromoting(row)}
-                    className="text-[13px] font-semibold text-brand transition hover:text-brand-hover"
+                    className="-mx-1 -my-2 px-1 py-2 text-[13px] font-semibold text-brand transition hover:text-brand-hover"
                   >
                     Promover
                   </button>

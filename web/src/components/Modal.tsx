@@ -33,13 +33,19 @@ export function Modal({
       className="fixed inset-0 z-50 flex items-center justify-center bg-overlay p-5"
     >
       {/* O clique dentro do cartão não pode fechar: sem isto, digitar num campo
-          fecharia o modal (o evento sobe até o overlay). */}
+          fecharia o modal (o evento sobe até o overlay).
+
+          max-h + overflow-y-auto: num celular baixo (ou com o teclado aberto,
+          que come metade da tela) um modal alto empurraria os botões para fora
+          da viewport, sem como rolar até eles — o usuário abriria o modal e não
+          conseguiria salvar. `svh` é a altura estável no mobile; o `-2.5rem`
+          casa com o p-5 do overlay. */}
       <div
         role="dialog"
         aria-modal="true"
         aria-label={title}
         onClick={(event) => event.stopPropagation()}
-        className="w-full rounded-2xl bg-white p-7"
+        className="max-h-[calc(100svh-2.5rem)] w-full overflow-y-auto rounded-2xl bg-white p-7"
         style={{ maxWidth }}
       >
         <h3 className="mb-[18px] font-display text-lg font-bold text-ink">{title}</h3>

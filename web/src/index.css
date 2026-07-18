@@ -2,6 +2,23 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  /**
+   * O Safari do iPhone dá ZOOM automático ao focar qualquer campo com fonte < 16px,
+   * e a tela "pula". Nossos inputs usam 13.5–14px por design. Forçar 16px no
+   * campo em telas de toque mata o zoom sem mudar a aparência no desktop.
+   *
+   * Só em telas COARSE (dedo): no desktop os 14px do design permanecem.
+   */
+  @media (pointer: coarse) {
+    input,
+    select,
+    textarea {
+      font-size: 16px;
+    }
+  }
+}
+
 @layer utilities {
   /**
    * Altura de tela cheia que não mente no celular.
