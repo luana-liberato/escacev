@@ -3,13 +3,27 @@ import { AppError } from '../../shared/errors/AppError';
 
 /**
  * Tipos de evento aceitos no domínio, em inglês (Seção 4.6). O schema guarda o
- * valor em português (`tipo`: "culto" | "ensaio" | "especial") — a tradução
- * EN↔PT acontece só no repositório. Como `tipo` é String livre no schema (não um
- * enum do Prisma), o domínio define aqui o conjunto fechado e o valida.
+ * valor em português (`tipo`: "culto" | "ensaio" | "especial" | "reuniao" |
+ * "cafe" | "conferencia") — a tradução EN↔PT acontece só no repositório. Como
+ * `tipo` é String livre no schema (não um enum do Prisma), o domínio define aqui
+ * o conjunto fechado e o valida.
  */
-export type EventType = 'SERVICE' | 'REHEARSAL' | 'SPECIAL';
+export type EventType =
+  | 'SERVICE'
+  | 'REHEARSAL'
+  | 'SPECIAL'
+  | 'MEETING'
+  | 'COFFEE'
+  | 'CONFERENCE';
 
-const EVENT_TYPES: readonly EventType[] = ['SERVICE', 'REHEARSAL', 'SPECIAL'];
+const EVENT_TYPES: readonly EventType[] = [
+  'SERVICE',
+  'REHEARSAL',
+  'SPECIAL',
+  'MEETING',
+  'COFFEE',
+  'CONFERENCE',
+];
 
 /**
  * Event — ocorrência no calendário da instituição (culto, ensaio, especial).
@@ -106,7 +120,10 @@ export class Event {
 
   private static normalizeType(type?: string): EventType {
     if (typeof type !== 'string' || !EVENT_TYPES.includes(type as EventType)) {
-      throw new AppError('Tipo de evento inválido (use SERVICE, REHEARSAL ou SPECIAL)', 400);
+      throw new AppError(
+        'Tipo de evento inválido (use SERVICE, REHEARSAL, SPECIAL, MEETING, COFFEE ou CONFERENCE)',
+        400,
+      );
     }
     return type as EventType;
   }

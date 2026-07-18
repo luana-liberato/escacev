@@ -14,7 +14,13 @@ export type UserRole = 'ADMIN_GERAL' | 'ADMIN_MINISTERIO' | 'MEMBRO';
 export type ScheduleStatus = 'RASCUNHO' | 'PUBLICADA';
 
 /** Tipos de evento — o domínio os define em inglês; o schema guarda em português. */
-export type EventType = 'SERVICE' | 'REHEARSAL' | 'SPECIAL';
+export type EventType =
+  | 'SERVICE'
+  | 'REHEARSAL'
+  | 'SPECIAL'
+  | 'MEETING'
+  | 'COFFEE'
+  | 'CONFERENCE';
 
 /** Tipos de notificação in-app. Convite não entra: é entrega e-mail-only. */
 export type NotificationType =

@@ -9,11 +9,17 @@ const TYPE_TO_DB: Record<EventType, string> = {
   SERVICE: 'culto',
   REHEARSAL: 'ensaio',
   SPECIAL: 'especial',
+  MEETING: 'reuniao',
+  COFFEE: 'cafe',
+  CONFERENCE: 'conferencia',
 };
 const TYPE_FROM_DB: Record<string, EventType> = {
   culto: 'SERVICE',
   ensaio: 'REHEARSAL',
   especial: 'SPECIAL',
+  reuniao: 'MEETING',
+  cafe: 'COFFEE',
+  conferencia: 'CONFERENCE',
 };
 
 export class PrismaEventRepository implements EventRepository {
