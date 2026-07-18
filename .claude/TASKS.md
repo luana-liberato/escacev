@@ -183,12 +183,17 @@
 - [x] Use case extra: listar os pares da instituição (`List`, insumo para a tela de matriz)
 - [x] Endpoints: `POST /funcoes/compatibilidade`, `DELETE /funcoes/compatibilidade` (ids na query), `GET /funcoes/compatibilidade`
 - [x] Garantir o default: ausência de registro = funções incompatíveis
-- [ ] **Abrir a matriz ao `ADMIN_MINISTERIO`** (decisão da cliente, jul/2026) — as três
-      rotas de compatibilidade (`GET`/`POST`/`DELETE /funcoes/compatibilidade`) hoje são
-      `rbac('ADMIN_GERAL')`. Passam a aceitar também `ADMIN_MINISTERIO`, que vê **todas** as
-      funções da instituição (inclusive de ministérios que não administra) e marca/desmarca
-      qualquer par. **Diverge do princípio original** (nota acima): a matriz era escopo de
-      instituição de propósito, porque um par pode ligar funções de ministérios diferentes —
+- [x] **`GET /funcoes` — catálogo de todas as funções da instituição** (com o nome do
+      ministério), insumo da tela de Funções e dos toggles de compatibilidade. A API só
+      tinha funções por ministério; sem isto a tela buscaria ministério por ministério
+      (N+1). Escopo `ADMIN_GERAL`/`ADMIN_MINISTERIO`, agregação server-side.
+- [x] **Abrir a matriz ao `ADMIN_MINISTERIO`** (decisão da cliente, jul/2026, PR #30) — as
+      três rotas de compatibilidade (`GET`/`POST`/`DELETE /funcoes/compatibilidade`) passaram
+      de `rbac('ADMIN_GERAL')` para aceitar também `ADMIN_MINISTERIO`, com acesso pleno (todas
+      as funções, qualquer par). A checagem de papel estava também DENTRO dos três use cases
+      (não só no rbac) — removida nos três; o rbac da rota é o gate único, e barra o MEMBRO.
+      **Diverge do princípio original** (nota acima): a matriz era escopo de instituição de
+      propósito, porque um par pode ligar funções de ministérios diferentes —
       então não há um ministério único para escopar com a `MinistryAccessPolicy`. A abertura
       é um afrouxamento consciente do RBAC, sem checagem escopada. É pré-requisito da tela de
       matriz (Fase 8). (`GET /ministerios/:id/funcoes` já era aberto aos dois.)
@@ -399,11 +404,22 @@
 - [x] Fluxo de logout
 
 ### Telas de Gestão (Admin)
-- [ ] Listagem e CRUD de **ministérios**
-- [ ] Listagem e CRUD de **funções** por ministério
-- [ ] Listagem e CRUD de **membros** (com envio de convite)
-- [ ] Tela de associação de membros a ministérios
-- [ ] Tela da **matriz de compatibilidade** de funções
+- [x] Listagem e CRUD de **membros** (com envio de convite) — PR #27
+      (`web/src/pages/members/`): lista com filtro/busca, convite (dois fluxos),
+      edição, "Promover a admin geral", "Promover" do admin de grupo, "Meu perfil".
+- [x] Listagem e CRUD de **ministérios** — PR #28 (`web/src/pages/ministries/`):
+      cards escopados por papel, "Você administra" com borda teal, criar/editar.
+- [x] Listagem e CRUD de **funções** por ministério — tela de Funções
+      (`web/src/pages/positions/`): lista com filtro, exclusão com confirmação
+      inline, modal de 2 passos (função + compatibilidade). Escopo por papel na
+      lista; compatibilidade contra todas as funções da instituição.
+- [x] Tela de associação de membros a ministérios — coberta pelos chips do modal
+      de edição de Membros (`PUT /membros/:id/ministerios`, com o papel de admin
+      por ministério). Tela dedicada só se a associação em massa pedir.
+- [x] Tela da **matriz de compatibilidade** de funções — embutida no modal de 2
+      passos da tela de Funções (abordagem centrada numa função: toggles "pode
+      acumular com", padrão-incompatível sinalizado). Depende do `GET /funcoes`
+      (catálogo da instituição) e da abertura da matriz ao ADMIN_MINISTERIO (PR #30).
 - [ ] Listagem e CRUD de **eventos** (calendário da instituição)
 - [ ] **Calendário** de eventos (visualização mensal/semanal ou lista)
 
