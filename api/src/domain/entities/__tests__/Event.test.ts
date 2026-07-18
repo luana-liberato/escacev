@@ -25,9 +25,12 @@ describe('Event.create', () => {
     expect(Event.create({ ...base, name: '  Culto  ' }).name).toBe('Culto');
   });
 
-  it('aceita os três tipos válidos', () => {
+  it('aceita todos os tipos válidos', () => {
     expect(Event.create({ ...base, type: 'REHEARSAL' }).type).toBe('REHEARSAL');
     expect(Event.create({ ...base, type: 'SPECIAL' }).type).toBe('SPECIAL');
+    expect(Event.create({ ...base, type: 'MEETING' }).type).toBe('MEETING');
+    expect(Event.create({ ...base, type: 'COFFEE' }).type).toBe('COFFEE');
+    expect(Event.create({ ...base, type: 'CONFERENCE' }).type).toBe('CONFERENCE');
   });
 
   it('rejeita instituição ausente', () => {

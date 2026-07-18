@@ -183,7 +183,7 @@ model Evento {
   id            String   @id @default(cuid())
   instituicaoId String
   nome          String
-  tipo          String   // "culto" | "ensaio" | "especial"
+  tipo          String   // "culto" | "ensaio" | "especial" | "reuniao" | "cafe" | "conferencia"
   inicio        DateTime
   fim           DateTime
   criadoEm     DateTime @default(now())
