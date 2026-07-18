@@ -16,9 +16,9 @@ export interface RemovePositionCompatibilityDTO {
  * Remove a compatibilidade de um par de funções (volta ao default incompatível,
  * RN02). O repositório ordena o par na forma canônica antes de remover.
  *
- * Permissão: mesma regra do Set — só ADMIN_GERAL define/desfaz a matriz (ver a
- * justificativa em SetPositionCompatibilityUseCase; a compatibilidade pode cruzar
- * ministérios, logo é escopo de instituição).
+ * Permissão: mesma regra do Set — ADMIN_GERAL e ADMIN_MINISTERIO definem/desfazem
+ * a matriz (gate no rbac da rota; ver a justificativa em
+ * SetPositionCompatibilityUseCase — escopo de instituição, sem escopo de ministério).
  *
  * Remover par inexistente → IDEMPOTENTE quando as duas funções são válidas: o
  * objetivo do comando é "garantir que estas duas NÃO estão marcadas como
@@ -37,9 +37,8 @@ export class RemovePositionCompatibilityUseCase {
   ) {}
 
   async execute(dto: RemovePositionCompatibilityDTO): Promise<void> {
-    if (dto.actor.role !== 'ADMIN_GERAL') {
-      throw new AppError('Apenas o administrador geral pode remover compatibilidades', 403);
-    }
+    // Permissão é gate do rbac na rota (ADMIN_GERAL/ADMIN_MINISTERIO); sem
+    // checagem de papel aqui (ver o cabeçalho).
 
     // Funções inválidas/de outro tenant → 404 (entrada inválida). A ausência do
     // PAR entre funções válidas, essa sim, é tratada de forma idempotente abaixo.

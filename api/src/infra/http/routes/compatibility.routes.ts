@@ -7,9 +7,14 @@ import { PositionCompatibilityController } from '../controllers/PositionCompatib
 /**
  * Matriz de compatibilidade entre funções (RN01/RN02).
  *
- * RBAC: escrita E leitura são de escopo de INSTITUIÇÃO — restritas ao ADMIN_GERAL
- * (a matriz pode ligar funções de ministérios diferentes; ver a discussão de
- * permissão no SetPositionCompatibilityUseCase). Sem MinistryAccessPolicy aqui.
+ * RBAC: escrita E leitura são abertas ao ADMIN_GERAL e ao ADMIN_MINISTERIO
+ * (decisão da cliente, jul/2026). O MEMBRO fica de fora pelo próprio rbac.
+ *
+ * A matriz é escopo de INSTITUIÇÃO, não de ministério — um par pode ligar funções
+ * de ministérios diferentes, então NÃO há um ministério único para escopar com a
+ * MinistryAccessPolicy. Por isso o ADMIN_MINISTERIO recebe acesso PLENO (todas as
+ * funções, qualquer par), sem checagem escopada: é um afrouxamento consciente do
+ * RBAC (ver a nota na Fase 3 do TASKS.md e o comentário nos use cases).
  *
  * ATENÇÃO À ORDEM: estas rotas precisam ser montadas ANTES de `positionRoutes` no
  * index.ts. Caso contrário, `DELETE /funcoes/compatibilidade` seria capturado por
@@ -22,7 +27,7 @@ const controller = new PositionCompatibilityController();
 compatibilityRoutes.post(
   '/funcoes/compatibilidade',
   auth,
-  rbac('ADMIN_GERAL'),
+  rbac('ADMIN_GERAL', 'ADMIN_MINISTERIO'),
   asyncHandler(controller.create),
 );
 
@@ -30,7 +35,7 @@ compatibilityRoutes.post(
 compatibilityRoutes.delete(
   '/funcoes/compatibilidade',
   auth,
-  rbac('ADMIN_GERAL'),
+  rbac('ADMIN_GERAL', 'ADMIN_MINISTERIO'),
   asyncHandler(controller.remove),
 );
 
@@ -38,6 +43,6 @@ compatibilityRoutes.delete(
 compatibilityRoutes.get(
   '/funcoes/compatibilidade',
   auth,
-  rbac('ADMIN_GERAL'),
+  rbac('ADMIN_GERAL', 'ADMIN_MINISTERIO'),
   asyncHandler(controller.list),
 );

@@ -18,13 +18,13 @@ export interface SetPositionCompatibilityDTO {
  * canônica pela entidade, valida que as duas funções existem e pertencem à
  * instituição do usuário (tenant) e persiste.
  *
- * Permissão: por ora a matriz de compatibilidade é definida SÓ pelo ADMIN_GERAL,
- * e por isso NÃO passa pela MinistryAccessPolicy (que é de escopo de ministério).
- * Justificativa: a compatibilidade pode ligar funções de MINISTÉRIOS DIFERENTES —
- * o motor de conflito (RN01) avalia o membro ACROSS ministérios —, então definir a
- * matriz é uma ação de escopo de INSTITUIÇÃO, não de um ministério isolado. Abrir
- * para ADMIN_MINISTERIO escopado pode ser reavaliado no futuro, mas esbarra
- * justamente nos pares que cruzam ministérios (qual admin escopado os define?).
+ * Permissão: a matriz é definida pelo ADMIN_GERAL e pelo ADMIN_MINISTERIO
+ * (decisão da cliente, jul/2026), gate feito no rbac da rota — o MEMBRO fica de
+ * fora. NÃO passa pela MinistryAccessPolicy: a compatibilidade pode ligar funções
+ * de MINISTÉRIOS DIFERENTES (o motor de conflito, RN01, avalia o membro ACROSS
+ * ministérios), então é escopo de INSTITUIÇÃO e não há um ministério único para
+ * escopar. Por isso o admin de ministério tem acesso PLENO, sem checagem escopada
+ * — afrouxamento consciente do RBAC.
  *
  * Duplicata → IDEMPOTENTE: se o par já existe, retorna o existente em vez de 409.
  * A matriz é um conjunto de fatos ("estas duas são compatíveis"); remarcar um par
@@ -41,9 +41,9 @@ export class SetPositionCompatibilityUseCase {
   ) {}
 
   async execute(dto: SetPositionCompatibilityDTO): Promise<PositionCompatibility> {
-    if (dto.actor.role !== 'ADMIN_GERAL') {
-      throw new AppError('Apenas o administrador geral pode definir compatibilidades', 403);
-    }
+    // Permissão é gate do rbac na rota (ADMIN_GERAL/ADMIN_MINISTERIO). Sem
+    // checagem de papel aqui — a matriz é escopo de instituição, sem escopo de
+    // ministério a aplicar (ver o comentário do cabeçalho).
 
     // Valida e ordena o par pela entidade (ids diferentes, forma canônica) antes
     // de tocar o banco.
