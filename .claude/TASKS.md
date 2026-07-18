@@ -183,6 +183,15 @@
 - [x] Use case extra: listar os pares da instituição (`List`, insumo para a tela de matriz)
 - [x] Endpoints: `POST /funcoes/compatibilidade`, `DELETE /funcoes/compatibilidade` (ids na query), `GET /funcoes/compatibilidade`
 - [x] Garantir o default: ausência de registro = funções incompatíveis
+- [ ] **Abrir a matriz ao `ADMIN_MINISTERIO`** (decisão da cliente, jul/2026) — as três
+      rotas de compatibilidade (`GET`/`POST`/`DELETE /funcoes/compatibilidade`) hoje são
+      `rbac('ADMIN_GERAL')`. Passam a aceitar também `ADMIN_MINISTERIO`, que vê **todas** as
+      funções da instituição (inclusive de ministérios que não administra) e marca/desmarca
+      qualquer par. **Diverge do princípio original** (nota acima): a matriz era escopo de
+      instituição de propósito, porque um par pode ligar funções de ministérios diferentes —
+      então não há um ministério único para escopar com a `MinistryAccessPolicy`. A abertura
+      é um afrouxamento consciente do RBAC, sem checagem escopada. É pré-requisito da tela de
+      matriz (Fase 8). (`GET /ministerios/:id/funcoes` já era aberto aos dois.)
 
 ---
 

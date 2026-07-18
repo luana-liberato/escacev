@@ -157,7 +157,7 @@ describe('SetPositionCompatibilityUseCase', () => {
     expect(s.compatibilityRepo.rows).toHaveLength(1);
   });
 
-  it('403 quando não é ADMIN_GERAL (matriz é escopo de instituição)', async () => {
+  it('ADMIN_MINISTERIO também define a matriz (decisão jul/2026 — escopo de instituição, sem checagem de papel no use case)', async () => {
     const s = await scenario();
     const useCase = new SetPositionCompatibilityUseCase(
       s.compatibilityRepo,
@@ -165,14 +165,15 @@ describe('SetPositionCompatibilityUseCase', () => {
       s.ministryRepo,
     );
 
-    await expect(
-      useCase.execute({
-        institutionId: INST,
-        actor: ADMIN_MIN,
-        positionAId: s.fa.id,
-        positionBId: s.fb.id,
-      }),
-    ).rejects.toMatchObject({ statusCode: 403 });
+    const compatibility = await useCase.execute({
+      institutionId: INST,
+      actor: ADMIN_MIN,
+      positionAId: s.fa.id,
+      positionBId: s.fb.id,
+    });
+
+    expect(compatibility).toBeDefined();
+    expect(s.compatibilityRepo.rows).toHaveLength(1);
   });
 
   it('404 quando uma das funções é de outra instituição', async () => {
@@ -273,8 +274,11 @@ describe('RemovePositionCompatibilityUseCase', () => {
     ).rejects.toMatchObject({ statusCode: 404 });
   });
 
-  it('403 quando não é ADMIN_GERAL', async () => {
+  it('ADMIN_MINISTERIO também remove da matriz (sem checagem de papel no use case)', async () => {
     const s = await scenario();
+    await s.compatibilityRepo.save(
+      PositionCompatibility.create({ positionAId: s.fa.id, positionBId: s.fb.id }),
+    );
     const useCase = new RemovePositionCompatibilityUseCase(
       s.compatibilityRepo,
       s.positionRepo,
@@ -288,7 +292,8 @@ describe('RemovePositionCompatibilityUseCase', () => {
         positionAId: s.fa.id,
         positionBId: s.fb.id,
       }),
-    ).rejects.toMatchObject({ statusCode: 403 });
+    ).resolves.toBeUndefined();
+    expect(s.compatibilityRepo.rows).toHaveLength(0);
   });
 });
 
@@ -331,12 +336,12 @@ describe('ListPositionCompatibilitiesUseCase', () => {
     expect(rows).toHaveLength(1);
   });
 
-  it('403 quando não é ADMIN_GERAL', async () => {
+  it('ADMIN_MINISTERIO também lista (sem checagem de papel no use case)', async () => {
     const s = await scenario();
     const useCase = new ListPositionCompatibilitiesUseCase(s.compatibilityRepo);
 
     await expect(
       useCase.execute({ institutionId: INST, actor: ADMIN_MIN }),
-    ).rejects.toMatchObject({ statusCode: 403 });
+    ).resolves.toBeInstanceOf(Array);
   });
 });

@@ -12,12 +12,14 @@ const INST_ID = 'test-inst-compat';
 const OTHER_INST_ID = 'test-inst-compat-other';
 const ADMIN_GERAL_ID = 'test-compat-ag';
 const ADMIN_MIN_ID = 'test-compat-am';
+const MEMBRO_ID = 'test-compat-mb';
 const MINISTRY_A = 'test-compat-min-a';
 const MINISTRY_B = 'test-compat-min-b';
 const FOREIGN_MINISTRY = 'test-compat-min-foreign';
 
 let adminGeralToken: string;
 let adminMinToken: string;
+let membroToken: string;
 let posA: string;
 let posB: string;
 let foreignPos: string;
@@ -46,6 +48,7 @@ beforeAll(async () => {
     data: [
       { id: ADMIN_GERAL_ID, instituicaoId: INST_ID, nome: 'AG', email: 'ag@test.compat', perfil: 'ADMIN_GERAL' },
       { id: ADMIN_MIN_ID, instituicaoId: INST_ID, nome: 'AM', email: 'am@test.compat', perfil: 'ADMIN_MINISTERIO' },
+      { id: MEMBRO_ID, instituicaoId: INST_ID, nome: 'MB', email: 'mb@test.compat', perfil: 'MEMBRO' },
     ],
   });
   // Duas funções em ministérios diferentes da MESMA instituição — a matriz pode
@@ -59,6 +62,7 @@ beforeAll(async () => {
 
   adminGeralToken = signTestToken({ memberId: ADMIN_GERAL_ID, institutionId: INST_ID, role: 'ADMIN_GERAL' });
   adminMinToken = signTestToken({ memberId: ADMIN_MIN_ID, institutionId: INST_ID, role: 'ADMIN_MINISTERIO' });
+  membroToken = signTestToken({ memberId: MEMBRO_ID, institutionId: INST_ID, role: 'MEMBRO' });
 });
 
 afterAll(async () => {
@@ -104,10 +108,19 @@ describe('POST /funcoes/compatibilidade', () => {
     expect(res.status).toBe(404);
   });
 
-  it('ADMIN_MINISTERIO não pode definir a matriz (403)', async () => {
+  it('ADMIN_MINISTERIO também define a matriz (201) — inclusive par cruzando ministérios', async () => {
+    // posA e posB são de ministérios diferentes; a matriz é escopo de instituição.
     const res = await request(app)
       .post('/funcoes/compatibilidade')
       .set('Authorization', `Bearer ${adminMinToken}`)
+      .send({ positionAId: posA, positionBId: posB });
+    expect(res.status).toBe(201);
+  });
+
+  it('MEMBRO não define a matriz (403)', async () => {
+    const res = await request(app)
+      .post('/funcoes/compatibilidade')
+      .set('Authorization', `Bearer ${membroToken}`)
       .send({ positionAId: posA, positionBId: posB });
     expect(res.status).toBe(403);
   });
@@ -122,10 +135,18 @@ describe('GET /funcoes/compatibilidade', () => {
     expect(Array.isArray(res.body.data)).toBe(true);
   });
 
-  it('ADMIN_MINISTERIO não pode listar (403)', async () => {
+  it('ADMIN_MINISTERIO também lista (200)', async () => {
     const res = await request(app)
       .get('/funcoes/compatibilidade')
       .set('Authorization', `Bearer ${adminMinToken}`);
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.data)).toBe(true);
+  });
+
+  it('MEMBRO não lista (403)', async () => {
+    const res = await request(app)
+      .get('/funcoes/compatibilidade')
+      .set('Authorization', `Bearer ${membroToken}`);
     expect(res.status).toBe(403);
   });
 });
