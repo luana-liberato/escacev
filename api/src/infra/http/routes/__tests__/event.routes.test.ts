@@ -196,7 +196,7 @@ describe('PUT /eventos/:id', () => {
     expect(res.body.data.name).toBe('Editado por ADMIN_GERAL');
   });
 
-  it('ADMIN_MINISTERIO não pode editar (403)', async () => {
+  it('ADMIN_MINISTERIO edita (200)', async () => {
     const event = await prisma.evento.create({
       data: { id: 'test-ev-put-ministerio', instituicaoId: INST_ID, nome: 'Original', tipo: 'culto', inicio: new Date('2026-07-12T18:00:00.000Z'), fim: new Date('2026-07-12T20:00:00.000Z') },
     });
@@ -204,6 +204,20 @@ describe('PUT /eventos/:id', () => {
     const res = await request(app)
       .put(`/eventos/${event.id}`)
       .set('Authorization', `Bearer ${adminMinisterioToken}`)
+      .send({ name: 'Editado por ADMIN_MINISTERIO' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.name).toBe('Editado por ADMIN_MINISTERIO');
+  });
+
+  it('MEMBRO não pode editar (403)', async () => {
+    const event = await prisma.evento.create({
+      data: { id: 'test-ev-put-membro', instituicaoId: INST_ID, nome: 'Original', tipo: 'culto', inicio: new Date('2026-07-12T18:00:00.000Z'), fim: new Date('2026-07-12T20:00:00.000Z') },
+    });
+
+    const res = await request(app)
+      .put(`/eventos/${event.id}`)
+      .set('Authorization', `Bearer ${membroToken}`)
       .send({ name: 'Tentativa' });
 
     expect(res.status).toBe(403);
@@ -242,14 +256,27 @@ describe('DELETE /eventos/:id', () => {
     await prisma.escala.delete({ where: { id: 'test-esc-blocking' } }); // libera para o afterAll limpar o evento
   });
 
-  it('ADMIN_MINISTERIO não pode remover (403)', async () => {
+  it('ADMIN_MINISTERIO remove evento sem escala (200)', async () => {
+    const event = await prisma.evento.create({
+      data: { id: 'test-ev-delete-ministerio', instituicaoId: INST_ID, nome: 'Removível pelo admin de grupo', tipo: 'culto', inicio: new Date('2026-07-12T18:00:00.000Z'), fim: new Date('2026-07-12T20:00:00.000Z') },
+    });
+
+    const res = await request(app)
+      .delete(`/eventos/${event.id}`)
+      .set('Authorization', `Bearer ${adminMinisterioToken}`);
+
+    expect(res.status).toBe(200);
+    expect(await prisma.evento.findUnique({ where: { id: event.id } })).toBeNull();
+  });
+
+  it('MEMBRO não pode remover (403)', async () => {
     const event = await prisma.evento.create({
       data: { id: 'test-ev-delete-forbidden', instituicaoId: INST_ID, nome: 'Protegido', tipo: 'culto', inicio: new Date('2026-07-12T18:00:00.000Z'), fim: new Date('2026-07-12T20:00:00.000Z') },
     });
 
     const res = await request(app)
       .delete(`/eventos/${event.id}`)
-      .set('Authorization', `Bearer ${adminMinisterioToken}`);
+      .set('Authorization', `Bearer ${membroToken}`);
 
     expect(res.status).toBe(403);
   });
