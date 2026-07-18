@@ -4,6 +4,7 @@ import { AppError } from '../../../shared/errors/AppError';
 import { Position } from '../../../domain/entities/Position';
 import { CreatePositionUseCase } from '../../../domain/use-cases/positions/CreatePositionUseCase';
 import { ListPositionsUseCase } from '../../../domain/use-cases/positions/ListPositionsUseCase';
+import { ListInstitutionPositionsUseCase } from '../../../domain/use-cases/positions/ListInstitutionPositionsUseCase';
 import { UpdatePositionUseCase } from '../../../domain/use-cases/positions/UpdatePositionUseCase';
 import { DeletePositionUseCase } from '../../../domain/use-cases/positions/DeletePositionUseCase';
 import { MinistryAccessPolicy } from '../../../domain/services/MinistryAccessPolicy';
@@ -44,6 +45,24 @@ export class PositionController {
     const positions = await useCase.execute({ institutionId, ministryId: req.params.id });
 
     respond(res, 200, positions.map(PositionController.serialize), 'Funções listadas');
+  };
+
+  /**
+   * GET /funcoes — catálogo de TODAS as funções da instituição, cada uma com o
+   * nome do ministério. Insumo da tela de Funções (a lista e os toggles de
+   * compatibilidade, que mostram todas as funções — não só as do escopo do
+   * admin de grupo). institutionId vem do JWT.
+   */
+  listAll = async (req: Request, res: Response): Promise<void> => {
+    const { institutionId } = PositionController.authUser(req);
+
+    const useCase = new ListInstitutionPositionsUseCase(
+      new PrismaMinistryRepository(),
+      new PrismaPositionRepository(),
+    );
+    const positions = await useCase.execute({ institutionId });
+
+    respond(res, 200, positions, 'Funções da instituição listadas');
   };
 
   // PUT /funcoes/:id — edita o nome da função (ministério resolvido pelo id).
