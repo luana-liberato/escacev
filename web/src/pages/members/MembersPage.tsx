@@ -144,9 +144,13 @@ export default function MembersPage() {
                 {initialsOf(row.name)}
               </div>
 
-              <div className="min-w-[160px] flex-1">
-                <p className="text-sm font-bold text-ink">{row.name}</p>
-                <p className="mt-0.5 text-[12.5px] text-muted">{row.email}</p>
+              {/* min-w-0 (não 160px): num celular estreito o piso de 160px forçava
+                  overflow e jogava as ações para uma quebra torta. Deixando a
+                  coluna encolher e truncando, avatar + nome + ações cabem na
+                  linha 1, e as tags quebram para a de baixo (basis-full). */}
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-bold text-ink">{row.name}</p>
+                <p className="truncate text-[12.5px] text-muted">{row.email}</p>
               </div>
 
               {/* Quebra para a linha de baixo: as tags variam de largura e não
