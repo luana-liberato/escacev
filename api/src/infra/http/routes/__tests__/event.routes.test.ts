@@ -161,9 +161,11 @@ describe('GET /eventos', () => {
     expect(res.status).toBe(401);
   });
 
-  it('MEMBRO não pode listar (403)', async () => {
+  it('MEMBRO lista os eventos da instituição (200)', async () => {
     const res = await request(app).get('/eventos').set('Authorization', `Bearer ${membroToken}`);
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(200);
+    expect(res.body.data.length).toBeGreaterThanOrEqual(3);
+    expect(res.body.data.every((e: { institutionId: string }) => e.institutionId === INST_ID)).toBe(true);
   });
 });
 
@@ -178,6 +180,15 @@ describe('GET /eventos/:id', () => {
       .set('Authorization', `Bearer ${adminGeralToken}`);
 
     expect(res.status).toBe(404);
+  });
+
+  it('MEMBRO vê um evento da própria instituição (200)', async () => {
+    const res = await request(app)
+      .get('/eventos/test-ev-jul')
+      .set('Authorization', `Bearer ${membroToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.name).toBe('Culto Julho');
   });
 });
 
