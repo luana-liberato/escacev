@@ -7,6 +7,7 @@ import LoginPage from '@/pages/LoginPage';
 import MembersPage from '@/pages/members/MembersPage';
 import MinistriesPage from '@/pages/ministries/MinistriesPage';
 import PositionsPage from '@/pages/positions/PositionsPage';
+import EventsPage from '@/pages/events/EventsPage';
 import PlaceholderPage from '@/pages/PlaceholderPage';
 
 /**
@@ -33,13 +34,15 @@ export default function App() {
           <Route path="/membros" element={<MembersPage />} />
           <Route path="/ministerios" element={<MinistriesPage />} />
           <Route path="/funcoes" element={<PositionsPage />} />
+          <Route path="/eventos" element={<EventsPage />} />
           {/* As demais saem do mapa de navegação e seguem como placeholder até a
               sua vez chegar. */}
           {NAV_ITEMS.filter(
             (item) =>
               item.path !== '/membros' &&
               item.path !== '/ministerios' &&
-              item.path !== '/funcoes',
+              item.path !== '/funcoes' &&
+              item.path !== '/eventos',
           ).map((item) => (
             <Route key={item.path} path={item.path} element={<PlaceholderPage />} />
           ))}

@@ -55,7 +55,7 @@ export const NAV_ITEMS: NavItem[] = [
     path: '/eventos',
     label: 'Eventos',
     title: 'Eventos',
-    subtitle: 'Lista de todas as escalas e eventos',
+    subtitle: 'Calendário de eventos da instituição',
     // ⚠️ Mesma situação: GET /eventos é admin-only na API.
     roles: ALL_ROLES,
   },
