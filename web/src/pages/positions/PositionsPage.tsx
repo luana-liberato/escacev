@@ -160,9 +160,9 @@ export default function PositionsPage() {
           return (
             <div
               key={p.id}
-              className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-white px-4 py-3.5"
+              className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-line bg-white px-4 py-3.5"
             >
-              <div className="min-w-0 flex-1">
+              <div className="w-full min-w-0 sm:w-auto sm:flex-1">
                 <p className="truncate text-sm font-bold text-ink">{p.name}</p>
               </div>
 
@@ -171,7 +171,7 @@ export default function PositionsPage() {
               </span>
 
               {canManage && (
-                <div className="ml-auto flex flex-shrink-0 items-center gap-3.5 whitespace-nowrap">
+                <div className="flex w-full items-center justify-end gap-3.5 whitespace-nowrap sm:ml-auto sm:w-auto">
                   <button
                     type="button"
                     onClick={() => setModal({ open: true, position: p })}
