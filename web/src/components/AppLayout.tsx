@@ -26,8 +26,9 @@ export default function AppLayout() {
   const { pathname } = useLocation();
   const page = navItemByPath(pathname);
 
-  // Fecha o drawer no Esc: quem abre uma gaveta espera poder fechá-la sem mirar
-  // no overlay. O handoff não pede, mas é comportamento esperado de qualquer um.
+  // Com o drawer aberto: fecha no Esc e TRAVA o scroll do fundo. Sem o lock, a
+  // página atrás rola sob o overlay — o usuário mexe no menu e o conteúdo desliza
+  // por trás. Restaura o overflow ao fechar (o cleanup roda quando menuOpen muda).
   useEffect(() => {
     if (!menuOpen) return;
 
@@ -35,7 +36,14 @@ export default function AppLayout() {
       if (event.key === 'Escape') setMenuOpen(false);
     };
     window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
   }, [menuOpen]);
 
   return (

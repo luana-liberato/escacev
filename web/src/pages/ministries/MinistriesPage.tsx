@@ -107,7 +107,7 @@ export default function MinistriesPage() {
                   <button
                     type="button"
                     onClick={() => setModal({ open: true, card })}
-                    className="text-[12.5px] font-semibold text-brand transition hover:text-brand-hover"
+                    className="-mx-1 -my-2 px-1 py-2 text-[12.5px] font-semibold text-brand transition hover:text-brand-hover"
                   >
                     Editar
                   </button>
