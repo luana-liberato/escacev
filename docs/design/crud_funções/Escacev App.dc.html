@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #FBF6EE; }
+  * { box-sizing: border-box; }
+  @media (max-width: 860px) {
+    .esc-sidebar { display: none !important; }
+    .esc-hamburger { display: flex !important; }
+  }
+</style>
+</helmet>
+
+<div style="font-family: 'Public Sans', sans-serif; color: #1A1A1A; background: #FBF6EE; min-height: 100vh;">
+
+  <sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}">
+    <div style="position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 100; display: flex; align-items: center; gap: 10px; padding: 12px 18px; border-radius: 12px; background: {{ toast.bg }}; border: 1px solid {{ toast.border }}; box-shadow: 0 12px 30px -12px rgba(26,26,26,0.3); max-width: 90vw;">
+      <span style="width: 18px; height: 18px; border-radius: 50%; background: {{ toast.iconBg }}; color: #FFFFFF; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">{{ toast.icon }}</span>
+      <p style="margin: 0; font-size: 13.5px; font-weight: 600; color: {{ toast.fg }}; white-space: nowrap;">{{ toast.message }}</p>
+      <button onclick="{{ dismissToast }}" style="border: none; background: none; padding: 0 0 0 4px; font-size: 15px; color: {{ toast.fg }}; opacity: 0.6; cursor: pointer; line-height: 1;">×</button>
+    </div>
+  </sc-if>
+
+  <div style="max-width: 1160px; margin: 0 auto; padding: 24px 24px 0;">
+    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+      <p style="font-size: 11px; color: #B7AF9F; text-transform: uppercase; letter-spacing: 0.04em; margin: 0 8px 0 0;">Protótipo · visualizar como</p>
+      <sc-for list="{{ roleSwitcher }}" as="r" hint-placeholder-count="3">
+        <button onclick="{{ r.onClick }}" style="{{ r.style }}">{{ r.label }}</button>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="max-width: 1160px; margin: 0 auto; padding: 16px 24px 60px;">
+    <div style="background: #FFFFFF; border: 1px solid #EAE2D4; border-radius: 20px; overflow: hidden; box-shadow: 0 20px 50px -30px rgba(26,26,26,0.25); min-height: 680px; display: flex; position: relative;">
+
+      <!-- sidebar (desktop) -->
+      <div class="esc-sidebar" style="width: 232px; flex-shrink: 0; background: #FFFFFF; border-right: 1px solid #EAE2D4; display: flex; flex-direction: column; padding: 24px 16px;">
+        <div style="display: flex; align-items: center; gap: 10px; padding: 0 8px 24px;">
+          <svg width="26" height="26" viewBox="0 0 52 52" style="flex-shrink: 0;"><polygon points="26,4 48,26 26,48 4,26" fill="#1C7C8C"/><polygon points="26,14 40,26 26,38 26,14" fill="#1A1A1A"/></svg>
+          <span style="font-family: 'Sora', sans-serif; font-weight: 800; font-size: 17px; color: #1A1A1A;">Escacev</span>
+        </div>
+        <sc-for list="{{ navItems }}" as="nav" hint-placeholder-count="4">
+          <button onclick="{{ nav.onClick }}" style="{{ nav.style }}" style-hover="background: #F5EFE2;">{{ nav.label }}</button>
+        </sc-for>
+        <div style="flex: 1;"></div>
+        <button onclick="{{ openProfileModal }}" style="display: flex; align-items: center; gap: 10px; padding: 12px 8px; border-top: 1px solid #EAE2D4; border-left: none; border-right: none; border-bottom: none; background: none; cursor: pointer; text-align: left;" style-hover="background: #F5EFE2;">
+          <div style="width: 32px; height: 32px; border-radius: 50%; background: #E3F0F1; color: #1C7C8C; font-weight: 700; font-size: 13px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">{{ user.initials }}</div>
+          <div style="min-width: 0; flex: 1;">
+            <p style="margin: 0; font-size: 13px; font-weight: 600; color: #1A1A1A; white-space: nowrap;">{{ user.name }}</p>
+            <p style="margin: 0; font-size: 11.5px; color: #837B6E;">{{ user.roleLabel }}</p>
+          </div>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="flex-shrink: 0; opacity: 0.5;"><path d="M17 3a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" stroke="#1A1A1A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <button style="margin-top: 4px; text-align: left; padding: 8px; border: none; background: none; font-family: 'Public Sans', sans-serif; font-size: 13px; color: #B7AF9F; cursor: pointer;">Sair</button>
+      </div>
+
+      <!-- mobile drawer -->
+      <sc-if value="{{ mobileMenuOpen }}" hint-placeholder-val="{{ false }}">
+        <div onclick="{{ closeMobileMenu }}" style="position: absolute; inset: 0; background: rgba(26,26,26,0.35); z-index: 5;"></div>
+        <div style="position: absolute; top: 0; left: 0; bottom: 0; width: 232px; background: #FFFFFF; z-index: 6; display: flex; flex-direction: column; padding: 24px 16px; box-shadow: 12px 0 30px rgba(26,26,26,0.15);">
+          <div style="display: flex; align-items: center; gap: 10px; padding: 0 8px 24px;">
+            <svg width="26" height="26" viewBox="0 0 52 52" style="flex-shrink: 0;"><polygon points="26,4 48,26 26,48 4,26" fill="#1C7C8C"/><polygon points="26,14 40,26 26,38 26,14" fill="#1A1A1A"/></svg>
+            <span style="font-family: 'Sora', sans-serif; font-weight: 800; font-size: 17px; color: #1A1A1A;">Escacev</span>
+          </div>
+          <sc-for list="{{ navItems }}" as="nav" hint-placeholder-count="4">
+            <button onclick="{{ nav.onClickMobile }}" style="{{ nav.style }}">{{ nav.label }}</button>
+          </sc-for>
+          <div style="flex: 1;"></div>
+          <button onclick="{{ openProfileModal }}" style="display: flex; align-items: center; gap: 10px; padding: 12px 8px; border-top: 1px solid #EAE2D4; border-left: none; border-right: none; border-bottom: none; background: none; cursor: pointer; text-align: left;">
+            <div style="width: 32px; height: 32px; border-radius: 50%; background: #E3F0F1; color: #1C7C8C; font-weight: 700; font-size: 13px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">{{ user.initials }}</div>
+            <div style="min-width: 0; flex: 1;">
+              <p style="margin: 0; font-size: 13px; font-weight: 600; color: #1A1A1A; white-space: nowrap;">{{ user.name }}</p>
+              <p style="margin: 0; font-size: 11.5px; color: #837B6E;">{{ user.roleLabel }}</p>
+            </div>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="flex-shrink: 0; opacity: 0.5;"><path d="M17 3a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" stroke="#1A1A1A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ profileModal.open }}" hint-placeholder-val="{{ false }}">
+        <div style="position: absolute; inset: 0; background: rgba(26,26,26,0.4); display: flex; align-items: center; justify-content: center; z-index: 20; padding: 20px;">
+          <div style="background: #FFFFFF; border-radius: 16px; padding: 28px; width: 100%; max-width: 360px;">
+            <h3 style="font-family: 'Sora', sans-serif; font-weight: 700; font-size: 18px; margin: 0 0 18px; color: #1A1A1A;">Meu perfil</h3>
+            <label style="font-size: 12.5px; font-weight: 600; color: #837B6E; display: block; margin-bottom: 6px;">Nome</label>
+            <input value="{{ profileModal.name }}" oninput="{{ profileModal.onNameChange }}" style="width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #EAE2D4; font-family: 'Public Sans', sans-serif; font-size: 14px; margin-bottom: 22px;" />
+            <div style="display: flex; justify-content: flex-end; gap: 10px;">
+              <button onclick="{{ profileModal.onCancel }}" style="padding: 10px 16px; border-radius: 10px; border: 1px solid #EAE2D4; background: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13.5px; color: #1A1A1A; cursor: pointer;">Cancelar</button>
+              <button onclick="{{ profileModal.onSave }}" style="padding: 10px 16px; border-radius: 10px; border: none; background: #1C7C8C; color: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13.5px; cursor: pointer;">Salvar</button>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- main -->
+      <div style="flex: 1; min-width: 0; padding: 24px 28px 40px; display: flex; flex-direction: column; gap: 24px;">
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <button class="esc-hamburger" onclick="{{ openMobileMenu }}" style="display: none; width: 36px; height: 36px; border-radius: 10px; border: 1px solid #EAE2D4; background: #FFFFFF; align-items: center; justify-content: center; flex-direction: column; gap: 3px; cursor: pointer; flex-shrink: 0;">
+            <span style="width: 16px; height: 2px; background: #1A1A1A; border-radius: 1px;"></span>
+            <span style="width: 16px; height: 2px; background: #1A1A1A; border-radius: 1px;"></span>
+            <span style="width: 16px; height: 2px; background: #1A1A1A; border-radius: 1px;"></span>
+          </button>
+          <div style="flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;">
+            <div>
+              <h1 style="font-family: 'Sora', sans-serif; font-weight: 800; font-size: 22px; margin: 0; color: #1A1A1A;">{{ pageTitle }}</h1>
+              <p style="margin: 4px 0 0; font-size: 13.5px; color: #837B6E;">{{ pageSubtitle }}</p>
+            </div>
+            <sc-if value="{{ isMembersManageable }}" hint-placeholder-val="{{ false }}">
+              <button onclick="{{ openInviteModal }}" style="display: flex; align-items: center; gap: 6px; padding: 10px 16px; border-radius: 10px; border: none; background: #1C7C8C; color: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13.5px; cursor: pointer; white-space: nowrap;" style-hover="background: #145F6B;">
+                <span style="font-size: 16px; line-height: 1;">+</span>Convidar membro
+              </button>
+            </sc-if>
+            <sc-if value="{{ canCreateMinistry }}" hint-placeholder-val="{{ false }}">
+              <button onclick="{{ openMinistryModal }}" style="display: flex; align-items: center; gap: 6px; padding: 10px 16px; border-radius: 10px; border: none; background: #1C7C8C; color: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13.5px; cursor: pointer; white-space: nowrap;" style-hover="background: #145F6B;">
+                <span style="font-size: 16px; line-height: 1;">+</span>Novo ministério
+              </button>
+            </sc-if>
+            <sc-if value="{{ canCreateRole }}" hint-placeholder-val="{{ false }}">
+              <button onclick="{{ openRoleModal }}" style="display: flex; align-items: center; gap: 6px; padding: 10px 16px; border-radius: 10px; border: none; background: #1C7C8C; color: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13.5px; cursor: pointer; white-space: nowrap;" style-hover="background: #145F6B;">
+                <span style="font-size: 16px; line-height: 1;">+</span>Nova função
+              </button>
+            </sc-if>
+          </div>
+        </div>
+
+        <sc-if value="{{ isAgenda }}" hint-placeholder-val="{{ true }}">
+          <div style="background: #FBF6EE; border: 1px dashed #EAE2D4; border-radius: 14px; padding: 40px 20px; text-align: center; color: #837B6E; font-size: 13.5px;">Conteúdo da Agenda entra aqui — próxima etapa.</div>
+        </sc-if>
+        <sc-if value="{{ isEventos }}" hint-placeholder-val="{{ false }}">
+          <div style="background: #FBF6EE; border: 1px dashed #EAE2D4; border-radius: 14px; padding: 40px 20px; text-align: center; color: #837B6E; font-size: 13.5px;">Conteúdo de Eventos (lista) entra aqui — próxima etapa.</div>
+        </sc-if>
+        <sc-if value="{{ isMinistries }}" hint-placeholder-val="{{ false }}">
+          <sc-if value="{{ hasMinistryCards }}" hint-placeholder-val="{{ true }}">
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px;">
+              <sc-for list="{{ ministryCards }}" as="m" hint-placeholder-count="4">
+                <div style="background: #FFFFFF; border: {{ m.cardBorder }}; border-radius: 14px; padding: 18px;">
+                  <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap;">
+                    <p style="margin: 0; font-weight: 700; font-size: 15px; color: #1A1A1A; flex: 1;">{{ m.name }}</p>
+                    <sc-if value="{{ m.isCurrentUserAdmin }}" hint-placeholder-val="{{ false }}">
+                      <span style="font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 20px; background: #E3F0F1; color: #1C7C8C;">Você administra</span>
+                    </sc-if>
+                    <sc-if value="{{ m.canEditMinistry }}" hint-placeholder-val="{{ false }}">
+                      <button onclick="{{ m.onEditMinistry }}" style="border: none; background: none; padding: 0; font-family: 'Public Sans', sans-serif; font-size: 12.5px; font-weight: 600; color: #1C7C8C; cursor: pointer;">Editar</button>
+                    </sc-if>
+                  </div>
+                  <sc-if value="{{ m.hasDescription }}" hint-placeholder-val="{{ true }}">
+                    <p style="margin: 0 0 12px; font-size: 13px; color: #837B6E; line-height: 1.5;">{{ m.description }}</p>
+                  </sc-if>
+                  <p style="margin: 0; font-size: 12px; color: #B7AF9F;">Administradores: {{ m.adminNames }}</p>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+          <sc-if value="{{ noMinistryCards }}" hint-placeholder-val="{{ false }}">
+            <div style="background: #FBF6EE; border: 1px dashed #EAE2D4; border-radius: 14px; padding: 40px 20px; text-align: center; color: #837B6E; font-size: 13.5px;">{{ ministriesEmptyMessage }}</div>
+          </sc-if>
+        </sc-if>
+
+        <sc-if value="{{ ministryModal.open }}" hint-placeholder-val="{{ false }}">
+          <div style="position: absolute; inset: 0; background: rgba(26,26,26,0.4); display: flex; align-items: center; justify-content: center; z-index: 20; padding: 20px;">
+            <div style="background: #FFFFFF; border-radius: 16px; padding: 28px; width: 100%; max-width: 380px;">
+              <h3 style="font-family: 'Sora', sans-serif; font-weight: 700; font-size: 18px; margin: 0 0 18px; color: #1A1A1A;">{{ ministryModal.title }}</h3>
+              <label style="font-size: 12.5px; font-weight: 600; color: #837B6E; display: block; margin-bottom: 6px;">Nome</label>
+              <input value="{{ ministryModal.name }}" oninput="{{ ministryModal.onNameChange }}" style="width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #EAE2D4; font-family: 'Public Sans', sans-serif; font-size: 14px; margin-bottom: 14px;" />
+              <label style="font-size: 12.5px; font-weight: 600; color: #837B6E; display: block; margin-bottom: 6px;">Descrição (opcional)</label>
+              <input value="{{ ministryModal.description }}" oninput="{{ ministryModal.onDescriptionChange }}" style="width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #EAE2D4; font-family: 'Public Sans', sans-serif; font-size: 14px; margin-bottom: 22px;" />
+              <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                <button onclick="{{ ministryModal.onCancel }}" style="padding: 10px 16px; border-radius: 10px; border: 1px solid #EAE2D4; background: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13.5px; color: #1A1A1A; cursor: pointer;">Cancelar</button>
+                <button onclick="{{ ministryModal.onSave }}" style="padding: 10px 16px; border-radius: 10px; border: none; background: #1C7C8C; color: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13.5px; cursor: pointer;">{{ ministryModal.saveLabel }}</button>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ isRoles }}" hint-placeholder-val="{{ false }}">
+          <div style="display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap;">
+            <sc-for list="{{ roleFilters }}" as="rf" hint-placeholder-count="5">
+              <button onclick="{{ rf.onClick }}" style="{{ rf.style }}">{{ rf.label }}</button>
+            </sc-for>
+          </div>
+          <sc-if value="{{ hasRoleCards }}" hint-placeholder-val="{{ true }}">
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <sc-for list="{{ roleCards }}" as="rc" hint-placeholder-count="4">
+                <div style="background: #FFFFFF; border: 1px solid #EAE2D4; border-radius: 12px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                  <p style="margin: 0; font-weight: 700; font-size: 14px; color: #1A1A1A; flex: 1; min-width: 140px;">{{ rc.name }}</p>
+                  <span style="font-size: 11.5px; font-weight: 600; padding: 4px 10px; border-radius: 20px; background: #F5EFE2; color: #6B6456;">{{ rc.ministryName }}</span>
+                  <sc-if value="{{ canManageRoles }}" hint-placeholder-val="{{ true }}">
+                    <button onclick="{{ rc.onEdit }}" style="border: none; background: none; padding: 0; font-family: 'Public Sans', sans-serif; font-size: 13px; font-weight: 600; color: #1C7C8C; cursor: pointer;">Editar</button>
+                    <sc-if value="{{ rc.notConfirmingDelete }}" hint-placeholder-val="{{ true }}">
+                      <button onclick="{{ rc.onDelete }}" style="border: none; background: none; padding: 0; font-family: 'Public Sans', sans-serif; font-size: 13px; font-weight: 600; color: #B7AF9F; cursor: pointer;">Excluir</button>
+                    </sc-if>
+                    <sc-if value="{{ rc.confirmingDelete }}" hint-placeholder-val="{{ false }}">
+                      <button onclick="{{ rc.onConfirmDelete }}" style="border: none; background: none; padding: 0; font-family: 'Public Sans', sans-serif; font-size: 13px; font-weight: 600; color: #C0392B; cursor: pointer;">Confirmar exclusão</button>
+                      <button onclick="{{ rc.onCancelDelete }}" style="border: none; background: none; padding: 0; font-family: 'Public Sans', sans-serif; font-size: 13px; font-weight: 600; color: #B7AF9F; cursor: pointer;">Cancelar</button>
+                    </sc-if>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+          <sc-if value="{{ noRoleCards }}" hint-placeholder-val="{{ false }}">
+            <div style="background: #FBF6EE; border: 1px dashed #EAE2D4; border-radius: 14px; padding: 40px 20px; text-align: center; color: #837B6E; font-size: 13.5px;">Nenhuma função cadastrada ainda.</div>
+          </sc-if>
+        </sc-if>
+
+        <sc-if value="{{ roleModal.open }}" hint-placeholder-val="{{ false }}">
+          <div style="position: absolute; inset: 0; background: rgba(26,26,26,0.4); display: flex; align-items: center; justify-content: center; z-index: 20; padding: 20px;">
+            <div style="background: #FFFFFF; border-radius: 16px; padding: 28px; width: 100%; max-width: 420px; max-height: 85vh; overflow-y: auto;">
+
+              <sc-if value="{{ roleModal.isFormStep }}" hint-placeholder-val="{{ true }}">
+                <h3 style="font-family: 'Sora', sans-serif; font-weight: 700; font-size: 18px; margin: 0 0 18px; color: #1A1A1A;">{{ roleModal.title }}</h3>
+                <sc-if value="{{ roleModal.hasError }}" hint-placeholder-val="{{ false }}">
+                  <div style="background: #FDEDEB; border: 1px solid #F3C6BE; border-radius: 10px; padding: 12px 14px; margin-bottom: 16px; display: flex; gap: 10px; align-items: flex-start;">
+                    <span style="width: 18px; height: 18px; border-radius: 50%; background: #C0392B; color: #FFFFFF; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px;">!</span>
+                    <p style="margin: 0; font-size: 13px; color: #9B2C1E; line-height: 1.5;">{{ roleModal.errorMessage }}</p>
+                  </div>
+                </sc-if>
+                <label style="font-size: 12.5px; font-weight: 600; color: #837B6E; display: block; margin-bottom: 6px;">Nome da função</label>
+                <input value="{{ roleModal.name }}" oninput="{{ roleModal.onNameChange }}" style="width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #EAE2D4; font-family: 'Public Sans', sans-serif; font-size: 14px; margin-bottom: 14px;" />
+                <label style="font-size: 12.5px; font-weight: 600; color: #837B6E; display: block; margin-bottom: 6px;">Ministério</label>
+                <select value="{{ roleModal.ministryId }}" onchange="{{ roleModal.onMinistryChange }}" style="width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #EAE2D4; font-family: 'Public Sans', sans-serif; font-size: 14px; margin-bottom: 18px; background: #FFFFFF;">
+                  <sc-for list="{{ roleModal.ministryOptions }}" as="ro" hint-placeholder-count="2">
+                    <option value="{{ ro.id }}">{{ ro.name }}</option>
+                  </sc-for>
+                </select>
+
+                <div style="background: #FDEDEB; border: 1px solid #F3C6BE; border-radius: 10px; padding: 10px 12px; margin-bottom: 14px; display: flex; gap: 8px; align-items: flex-start;">
+                  <span style="width: 16px; height: 16px; border-radius: 50%; background: #C0392B; color: #FFFFFF; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px;">!</span>
+                  <p style="margin: 0; font-size: 12.5px; color: #9B2C1E; line-height: 1.4;">Por padrão, funções não marcadas abaixo <strong>não podem</strong> ser exercidas pela mesma pessoa no mesmo evento.</p>
+                </div>
+                <label style="font-size: 12.5px; font-weight: 600; color: #837B6E; display: block; margin-bottom: 8px;">Marque as funções que podem ser exercidas em um mesmo evento com "{{ roleModal.roleName }}"</label>
+                <input value="{{ roleModal.compatibleSearch }}" oninput="{{ roleModal.onCompatibleSearch }}" placeholder="Buscar função" style="width: 100%; padding: 9px 12px; border-radius: 10px; border: 1px solid #EAE2D4; font-family: 'Public Sans', sans-serif; font-size: 13.5px; margin-bottom: 10px; background: #FFFFFF;" />
+                <sc-if value="{{ roleModal.hasCompatibleOptions }}" hint-placeholder-val="{{ true }}">
+                  <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; max-height: 220px; overflow-y: auto;">
+                    <sc-for list="{{ roleModal.compatibleOptions }}" as="co" hint-placeholder-count="4">
+                      <div style="display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid #EAE2D4; border-radius: 10px;">
+                        <div style="flex: 1; min-width: 0;">
+                          <p style="margin: 0; font-size: 13px; font-weight: 600; color: #1A1A1A;">{{ co.name }}</p>
+                          <span style="font-size: 10.5px; font-weight: 600; color: #837B6E;">{{ co.ministryName }}</span>
+                        </div>
+                        <button onclick="{{ co.onToggle }}" style="{{ co.toggleStyle }}">
+                          <span style="{{ co.knobStyle }}"></span>
+                        </button>
+                      </div>
+                    </sc-for>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ roleModal.noCompatibleOptions }}" hint-placeholder-val="{{ false }}">
+                  <p style="font-size: 12.5px; color: #B7AF9F; margin: 0 0 14px;">Nenhuma outra função disponível para combinar.</p>
+                </sc-if>
+
+                <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px;">
+                  <button onclick="{{ roleModal.onCancel }}" style="padding: 10px 16px; border-radius: 10px; border: 1px solid #EAE2D4; background: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13.5px; color: #1A1A1A; cursor: pointer;">Cancelar</button>
+                  <button onclick="{{ roleModal.onContinue }}" style="padding: 10px 16px; border-radius: 10px; border: none; background: #1C7C8C; color: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13.5px; cursor: pointer;">Continuar</button>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ roleModal.isConfirmStep }}" hint-placeholder-val="{{ false }}">
+                <h3 style="font-family: 'Sora', sans-serif; font-weight: 700; font-size: 18px; margin: 0 0 12px; color: #1A1A1A;">Confirmar {{ roleModal.title }}</h3>
+                <p style="font-size: 13px; color: #837B6E; margin: 0 0 6px; line-height: 1.5;">Função: <strong style="color: #1A1A1A;">{{ roleModal.roleName }}</strong></p>
+                <sc-if value="{{ roleModal.hasCompatibleSelection }}" hint-placeholder-val="{{ false }}">
+                  <p style="font-size: 13px; color: #837B6E; margin: 0 0 20px; line-height: 1.5;">Poderá ser exercida junto com: <strong style="color: #1A1A1A;">{{ roleModal.confirmSummary }}</strong>. Todas as demais funções continuam em conflito com ela.</p>
+                </sc-if>
+                <sc-if value="{{ roleModal.noCompatibleSelection }}" hint-placeholder-val="{{ true }}">
+                  <p style="font-size: 13px; color: #837B6E; margin: 0 0 20px; line-height: 1.5;">Nenhuma outra função foi marcada como acumulável — ela entrará em conflito com todas as demais.</p>
+                </sc-if>
+                <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                  <button onclick="{{ roleModal.onBack }}" style="padding: 10px 16px; border-radius: 10px; border: 1px solid #EAE2D4; background: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13.5px; color: #1A1A1A; cursor: pointer;">Voltar</button>
+                  <button onclick="{{ roleModal.onSave }}" style="padding: 10px 16px; border-radius: 10px; border: none; background: #1C7C8C; color: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13.5px; cursor: pointer;">Confirmar</button>
+                </div>
+              </sc-if>
+
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ isMembers }}" hint-placeholder-val="{{ false }}">
+          <div>
+            <div style="display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap;">
+              <sc-for list="{{ ministryFilters }}" as="f" hint-placeholder-count="5">
+                <button onclick="{{ f.onClick }}" style="{{ f.style }}">{{ f.label }}</button>
+              </sc-for>
+            </div>
+            <input value="{{ memberSearch }}" oninput="{{ onMemberSearch }}" placeholder="Buscar por nome ou e-mail" style="width: 100%; max-width: 320px; padding: 10px 14px; border-radius: 10px; border: 1px solid #EAE2D4; font-family: 'Public Sans', sans-serif; font-size: 13.5px; margin-bottom: 16px; background: #FFFFFF;" />
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <sc-for list="{{ visibleMembers }}" as="mem" hint-placeholder-count="4">
+                <div style="background: #FFFFFF; border: 1px solid #EAE2D4; border-radius: 12px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                  <div style="width: 34px; height: 34px; border-radius: 50%; background: #F5EFE2; color: #1A1A1A; font-weight: 700; font-size: 13px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">{{ mem.initials }}</div>
+                  <div style="flex: 1; min-width: 160px;">
+                    <div style="display: flex; align-items: flex-start; gap: 8px; flex-wrap: wrap; row-gap: 4px;">
+                      <p style="margin: 0; font-weight: 700; font-size: 14px; color: #1A1A1A; white-space: nowrap;">{{ mem.name }}</p>
+                      <sc-if value="{{ mem.isGeneralAdmin }}" hint-placeholder-val="{{ false }}">
+                        <span style="font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 20px; background: #FBE6DE; color: #C4431E; white-space: nowrap; flex-shrink: 0;">Administrador geral</span>
+                      </sc-if>
+                    </div>
+                    <p style="margin: 4px 0 0; font-size: 12.5px; color: #837B6E; white-space: nowrap;">{{ mem.email }}</p>
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap; flex-basis: 100%; order: 3;">
+                    <sc-for list="{{ mem.ministryChips }}" as="mc" hint-placeholder-count="2">
+                      <span style="{{ mc.style }}">{{ mc.label }}</span>
+                    </sc-for>
+                    <span style="font-size: 11.5px; font-weight: 600; padding: 4px 10px; border-radius: 20px; background: {{ mem.statusTagBg }}; color: {{ mem.statusTagFg }};">{{ mem.status }}</span>
+                  </div>
+                  <sc-if value="{{ canManageMembers }}" hint-placeholder-val="{{ true }}">
+                    <div style="display: flex; align-items: center; gap: 14px; flex-shrink: 0; white-space: nowrap; margin-left: auto;">
+                      <button onclick="{{ mem.onEdit }}" style="border: none; background: none; padding: 0; font-family: 'Public Sans', sans-serif; font-size: 13px; font-weight: 600; color: #1C7C8C; cursor: pointer;">Editar</button>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ mem.canPromote }}" hint-placeholder-val="{{ false }}">
+                    <div style="display: flex; align-items: center; gap: 14px; flex-shrink: 0; white-space: nowrap; margin-left: auto;">
+                      <button onclick="{{ mem.onPromote }}" style="padding: 6px 12px; border-radius: 8px; border: 1px solid #1C7C8C; background: #FFFFFF; font-family: 'Public Sans', sans-serif; font-size: 12.5px; font-weight: 600; color: #1C7C8C; cursor: pointer;">Promover</button>
+                    </div>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ memberModal.open }}" hint-placeholder-val="{{ false }}">
+          <div style="position: absolute; inset: 0; background: rgba(26,26,26,0.4); display: flex; align-items: center; justify-content: center; z-index: 20; padding: 20px;">
+            <div style="background: #FFFFFF; border-radius: 16px; padding: 28px; width: 100%; max-width: 400px; max-height: 85vh; overflow-y: auto;">
+              <h3 style="font-family: 'Sora', sans-serif; font-weight: 700; font-size: 18px; margin: 0 0 18px; color: #1A1A1A;">{{ memberModal.title }}</h3>
+              <label style="font-size: 12.5px; font-weight: 600; color: #837B6E; display: block; margin-bottom: 6px;">Nome</label>
+              <input value="{{ memberModal.name }}" oninput="{{ memberModal.onNameChange }}" style="width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #EAE2D4; font-family: 'Public Sans', sans-serif; font-size: 14px; margin-bottom: 14px;" />
+              <label style="font-size: 12.5px; font-weight: 600; color: #837B6E; display: block; margin-bottom: 6px;">E-mail</label>
+              <sc-if value="{{ memberModal.emailLocked }}" hint-placeholder-val="{{ false }}">
+                <div style="width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #EAE2D4; background: #F5EFE2; font-family: 'Public Sans', sans-serif; font-size: 14px; color: #837B6E; margin-bottom: 6px; box-sizing: border-box;">{{ memberModal.email }}</div>
+                <p style="font-size: 11.5px; color: #B7AF9F; margin: 0 0 14px;">E-mail não pode ser alterado após a ativação do membro.</p>
+              </sc-if>
+              <sc-if value="{{ memberModal.emailLockedInverse }}" hint-placeholder-val="{{ true }}">
+                <input value="{{ memberModal.email }}" oninput="{{ memberModal.onEmailChange }}" style="width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #EAE2D4; font-family: 'Public Sans', sans-serif; font-size: 14px; margin-bottom: 14px;" />
+              </sc-if>
+
+              <sc-if value="{{ memberModal.isGroupInvite }}" hint-placeholder-val="{{ false }}">
+                <label style="font-size: 12.5px; font-weight: 600; color: #837B6E; display: block; margin-bottom: 6px;">Ministério</label>
+                <select value="{{ memberModal.inviteMinistryId }}" onchange="{{ memberModal.onInviteMinistryChange }}" style="width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #EAE2D4; font-family: 'Public Sans', sans-serif; font-size: 14px; margin-bottom: 14px; background: #FFFFFF;">
+                  <sc-for list="{{ memberModal.groupInviteMinistryOptions }}" as="gm" hint-placeholder-count="2">
+                    <option value="{{ gm.id }}">{{ gm.name }}</option>
+                  </sc-for>
+                </select>
+              </sc-if>
+
+              <sc-if value="{{ memberModal.editingId }}" hint-placeholder-val="{{ false }}">
+                <sc-if value="{{ memberModal.showGeneralAdminControl }}" hint-placeholder-val="{{ true }}">
+                  <label style="font-size: 12.5px; font-weight: 600; color: #837B6E; display: block; margin-bottom: 8px;">Acesso geral</label>
+                  <button onclick="{{ memberModal.onToggleGeneralAdmin }}" style="{{ memberModal.generalAdminButtonStyle }}">{{ memberModal.generalAdminButtonLabel }}</button>
+                </sc-if>
+
+                <label style="font-size: 12.5px; font-weight: 600; color: #837B6E; display: block; margin: 18px 0 8px;">Ministérios</label>
+                <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px;">
+                  <sc-for list="{{ memberModal.ministryRows }}" as="mr" hint-placeholder-count="4">
+                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 10px; border: 1px solid #EAE2D4; border-radius: 10px;">
+                      <span style="font-size: 13px; font-weight: 600; color: #1A1A1A; flex: 1; min-width: 90px;">{{ mr.name }}</span>
+                      <button onclick="{{ mr.onToggleMember }}" style="{{ mr.memberButtonStyle }}">{{ mr.memberButtonLabel }}</button>
+                      <button onclick="{{ mr.onToggleAdmin }}" style="{{ mr.adminButtonStyle }}">{{ mr.adminButtonLabel }}</button>
+                    </div>
+                  </sc-for>
+                </div>
+
+                <sc-if value="{{ memberModal.canDemote }}" hint-placeholder-val="{{ false }}">
+                  <button onclick="{{ memberModal.onDemote }}" style="width: 100%; margin-top: 4px; padding: 10px 12px; border-radius: 10px; border: 1px solid #EAE2D4; background: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13px; color: #837B6E; cursor: pointer;">Rebaixar para Membro</button>
+                </sc-if>
+              </sc-if>
+
+              <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px;">
+                <button onclick="{{ memberModal.onCancel }}" style="padding: 10px 16px; border-radius: 10px; border: 1px solid #EAE2D4; background: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13.5px; color: #1A1A1A; cursor: pointer;">Cancelar</button>
+                <button onclick="{{ memberModal.onSave }}" style="padding: 10px 16px; border-radius: 10px; border: none; background: #1C7C8C; color: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13.5px; cursor: pointer;">{{ memberModal.saveLabel }}</button>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ promoteModal.open }}" hint-placeholder-val="{{ false }}">
+          <div style="position: absolute; inset: 0; background: rgba(26,26,26,0.4); display: flex; align-items: center; justify-content: center; z-index: 20; padding: 20px;">
+            <div style="background: #FFFFFF; border-radius: 16px; padding: 28px; width: 100%; max-width: 360px;">
+              <sc-if value="{{ promoteModal.isSelectStep }}" hint-placeholder-val="{{ true }}">
+                <h3 style="font-family: 'Sora', sans-serif; font-weight: 700; font-size: 18px; margin: 0 0 6px; color: #1A1A1A;">Promover {{ promoteModal.memberName }}</h3>
+                <p style="font-size: 13px; color: #837B6E; margin: 0 0 16px; line-height: 1.5;">Escolha o ministério em que este membro se tornará administrador.</p>
+                <select value="{{ promoteModal.ministryId }}" onchange="{{ promoteModal.onMinistryChange }}" style="width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #EAE2D4; font-family: 'Public Sans', sans-serif; font-size: 14px; margin-bottom: 22px; background: #FFFFFF;">
+                  <sc-for list="{{ promoteModal.ministryOptions }}" as="po" hint-placeholder-count="2">
+                    <option value="{{ po.id }}">{{ po.name }}</option>
+                  </sc-for>
+                </select>
+                <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                  <button onclick="{{ promoteModal.onCancel }}" style="padding: 10px 16px; border-radius: 10px; border: 1px solid #EAE2D4; background: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13.5px; color: #1A1A1A; cursor: pointer;">Cancelar</button>
+                  <button onclick="{{ promoteModal.onContinue }}" style="padding: 10px 16px; border-radius: 10px; border: none; background: #1C7C8C; color: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13.5px; cursor: pointer;">Continuar</button>
+                </div>
+              </sc-if>
+              <sc-if value="{{ promoteModal.isConfirmStep }}" hint-placeholder-val="{{ false }}">
+                <h3 style="font-family: 'Sora', sans-serif; font-weight: 700; font-size: 18px; margin: 0 0 12px; color: #1A1A1A;">Confirmar promoção</h3>
+                <div style="background: #FDEDEB; border: 1px solid #F3C6BE; border-radius: 10px; padding: 12px 14px; margin-bottom: 20px; display: flex; gap: 10px; align-items: flex-start;">
+                  <span style="width: 18px; height: 18px; border-radius: 50%; background: #C0392B; color: #FFFFFF; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px;">!</span>
+                  <p style="margin: 0; font-size: 13px; color: #9B2C1E; line-height: 1.5;">Tem certeza que deseja promover <strong>{{ promoteModal.memberName }}</strong> a administrador de <strong>{{ promoteModal.ministryName }}</strong>? Essa ação não pode ser desfeita.</p>
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                  <button onclick="{{ promoteModal.onCancel }}" style="padding: 10px 16px; border-radius: 10px; border: 1px solid #EAE2D4; background: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13.5px; color: #1A1A1A; cursor: pointer;">Cancelar</button>
+                  <button onclick="{{ promoteModal.onConfirm }}" style="padding: 10px 16px; border-radius: 10px; border: none; background: #C0392B; color: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13.5px; cursor: pointer;">Confirmar promoção</button>
+                </div>
+              </sc-if>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isEscalas }}" hint-placeholder-val="{{ false }}">
+          <div style="background: #FBF6EE; border: 1px dashed #EAE2D4; border-radius: 14px; padding: 40px 20px; text-align: center; color: #837B6E; font-size: 13.5px;">Conteúdo de Escalas entra aqui — próxima etapa.</div>
+        </sc-if>
+      </div>
+    </div>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const ROLES = {
+  admin_geral: { label: 'Administrador geral', name: 'Ana Souza', initials: 'AS', nav: ['agenda', 'escalas', 'eventos', 'ministerios', 'membros', 'funcoes'], memberId: 'u1' },
+  admin_grupo: { label: 'Administrador de grupo', name: 'Carlos Lima', initials: 'CL', nav: ['agenda', 'escalas', 'eventos', 'ministerios', 'membros', 'funcoes'], memberId: 'u2' },
+  membro: { label: 'Membro', name: 'Beatriz Alves', initials: 'BA', nav: ['agenda', 'escalas', 'eventos', 'ministerios'], memberId: 'u3' },
+};
+const NAV_LABELS = { agenda: 'Agenda', eventos: 'Eventos', ministerios: 'Ministérios', funcoes: 'Funções', membros: 'Membros', escalas: 'Escalas' };
+const PAGE_META = {
+  agenda: { title: 'Agenda', subtitle: 'Visão de calendário das escalas' },
+  eventos: { title: 'Eventos', subtitle: 'Lista de todas as escalas e eventos' },
+  ministerios: { title: 'Ministérios', subtitle: 'Grupos e equipes da sua igreja' },
+  funcoes: { title: 'Funções', subtitle: 'Papéis dentro de cada ministério' },
+  membros: { title: 'Membros', subtitle: 'Pessoas com acesso ao Escacev' },
+  escalas: { title: 'Escalas', subtitle: 'Designação de membros às funções em cada evento' },
+};
+
+const MINISTRIES = [
+  { id: 'm1', name: 'Louvor', color: '#1C7C8C', description: 'Equipe de música e adoração nos cultos.' },
+  { id: 'm2', name: 'Infantil', color: '#C9962D', description: 'Cuidado e ensino das crianças durante os cultos.' },
+  { id: 'm3', name: 'Recepção', color: '#1A1A1A', description: '' },
+  { id: 'm4', name: 'Mídia', color: '#3E7CB1', description: 'Som, transmissão e projeção.' },
+];
+
+class Component extends DCLogic {
+  state = {
+    role: 'admin_geral', appView: 'agenda', mobileMenuOpen: false,
+    ministryFilter: 'all', memberSearch: '',
+    members: [
+      { id: 'u1', name: 'Ana Souza', email: 'ana@escacev.com', status: 'Ativo', isGeneralAdmin: true, ministryIds: ['m1'], adminMinistryIds: [] },
+      { id: 'u2', name: 'Carlos Lima', email: 'carlos@escacev.com', status: 'Ativo', isGeneralAdmin: false, ministryIds: ['m2'], adminMinistryIds: ['m2'] },
+      { id: 'u3', name: 'Beatriz Alves', email: 'bia@escacev.com', status: 'Ativo', isGeneralAdmin: false, ministryIds: ['m3', 'm1'], adminMinistryIds: [] },
+      { id: 'u4', name: 'Diego Farias', email: 'diego@escacev.com', status: 'Convite pendente', isGeneralAdmin: false, ministryIds: ['m4'], adminMinistryIds: [] },
+    ],
+    memberModal: { open: false, editingId: null, name: '', email: '', isGeneralAdmin: false, ministryIds: [], adminMinistryIds: [] },
+    promoteModal: { open: false, memberId: null, ministryId: null, step: 'select' },
+    ministryModal: { open: false, editingId: null, name: '', description: '' },
+    roles: [
+      { id: 'r1', name: 'Vocal', ministryId: 'm1', confirmingDelete: false },
+      { id: 'r2', name: 'Guitarra', ministryId: 'm1', confirmingDelete: false },
+      { id: 'r3', name: 'Contador de história', ministryId: 'm2', confirmingDelete: false },
+    ],
+    roleModal: { open: false, editingId: null, name: '', ministryId: '', compatibleIds: [], step: 'form', compatibleSearch: '' },
+    roleFilter: 'all',
+    rolePairs: [],
+    toast: null,
+    profileModal: { open: false, name: '' },
+  };
+
+  showToast = (type, message) => {
+    this.setState({ toast: { type, message } });
+    clearTimeout(this._toastTimer);
+    this._toastTimer = setTimeout(() => this.setState({ toast: null }), 3500);
+  };
+  dismissToast = () => this.setState({ toast: null });
+
+  setRole = (role) => {
+    const nav = ROLES[role].nav;
+    this.setState({ role, appView: nav.includes(this.state.appView) ? this.state.appView : nav[0] });
+  };
+  openProfileModal = () => this.setState({ profileModal: { open: true, name: ROLES[this.state.role].name } });
+  closeProfileModal = () => this.setState({ profileModal: { ...this.state.profileModal, open: false } });
+  setProfileName = (e) => this.setState({ profileModal: { ...this.state.profileModal, name: e.target.value } });
+  saveProfileName = () => {
+    const pm = this.state.profileModal;
+    if (!pm.name.trim()) { this.showToast('error', 'Informe um nome válido.'); return; }
+    ROLES[this.state.role].name = pm.name.trim();
+    this.setState({ profileModal: { ...pm, open: false } });
+    this.showToast('success', 'Nome atualizado com sucesso.');
+  };
+  goTo = (v) => this.setState({ appView: v, mobileMenuOpen: false });
+  openMobileMenu = () => this.setState({ mobileMenuOpen: true });
+  closeMobileMenu = () => this.setState({ mobileMenuOpen: false });
+
+  setMinistryFilter = (id) => this.setState({ ministryFilter: id });
+  setMemberSearch = (e) => this.setState({ memberSearch: e.target.value });
+
+  openMemberModal = (id) => {
+    const m = id ? this.state.members.find(x => x.id === id) : null;
+    this.setState({ memberModal: { open: true, editingId: id, name: m ? m.name : '', email: m ? m.email : '', isGeneralAdmin: m ? m.isGeneralAdmin : false, ministryIds: m ? [...m.ministryIds] : [], adminMinistryIds: m ? [...m.adminMinistryIds] : [] } });
+  };
+  closeMemberModal = () => this.setState({ memberModal: { ...this.state.memberModal, open: false } });
+  setMemberModalField = (field) => (e) => this.setState({ memberModal: { ...this.state.memberModal, [field]: e.target.value } });
+  toggleGeneralAdmin = () => {
+    const mm = this.state.memberModal;
+    if (mm.isGeneralAdmin) return;
+    this.setState({ memberModal: { ...mm, isGeneralAdmin: true } });
+  };
+  toggleMinistryMembership = (id) => {
+    const mm = this.state.memberModal;
+    const has = mm.ministryIds.includes(id);
+    const ministryIds = has ? mm.ministryIds.filter(x => x !== id) : [...mm.ministryIds, id];
+    const adminMinistryIds = has ? mm.adminMinistryIds.filter(x => x !== id) : mm.adminMinistryIds;
+    this.setState({ memberModal: { ...mm, ministryIds, adminMinistryIds } });
+  };
+  toggleMinistryAdmin = (id) => {
+    const mm = this.state.memberModal;
+    const has = mm.adminMinistryIds.includes(id);
+    const adminMinistryIds = has ? mm.adminMinistryIds.filter(x => x !== id) : [...mm.adminMinistryIds, id];
+    const ministryIds = has ? mm.ministryIds : (mm.ministryIds.includes(id) ? mm.ministryIds : [...mm.ministryIds, id]);
+    this.setState({ memberModal: { ...mm, ministryIds, adminMinistryIds } });
+  };
+  saveMember = () => {
+    const mm = this.state.memberModal;
+    const isGroupInvite = !mm.editingId && this.state.role === 'admin_grupo';
+    if (!mm.name.trim() || !mm.email.trim() || (isGroupInvite && !mm.inviteMinistryId)) {
+      this.showToast('error', isGroupInvite ? 'Preencha nome, e-mail e ministério para continuar.' : 'Preencha nome e e-mail para continuar.');
+      return;
+    }
+    if (mm.editingId) {
+      this.setState({ members: this.state.members.map(m => m.id === mm.editingId ? { ...m, name: mm.name, isGeneralAdmin: mm.isGeneralAdmin, ministryIds: mm.ministryIds, adminMinistryIds: mm.adminMinistryIds } : m), memberModal: { ...mm, open: false } });
+      this.showToast('success', 'Membro atualizado com sucesso.');
+    } else {
+      const ministryIds = isGroupInvite ? [mm.inviteMinistryId] : [];
+      this.setState({ members: [...this.state.members, { id: 'u' + Date.now(), name: mm.name, email: mm.email, isGeneralAdmin: false, ministryIds, adminMinistryIds: [], status: 'Convite pendente' }], memberModal: { ...mm, open: false } });
+      this.showToast('success', 'Convite enviado com sucesso.');
+    }
+  };
+  demoteToMember = () => {
+    const mm = this.state.memberModal;
+    if (!mm.editingId) return;
+    this.setState({
+      members: this.state.members.map(m => m.id === mm.editingId ? { ...m, isGeneralAdmin: false, adminMinistryIds: [] } : m),
+      memberModal: { ...mm, isGeneralAdmin: false, adminMinistryIds: [] },
+    });
+    this.showToast('success', 'Membro rebaixado com sucesso.');
+  };
+
+  currentUserAdminMinistryIds() {
+    const currentMember = this.state.members.find(x => x.id === ROLES[this.state.role].memberId);
+    return currentMember ? currentMember.adminMinistryIds : [];
+  }
+  openPromoteModal = (memberId) => {
+    const member = this.state.members.find(x => x.id === memberId);
+    const adminMinistryIds = this.currentUserAdminMinistryIds();
+    const eligible = member.ministryIds.filter(id => adminMinistryIds.includes(id) && !member.adminMinistryIds.includes(id));
+    this.setState({ promoteModal: { open: true, memberId, ministryId: eligible[0] || null, step: 'select' } });
+  };
+  setPromoteMinistry = (e) => this.setState({ promoteModal: { ...this.state.promoteModal, ministryId: e.target.value } });
+  continuePromote = () => this.setState({ promoteModal: { ...this.state.promoteModal, step: 'confirm' } });
+  cancelPromote = () => this.setState({ promoteModal: { ...this.state.promoteModal, open: false } });
+  confirmPromote = () => {
+    const pm = this.state.promoteModal;
+    this.setState({
+      members: this.state.members.map(m => m.id === pm.memberId ? { ...m, adminMinistryIds: [...new Set([...m.adminMinistryIds, pm.ministryId])] } : m),
+      promoteModal: { ...pm, open: false },
+    });
+    this.showToast('success', 'Membro promovido a administrador do ministério.');
+  };
+
+  openMinistryModal = (id) => {
+    const m = id ? MINISTRIES.find(x => x.id === id) : null;
+    this.setState({ ministryModal: { open: true, editingId: id || null, name: m ? m.name : '', description: m ? m.description : '' } });
+  };
+  closeMinistryModal = () => this.setState({ ministryModal: { ...this.state.ministryModal, open: false } });
+  setMinistryModalField = (field) => (e) => this.setState({ ministryModal: { ...this.state.ministryModal, [field]: e.target.value } });
+  saveMinistry = () => {
+    const mm = this.state.ministryModal;
+    if (!mm.name.trim()) { this.showToast('error', 'Informe o nome do ministério.'); return; }
+    if (mm.editingId) {
+      const target = MINISTRIES.find(x => x.id === mm.editingId);
+      if (target) { target.name = mm.name.trim(); target.description = mm.description.trim(); }
+      this.showToast('success', 'Ministério atualizado com sucesso.');
+    } else {
+      MINISTRIES.push({ id: 'm' + Date.now(), name: mm.name.trim(), color: '#1C7C8C', description: mm.description.trim() });
+      this.showToast('success', 'Ministério criado com sucesso.');
+    }
+    this.setState({ ministryModal: { ...mm, open: false } });
+  };
+
+  openRoleModal = (id) => {
+    const r = id ? this.state.roles.find(x => x.id === id) : null;
+    const eligible = this.eligibleRoleMinistries();
+    const compatibleIds = id ? this.state.rolePairs.filter(p => p.includes(id)).map(p => p.find(x => x !== id)) : [];
+    this.setState({ roleModal: { open: true, editingId: id || null, name: r ? r.name : '', ministryId: r ? r.ministryId : (eligible[0] ? eligible[0].id : ''), compatibleIds, step: 'form', error: null, compatibleSearch: '' } });
+  };
+  closeRoleModal = () => this.setState({ roleModal: { ...this.state.roleModal, open: false } });
+  setRoleModalField = (field) => (e) => this.setState({ roleModal: { ...this.state.roleModal, [field]: e.target.value } });
+  setRoleFilter = (id) => this.setState({ roleFilter: id });
+  toggleCompatibleRole = (id) => {
+    const rm = this.state.roleModal;
+    const has = rm.compatibleIds.includes(id);
+    this.setState({ roleModal: { ...rm, compatibleIds: has ? rm.compatibleIds.filter(x => x !== id) : [...rm.compatibleIds, id] } });
+  };
+  goToConfirmRole = () => {
+    const rm = this.state.roleModal;
+    if (!rm.name.trim() || !rm.ministryId) {
+      this.setState({ roleModal: { ...rm, error: 'Informe o nome e o ministério da função.' } });
+      return;
+    }
+    this.setState({ roleModal: { ...rm, step: 'confirm', error: null } });
+  };
+  backToRoleForm = () => this.setState({ roleModal: { ...this.state.roleModal, step: 'form' } });
+  eligibleRoleMinistries() {
+    const s = this.state;
+    if (s.role === 'admin_geral') return MINISTRIES;
+    if (s.role === 'admin_grupo') return MINISTRIES.filter(m => this.currentUserAdminMinistryIds().includes(m.id));
+    return [];
+  }
+  saveRole = () => {
+    const rm = this.state.roleModal;
+    const roleId = rm.editingId || ('r' + Date.now());
+    let roles = this.state.roles;
+    if (rm.editingId) {
+      roles = roles.map(r => r.id === rm.editingId ? { ...r, name: rm.name.trim(), ministryId: rm.ministryId } : r);
+    } else {
+      roles = [...roles, { id: roleId, name: rm.name.trim(), ministryId: rm.ministryId }];
+    }
+    let rolePairs = this.state.rolePairs.filter(p => !p.includes(roleId));
+    rolePairs = [...rolePairs, ...rm.compatibleIds.map(otherId => [roleId, otherId])];
+    this.setState({ roles, rolePairs, roleModal: { ...rm, open: false } });
+    this.showToast('success', rm.editingId ? 'Função atualizada com sucesso.' : 'Função criada com sucesso.');
+  };
+  askDeleteRole = (id) => this.setState({ roles: this.state.roles.map(r => r.id === id ? { ...r, confirmingDelete: true } : r) });
+  cancelDeleteRole = (id) => this.setState({ roles: this.state.roles.map(r => r.id === id ? { ...r, confirmingDelete: false } : r) });
+  deleteRole = (id) => {
+    this.setState({ roles: this.state.roles.filter(r => r.id !== id) });
+    this.showToast('success', 'Função excluída com sucesso.');
+  };
+
+  profileTag(profile) {
+    if (profile === 'Administrador geral') return { bg: '#FBE6DE', fg: '#C4431E' };
+    if (profile === 'Administrador de grupo') return { bg: '#E3F0F1', fg: '#1C7C8C' };
+    return { bg: '#EFEBE3', fg: '#6B6456' };
+  }
+  statusTag(status) {
+    return status === 'Ativo' ? { bg: '#E3F0F1', fg: '#1C7C8C' } : { bg: '#FCEEE3', fg: '#B5651D' };
+  }
+  initials(name) {
+    return name.split(' ').filter(Boolean).slice(0, 2).map(p => p[0].toUpperCase()).join('');
+  }
+
+  membersVals() {
+    const s = this.state;
+    const isGroupAdmin = s.role === 'admin_grupo';
+    const canManageMembers = s.role === 'admin_geral';
+    const groupAdminMinistryIds = isGroupAdmin ? this.currentUserAdminMinistryIds() : [];
+
+    const filterDefs = [{ id: 'all', name: 'Todos' }, ...(isGroupAdmin ? MINISTRIES.filter(m => groupAdminMinistryIds.includes(m.id)) : MINISTRIES)];
+    const ministryFilters = filterDefs.map(m => {
+      const active = s.ministryFilter === m.id;
+      const style = `padding:7px 14px; border-radius:20px; border:1px solid ${active ? '#1A1A1A' : '#EAE2D4'}; background:${active ? '#1A1A1A' : '#FFFFFF'}; font-family:'Public Sans',sans-serif; font-weight:600; font-size:12.5px; color:${active ? '#FFFFFF' : '#1A1A1A'}; cursor:pointer; white-space:nowrap;`;
+      return { label: m.name, style, onClick: () => this.setMinistryFilter(m.id) };
+    });
+
+    const q = s.memberSearch.trim().toLowerCase();
+    const visibleMembers = s.members
+      .filter(m => isGroupAdmin
+        ? m.ministryIds.some(id => groupAdminMinistryIds.includes(id)) && (s.ministryFilter === 'all' || m.ministryIds.includes(s.ministryFilter))
+        : (s.ministryFilter === 'all' || m.ministryIds.includes(s.ministryFilter)))
+      .filter(m => !q || m.name.toLowerCase().includes(q) || m.email.toLowerCase().includes(q))
+      .map(m => {
+        const statusTag = this.statusTag(m.status);
+        const ministryChips = m.ministryIds.map(id => {
+          const mn = MINISTRIES.find(x => x.id === id);
+          if (!mn) return null;
+          const isAdminHere = m.adminMinistryIds.includes(id);
+          const label = isAdminHere ? `${mn.name} · admin` : mn.name;
+          const bg = isAdminHere ? '#E3F0F1' : '#F5EFE2';
+          const fg = isAdminHere ? '#1C7C8C' : '#6B6456';
+          return { id: mn.id, label, style: `font-size:11px; font-weight:${isAdminHere ? '700' : '600'}; padding:3px 9px; border-radius:20px; background:${bg}; color:${fg}; white-space:nowrap; flex-shrink:0;` };
+        }).filter(Boolean);
+        const eligibleForPromotion = m.ministryIds.filter(id => groupAdminMinistryIds.includes(id) && !m.adminMinistryIds.includes(id));
+        const canPromote = isGroupAdmin && !m.isGeneralAdmin && eligibleForPromotion.length > 0;
+        return {
+          ...m, initials: this.initials(m.name),
+          statusTagBg: statusTag.bg, statusTagFg: statusTag.fg,
+          ministryChips, canPromote,
+          onEdit: () => this.openMemberModal(m.id),
+          onPromote: () => this.openPromoteModal(m.id),
+        };
+      });
+
+    const mm = s.memberModal;
+    const editingMember = mm.editingId ? s.members.find(x => x.id === mm.editingId) : null;
+    const emailLocked = !!mm.editingId;
+    const currentUserMemberId = ROLES[s.role].memberId;
+    const isEditingSelf = mm.editingId === currentUserMemberId;
+    const canEditGeneralAdmin = !isEditingSelf && !mm.isGeneralAdmin;
+    const canDemote = !isEditingSelf && !!editingMember && (editingMember.isGeneralAdmin || editingMember.adminMinistryIds.length > 0);
+    const isGroupInvite = !mm.editingId && s.role === 'admin_grupo';
+    const groupInviteMinistryOptions = isGroupInvite ? MINISTRIES.filter(mn => this.currentUserAdminMinistryIds().includes(mn.id)) : [];
+
+    const ministryRows = MINISTRIES.map(mn => {
+      const isMember = mm.ministryIds.includes(mn.id);
+      const isAdmin = mm.adminMinistryIds.includes(mn.id);
+      return {
+        id: mn.id, name: mn.name,
+        memberButtonLabel: isMember ? 'No ministério' : 'Adicionar',
+        memberButtonStyle: `padding:6px 12px; border-radius:8px; border:1px solid ${isMember ? '#1C7C8C' : '#EAE2D4'}; background:${isMember ? '#1C7C8C' : '#FFFFFF'}; color:${isMember ? '#FFFFFF' : '#1A1A1A'}; font-family:'Public Sans',sans-serif; font-weight:600; font-size:12px; cursor:pointer; white-space:nowrap;`,
+        onToggleMember: () => this.toggleMinistryMembership(mn.id),
+        adminButtonLabel: isAdmin ? 'Administrador' : '+ Admin',
+        adminButtonStyle: `padding:6px 12px; border-radius:8px; border:1px solid ${isAdmin ? '#C4431E' : '#EAE2D4'}; background:${isAdmin ? '#FBE6DE' : '#FFFFFF'}; color:${isAdmin ? '#C4431E' : '#1A1A1A'}; font-family:'Public Sans',sans-serif; font-weight:700; font-size:12px; cursor:pointer; white-space:nowrap;`,
+        onToggleAdmin: () => this.toggleMinistryAdmin(mn.id),
+      };
+    });
+
+    const pm = s.promoteModal;
+    const promoteMember = pm.memberId ? s.members.find(x => x.id === pm.memberId) : null;
+    const currentAdminMinistryIds = this.currentUserAdminMinistryIds();
+    const promoteMinistryOptions = promoteMember ? promoteMember.ministryIds
+      .filter(id => currentAdminMinistryIds.includes(id) && !promoteMember.adminMinistryIds.includes(id))
+      .map(id => MINISTRIES.find(x => x.id === id)).filter(Boolean) : [];
+    const promoteMinistryName = pm.ministryId ? (MINISTRIES.find(x => x.id === pm.ministryId) || {}).name : '';
+
+    return {
+      ministryFilters, memberSearch: s.memberSearch, onMemberSearch: this.setMemberSearch,
+      visibleMembers, canManageMembers,
+      memberModal: {
+        open: mm.open, editingId: mm.editingId, name: mm.name, email: mm.email,
+        emailLocked, emailLockedInverse: !emailLocked,
+        title: mm.editingId ? 'Editar membro' : 'Convidar membro',
+        saveLabel: mm.editingId ? 'Salvar' : 'Enviar convite',
+        onNameChange: this.setMemberModalField('name'),
+        onEmailChange: this.setMemberModalField('email'),
+        onCancel: this.closeMemberModal,
+        onSave: this.saveMember,
+        isEditingSelf,
+        showGeneralAdminControl: !isEditingSelf,
+        canDemote,
+        onDemote: this.demoteToMember,
+        isGroupInvite,
+        inviteMinistryId: mm.inviteMinistryId || (groupInviteMinistryOptions[0] ? groupInviteMinistryOptions[0].id : ''),
+        onInviteMinistryChange: this.setMemberModalField('inviteMinistryId'),
+        groupInviteMinistryOptions,
+        generalAdminButtonLabel: mm.isGeneralAdmin ? 'Administrador geral' : 'Promover a administrador geral',
+        generalAdminButtonStyle: `width:100%; padding:10px 12px; border-radius:10px; border:1px solid ${mm.isGeneralAdmin ? '#C4431E' : '#EAE2D4'}; background:${mm.isGeneralAdmin ? '#FBE6DE' : '#FFFFFF'}; color:${mm.isGeneralAdmin ? '#C4431E' : '#1A1A1A'}; font-family:'Public Sans',sans-serif; font-weight:700; font-size:13px; cursor:${canEditGeneralAdmin ? 'pointer' : 'default'}; opacity:${mm.isGeneralAdmin ? '1' : '1'};`,
+        onToggleGeneralAdmin: canEditGeneralAdmin ? this.toggleGeneralAdmin : undefined,
+        ministryRows,
+      },
+      promoteModal: {
+        open: pm.open, memberName: promoteMember ? promoteMember.name : '', ministryId: pm.ministryId, ministryName: promoteMinistryName,
+        ministryOptions: promoteMinistryOptions,
+        isSelectStep: pm.step === 'select', isConfirmStep: pm.step === 'confirm',
+        onMinistryChange: this.setPromoteMinistry,
+        onCancel: this.cancelPromote,
+        onContinue: this.continuePromote,
+        onConfirm: this.confirmPromote,
+      },
+    };
+  }
+
+  renderVals() {
+    const s = this.state;
+    const roleInfo = ROLES[s.role];
+
+    const roleSwitcher = Object.keys(ROLES).map(key => {
+      const active = s.role === key;
+      const style = `padding:7px 14px; border-radius:20px; border:1px solid ${active ? '#1A1A1A' : '#EAE2D4'}; background:${active ? '#1A1A1A' : '#FFFFFF'}; font-family:'Public Sans',sans-serif; font-weight:600; font-size:12px; color:${active ? '#FFFFFF' : '#1A1A1A'}; cursor:pointer; white-space:nowrap;`;
+      return { label: ROLES[key].label, style, onClick: () => this.setRole(key) };
+    });
+
+    const navItems = roleInfo.nav.map(key => {
+      const active = s.appView === key;
+      const style = `text-align:left; padding:10px 12px; border-radius:10px; border:none; background:${active ? '#F5EFE2' : 'transparent'}; font-family:'Public Sans',sans-serif; font-weight:600; font-size:14px; color:${active ? '#1A1A1A' : '#837B6E'}; cursor:pointer; margin-bottom:2px; white-space:nowrap;`;
+      return { label: NAV_LABELS[key], style, onClick: () => this.goTo(key), onClickMobile: () => this.goTo(key) };
+    });
+
+    return {
+      roleSwitcher,
+      navItems,
+      user: { name: roleInfo.name, initials: roleInfo.initials, roleLabel: roleInfo.label },
+      mobileMenuOpen: s.mobileMenuOpen,
+      openMobileMenu: this.openMobileMenu,
+      closeMobileMenu: this.closeMobileMenu,
+      pageTitle: PAGE_META[s.appView].title,
+      pageSubtitle: PAGE_META[s.appView].subtitle,
+      isAgenda: s.appView === 'agenda',
+      isEventos: s.appView === 'eventos',
+      isMinistries: s.appView === 'ministerios',
+      isRoles: s.appView === 'funcoes',
+      isMembers: s.appView === 'membros',
+      isEscalas: s.appView === 'escalas',
+      openInviteModal: () => this.openMemberModal(null),
+      isMembersManageable: s.appView === 'membros' && (s.role === 'admin_geral' || s.role === 'admin_grupo'),
+      toast: s.toast ? {
+        message: s.toast.message,
+        icon: s.toast.type === 'success' ? '✓' : '!',
+        bg: s.toast.type === 'success' ? '#E3F0F1' : '#FDEDEB',
+        border: s.toast.type === 'success' ? '#BFE0E2' : '#F3C6BE',
+        iconBg: s.toast.type === 'success' ? '#1C7C8C' : '#C0392B',
+        fg: s.toast.type === 'success' ? '#145F6B' : '#9B2C1E',
+      } : null,
+      dismissToast: this.dismissToast,
+      openProfileModal: this.openProfileModal,
+      profileModal: {
+        open: s.profileModal.open, name: s.profileModal.name,
+        onNameChange: this.setProfileName,
+        onCancel: this.closeProfileModal,
+        onSave: this.saveProfileName,
+      },
+      ...this.membersVals(),
+      ...this.ministriesVals(),
+      ...this.rolesVals(),
+    };
+  }
+
+  rolesVals() {
+    const s = this.state;
+    const canManageRoles = s.role === 'admin_geral' || s.role === 'admin_grupo';
+    const eligible = this.eligibleRoleMinistries();
+    const eligibleIds = eligible.map(m => m.id);
+
+    const scopedRoles = s.role === 'admin_grupo' ? s.roles.filter(r => eligibleIds.includes(r.ministryId)) : s.roles;
+    const filterableMinistries = s.role === 'admin_grupo' ? eligible : MINISTRIES;
+    const roleFilterDefs = [{ id: 'all', name: 'Todos' }, ...filterableMinistries];
+    const roleFilters = roleFilterDefs.map(m => {
+      const active = s.roleFilter === m.id;
+      const style = `padding:7px 14px; border-radius:20px; border:1px solid ${active ? '#1A1A1A' : '#EAE2D4'}; background:${active ? '#1A1A1A' : '#FFFFFF'}; font-family:'Public Sans',sans-serif; font-weight:600; font-size:12.5px; color:${active ? '#FFFFFF' : '#1A1A1A'}; cursor:pointer; white-space:nowrap;`;
+      return { label: m.name, style, onClick: () => this.setRoleFilter(m.id) };
+    });
+    const visibleRoles = scopedRoles.filter(r => s.roleFilter === 'all' || r.ministryId === s.roleFilter);
+    const roleCards = visibleRoles.map(r => {
+      const mn = MINISTRIES.find(x => x.id === r.ministryId);
+      return {
+        id: r.id, name: r.name,
+        ministryName: mn ? mn.name : '—',
+        confirmingDelete: r.confirmingDelete, notConfirmingDelete: !r.confirmingDelete,
+        onEdit: () => this.openRoleModal(r.id),
+        onDelete: () => this.askDeleteRole(r.id),
+        onConfirmDelete: () => this.deleteRole(r.id),
+        onCancelDelete: () => this.cancelDeleteRole(r.id),
+      };
+    });
+
+    const rm = s.roleModal;
+    // Admin geral e admin de grupo veem todas as funções da instituição na hora de marcar compatibilidade.
+    const csq = (rm.compatibleSearch || '').trim().toLowerCase();
+    const compatibleOptions = s.roles
+      .filter(r => r.id !== rm.editingId)
+      .filter(r => !csq || r.name.toLowerCase().includes(csq))
+      .map(r => {
+        const mn = MINISTRIES.find(x => x.id === r.ministryId);
+        const active = rm.compatibleIds.includes(r.id);
+        return {
+          id: r.id, name: r.name, ministryName: mn ? mn.name : '—',
+          active,
+          toggleStyle: `width:42px; height:24px; border-radius:20px; border:none; background:${active ? '#1C7C8C' : '#EAE2D4'}; position:relative; cursor:pointer; flex-shrink:0; padding:0;`,
+          knobStyle: `width:18px; height:18px; border-radius:50%; background:#FFFFFF; position:absolute; top:3px; left:${active ? '21px' : '3px'}; transition:left .15s ease;`,
+          onToggle: () => this.toggleCompatibleRole(r.id),
+        };
+      });
+    const confirmSummary = rm.compatibleIds.map(id => {
+      const r = s.roles.find(x => x.id === id);
+      return r ? r.name : '';
+    }).filter(Boolean).join(', ');
+
+    return {
+      canCreateRole: s.appView === 'funcoes' && canManageRoles,
+      canManageRoles,
+      roleFilters,
+      roleCards,
+      hasRoleCards: roleCards.length > 0,
+      noRoleCards: roleCards.length === 0,
+      openRoleModal: () => this.openRoleModal(null),
+      roleModal: {
+        open: rm.open, name: rm.name, ministryId: rm.ministryId,
+        hasError: !!rm.error, errorMessage: rm.error || '',
+        isFormStep: rm.step === 'form', isConfirmStep: rm.step === 'confirm',
+        title: rm.editingId ? 'Editar função' : 'Nova função',
+        onNameChange: this.setRoleModalField('name'),
+        onMinistryChange: this.setRoleModalField('ministryId'),
+        onCancel: this.closeRoleModal,
+        onContinue: this.goToConfirmRole,
+        onBack: this.backToRoleForm,
+        onSave: this.saveRole,
+        ministryOptions: eligible,
+        compatibleSearch: rm.compatibleSearch,
+        onCompatibleSearch: this.setRoleModalField('compatibleSearch'),
+        compatibleOptions,
+        hasCompatibleOptions: compatibleOptions.length > 0,
+        noCompatibleOptions: compatibleOptions.length === 0,
+        hasCompatibleSelection: rm.compatibleIds.length > 0,
+        noCompatibleSelection: rm.compatibleIds.length === 0,
+        confirmSummary,
+        roleName: rm.name,
+      },
+    };
+  }
+
+  ministriesVals() {
+    const s = this.state;
+    const currentMember = s.members.find(x => x.id === ROLES[s.role].memberId);
+    const currentMemberMinistryIds = currentMember ? currentMember.ministryIds : [];
+
+    let visibleMinistries = MINISTRIES;
+    if (s.role === 'admin_grupo') visibleMinistries = MINISTRIES.filter(m => currentMemberMinistryIds.includes(m.id));
+    if (s.role === 'membro') visibleMinistries = MINISTRIES.filter(m => currentMemberMinistryIds.includes(m.id));
+
+    const currentMemberId = ROLES[s.role].memberId;
+    const ministryCards = visibleMinistries.map(m => {
+      const admins = s.members.filter(mem => mem.adminMinistryIds.includes(m.id));
+      const adminLabel = admins.length
+        ? admins.map(a => a.id === currentMemberId ? `${a.name} (você)` : a.name).join(', ')
+        : 'Nenhum administrador definido';
+      const isCurrentUserAdmin = admins.some(a => a.id === currentMemberId);
+      const canEditMinistry = s.role === 'admin_geral' || isCurrentUserAdmin;
+      return {
+        id: m.id, name: m.name,
+        hasDescription: !!m.description, description: m.description,
+        adminNames: adminLabel,
+        isCurrentUserAdmin,
+        cardBorder: isCurrentUserAdmin ? '2px solid #1C7C8C' : '1px solid #EAE2D4',
+        canEditMinistry,
+        onEditMinistry: () => this.openMinistryModal(m.id),
+      };
+    });
+
+    const emptyMessage = s.role === 'admin_grupo'
+      ? 'Você ainda não administra nenhum ministério.'
+      : 'Você ainda não participa de nenhum ministério.';
+
+    const mm = s.ministryModal;
+    return {
+      canCreateMinistry: s.appView === 'ministerios' && s.role === 'admin_geral',
+      ministryCards,
+      hasMinistryCards: ministryCards.length > 0,
+      noMinistryCards: ministryCards.length === 0,
+      ministriesEmptyMessage: emptyMessage,
+      openMinistryModal: () => this.openMinistryModal(null),
+      ministryModal: {
+        open: mm.open, editingId: mm.editingId, name: mm.name, description: mm.description,
+        title: mm.editingId ? 'Editar ministério' : 'Novo ministério',
+        saveLabel: mm.editingId ? 'Salvar' : 'Criar',
+        onNameChange: this.setMinistryModalField('name'),
+        onDescriptionChange: this.setMinistryModalField('description'),
+        onCancel: this.closeMinistryModal,
+        onSave: this.saveMinistry,
+      },
+    };
+  }
+}
+</script>
+</body>
+</html>
