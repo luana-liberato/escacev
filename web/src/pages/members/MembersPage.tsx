@@ -1,10 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useContext, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ROLE_LABELS } from '@/config/navigation';
 import { PageActionSlotContext } from '@/hooks/pageActionContext';
 import { initialsOf } from '@/hooks/useCurrentMember';
 import { useAuth } from '@/hooks/useAuth';
-import { useContext } from 'react';
+import { listMemberUnavailabilities } from '@/services/unavailability';
 import { MemberModal } from './MemberModal';
 import { PromoteModal } from './PromoteModal';
 import { useMembersData } from './useMembersData';
@@ -43,6 +43,41 @@ export default function MembersPage() {
 
   const isGeneralAdmin = user?.role === 'ADMIN_GERAL';
   const { rows, ministries, loading, error, reload } = useMembersData(user!);
+
+  // Datas de indisponibilidade PRÓXIMAS por membro (endsAt >= agora). O admin pode
+  // consultar via GET /membros/:id/indisponibilidades — uma chamada por membro.
+  const [unavByMember, setUnavByMember] = useState<Map<string, string[]>>(new Map());
+  useEffect(() => {
+    if (rows.length === 0) {
+      setUnavByMember(new Map());
+      return;
+    }
+    let cancelled = false;
+    const now = Date.now();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    Promise.all(
+      rows.map((row) =>
+        listMemberUnavailabilities(row.id)
+          .then((list) => {
+            const dates = list
+              .filter((u) => new Date(u.endsAt).getTime() >= now)
+              .map((u) => new Date(u.startsAt))
+              .sort((a, b) => a.getTime() - b.getTime())
+              .map((d) => `${pad(d.getDate())}/${pad(d.getMonth() + 1)}`);
+            return [row.id, [...new Set(dates)]] as [string, string[]];
+          })
+          .catch(() => [row.id, [] as string[]] as [string, string[]]),
+      ),
+    ).then((results) => {
+      if (cancelled) return;
+      const map = new Map<string, string[]>();
+      for (const [id, dates] of results) if (dates.length) map.set(id, dates);
+      setUnavByMember(map);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [rows]);
 
   /**
    * Onde o admin de grupo pode promover esta pessoa. As três regras do handoff,
@@ -137,6 +172,7 @@ export default function MembersPage() {
       <div className="flex flex-col gap-2">
         {visible.map((row) => {
           const status = statusOf(row);
+          const unavDates = unavByMember.get(row.id);
           return (
             <div
               key={row.id}
@@ -153,6 +189,12 @@ export default function MembersPage() {
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-bold text-ink">{row.name}</p>
                 <p className="truncate text-[12.5px] text-muted">{row.email}</p>
+                {unavDates && unavDates.length > 0 && (
+                  <p className="mt-0.5 truncate text-[11.5px] font-semibold text-danger">
+                    Indisponível: {unavDates.slice(0, 4).join(', ')}
+                    {unavDates.length > 4 ? ` +${unavDates.length - 4}` : ''}
+                  </p>
+                )}
               </div>
 
               {/* Quebra para a linha de baixo: as tags variam de largura e não
