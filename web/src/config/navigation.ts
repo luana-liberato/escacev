@@ -45,10 +45,11 @@ export const NAV_ITEMS: NavItem[] = [
     path: '/escalas',
     label: 'Escalas',
     title: 'Escalas',
-    subtitle: 'Designação de membros às funções em cada evento',
-    // ⚠️ A API ainda dá 403 ao MEMBRO aqui (GET /escalas é rbac de admin). O menu
-    // segue a decisão de produto — ele precisa ver as escalas do próprio
-    // ministério; falta a API abrir com filtro por vínculo + PUBLICADA (RN04).
+    subtitle: 'Escalas dos ministérios por evento',
+    // Aberto a todos: a gestão (criar/alocar/publicar) é admin-only na API, mas a
+    // LEITURA agora é escopada por papel — o MEMBRO vê só escalas PUBLICADA de
+    // ministérios em que participa (RN04). A tela esconde os controles de gestão
+    // e os filtros para o membro.
     roles: ALL_ROLES,
   },
   {
