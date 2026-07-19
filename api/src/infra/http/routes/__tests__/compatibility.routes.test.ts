@@ -70,6 +70,18 @@ afterAll(async () => {
   await prisma.$disconnect();
 });
 
+/**
+ * Escopo das asserções sobre a tabela: só os pares formados pelas funções DESTE
+ * teste. A `CompatibilidadeFuncao` é compartilhada — outras suítes criam pares
+ * próprios para o motor de conflito, e o banco de desenvolvimento tem os pares
+ * reais da instituição. Um `count()`/`findFirst()` sem `where` enxergaria todos
+ * eles e a asserção quebraria por dado alheio, não por regressão.
+ */
+function ownPairs() {
+  const ids = [posA, posB, foreignPos];
+  return { OR: [{ funcaoAId: { in: ids } }, { funcaoBId: { in: ids } }] };
+}
+
 describe('POST /funcoes/compatibilidade', () => {
   it('ADMIN_GERAL marca par como compatível (201)', async () => {
     const res = await request(app)
@@ -82,14 +94,14 @@ describe('POST /funcoes/compatibilidade', () => {
   });
 
   it('idempotente: remarcar (invertendo a ordem) não duplica (201, mesmo id)', async () => {
-    const first = await prisma.compatibilidadeFuncao.findFirst();
+    const first = await prisma.compatibilidadeFuncao.findFirst({ where: ownPairs() });
     const res = await request(app)
       .post('/funcoes/compatibilidade')
       .set('Authorization', `Bearer ${adminGeralToken}`)
       .send({ positionAId: posB, positionBId: posA });
     expect(res.status).toBe(201);
     expect(res.body.data.id).toBe(first?.id);
-    expect(await prisma.compatibilidadeFuncao.count()).toBe(1);
+    expect(await prisma.compatibilidadeFuncao.count({ where: ownPairs() })).toBe(1);
   });
 
   it('400 ao marcar função consigo mesma', async () => {
@@ -165,7 +177,7 @@ describe('DELETE /funcoes/compatibilidade', () => {
       .query({ positionAId: posA, positionBId: posB })
       .set('Authorization', `Bearer ${adminGeralToken}`);
     expect(first.status).toBe(200);
-    expect(await prisma.compatibilidadeFuncao.count()).toBe(0);
+    expect(await prisma.compatibilidadeFuncao.count({ where: ownPairs() })).toBe(0);
 
     // repetir com o par já ausente (funções válidas) continua 200 (idempotente)
     const again = await request(app)
