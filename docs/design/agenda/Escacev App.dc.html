@@ -1,0 +1,2111 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #FBF6EE; }
+  * { box-sizing: border-box; }
+  @media (max-width: 860px) {
+    .esc-sidebar { display: none !important; }
+    .esc-hamburger { display: flex !important; }
+  }
+</style>
+</helmet>
+
+<div style="font-family: 'Public Sans', sans-serif; color: #1A1A1A; background: #FBF6EE; min-height: 100vh;">
+
+  <sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}">
+    <div style="position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 100; display: flex; align-items: center; gap: 10px; padding: 12px 18px; border-radius: 12px; background: {{ toast.bg }}; border: 1px solid {{ toast.border }}; box-shadow: 0 12px 30px -12px rgba(26,26,26,0.3); max-width: 90vw;">
+      <span style="width: 18px; height: 18px; border-radius: 50%; background: {{ toast.iconBg }}; color: #FFFFFF; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">{{ toast.icon }}</span>
+      <p style="margin: 0; font-size: 13.5px; font-weight: 600; color: {{ toast.fg }}; white-space: nowrap;">{{ toast.message }}</p>
+      <button onclick="{{ dismissToast }}" style="border: none; background: none; padding: 0 0 0 4px; font-size: 15px; color: {{ toast.fg }}; opacity: 0.6; cursor: pointer; line-height: 1;">×</button>
+    </div>
+  </sc-if>
+
+  <div style="max-width: 1160px; margin: 0 auto; padding: 24px 24px 0;">
+    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+      <p style="font-size: 11px; color: #B7AF9F; text-transform: uppercase; letter-spacing: 0.04em; margin: 0 8px 0 0;">Protótipo · visualizar como</p>
+      <sc-for list="{{ roleSwitcher }}" as="r" hint-placeholder-count="3">
+        <button onclick="{{ r.onClick }}" style="{{ r.style }}">{{ r.label }}</button>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="max-width: 1160px; margin: 0 auto; padding: 16px 24px 60px;">
+    <div style="background: #FFFFFF; border: 1px solid #EAE2D4; border-radius: 20px; overflow: hidden; box-shadow: 0 20px 50px -30px rgba(26,26,26,0.25); min-height: 680px; display: flex; position: relative;">
+
+      <!-- sidebar (desktop) -->
+      <div class="esc-sidebar" style="width: 232px; flex-shrink: 0; background: #FFFFFF; border-right: 1px solid #EAE2D4; display: flex; flex-direction: column; padding: 24px 16px;">
+        <div style="display: flex; align-items: center; gap: 10px; padding: 0 8px 24px;">
+          <svg width="26" height="26" viewBox="0 0 52 52" style="flex-shrink: 0;"><polygon points="26,4 48,26 26,48 4,26" fill="#1C7C8C"/><polygon points="26,14 40,26 26,38 26,14" fill="#1A1A1A"/></svg>
+          <span style="font-family: 'Sora', sans-serif; font-weight: 800; font-size: 17px; color: #1A1A1A;">Escacev</span>
+        </div>
+        <sc-for list="{{ navItems }}" as="nav" hint-placeholder-count="4">
+          <button onclick="{{ nav.onClick }}" style="{{ nav.style }}" style-hover="background: #F5EFE2;">{{ nav.label }}</button>
+        </sc-for>
+        <div style="flex: 1;"></div>
+        <button onclick="{{ openProfileModal }}" style="display: flex; align-items: center; gap: 10px; padding: 12px 8px; border-top: 1px solid #EAE2D4; border-left: none; border-right: none; border-bottom: none; background: none; cursor: pointer; text-align: left;" style-hover="background: #F5EFE2;">
+          <div style="width: 32px; height: 32px; border-radius: 50%; background: #E3F0F1; color: #1C7C8C; font-weight: 700; font-size: 13px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">{{ user.initials }}</div>
+          <div style="min-width: 0; flex: 1;">
+            <p style="margin: 0; font-size: 13px; font-weight: 600; color: #1A1A1A; white-space: nowrap;">{{ user.name }}</p>
+            <p style="margin: 0; font-size: 11.5px; color: #837B6E;">{{ user.roleLabel }}</p>
+          </div>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="flex-shrink: 0; opacity: 0.5;"><path d="M17 3a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" stroke="#1A1A1A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <button style="margin-top: 4px; text-align: left; padding: 8px; border: none; background: none; font-family: 'Public Sans', sans-serif; font-size: 13px; color: #B7AF9F; cursor: pointer;">Sair</button>
+      </div>
+
+      <!-- mobile drawer -->
+      <sc-if value="{{ mobileMenuOpen }}" hint-placeholder-val="{{ false }}">
+        <div onclick="{{ closeMobileMenu }}" style="position: absolute; inset: 0; background: rgba(26,26,26,0.35); z-index: 5;"></div>
+        <div style="position: absolute; top: 0; left: 0; bottom: 0; width: 232px; background: #FFFFFF; z-index: 6; display: flex; flex-direction: column; padding: 24px 16px; box-shadow: 12px 0 30px rgba(26,26,26,0.15);">
+          <div style="display: flex; align-items: center; gap: 10px; padding: 0 8px 24px;">
+            <svg width="26" height="26" viewBox="0 0 52 52" style="flex-shrink: 0;"><polygon points="26,4 48,26 26,48 4,26" fill="#1C7C8C"/><polygon points="26,14 40,26 26,38 26,14" fill="#1A1A1A"/></svg>
+            <span style="font-family: 'Sora', sans-serif; font-weight: 800; font-size: 17px; color: #1A1A1A;">Escacev</span>
+          </div>
+          <sc-for list="{{ navItems }}" as="nav" hint-placeholder-count="4">
+            <button onclick="{{ nav.onClickMobile }}" style="{{ nav.style }}">{{ nav.label }}</button>
+          </sc-for>
+          <div style="flex: 1;"></div>
+          <button onclick="{{ openProfileModal }}" style="display: flex; align-items: center; gap: 10px; padding: 12px 8px; border-top: 1px solid #EAE2D4; border-left: none; border-right: none; border-bottom: none; background: none; cursor: pointer; text-align: left;">
+            <div style="width: 32px; height: 32px; border-radius: 50%; background: #E3F0F1; color: #1C7C8C; font-weight: 700; font-size: 13px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">{{ user.initials }}</div>
+            <div style="min-width: 0; flex: 1;">
+              <p style="margin: 0; font-size: 13px; font-weight: 600; color: #1A1A1A; white-space: nowrap;">{{ user.name }}</p>
+              <p style="margin: 0; font-size: 11.5px; color: #837B6E;">{{ user.roleLabel }}</p>
+            </div>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="flex-shrink: 0; opacity: 0.5;"><path d="M17 3a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" stroke="#1A1A1A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ profileModal.open }}" hint-placeholder-val="{{ false }}">
+        <div style="position: absolute; inset: 0; background: rgba(26,26,26,0.4); display: flex; align-items: center; justify-content: center; z-index: 20; padding: 20px;">
+          <div style="background: #FFFFFF; border-radius: 16px; padding: 28px; width: 100%; max-width: 360px;">
+            <h3 style="font-family: 'Sora', sans-serif; font-weight: 700; font-size: 18px; margin: 0 0 18px; color: #1A1A1A;">Meu perfil</h3>
+            <label style="font-size: 12.5px; font-weight: 600; color: #837B6E; display: block; margin-bottom: 6px;">Nome</label>
+            <input value="{{ profileModal.name }}" oninput="{{ profileModal.onNameChange }}" style="width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #EAE2D4; font-family: 'Public Sans', sans-serif; font-size: 14px; margin-bottom: 22px;" />
+            <div style="display: flex; justify-content: flex-end; gap: 10px;">
+              <button onclick="{{ profileModal.onCancel }}" style="padding: 10px 16px; border-radius: 10px; border: 1px solid #EAE2D4; background: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13.5px; color: #1A1A1A; cursor: pointer;">Cancelar</button>
+              <button onclick="{{ profileModal.onSave }}" style="padding: 10px 16px; border-radius: 10px; border: none; background: #1C7C8C; color: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13.5px; cursor: pointer;">Salvar</button>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- main -->
+      <div style="flex: 1; min-width: 0; padding: 24px 28px 40px; display: flex; flex-direction: column; gap: 24px;">
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <button class="esc-hamburger" onclick="{{ openMobileMenu }}" style="display: none; width: 36px; height: 36px; border-radius: 10px; border: 1px solid #EAE2D4; background: #FFFFFF; align-items: center; justify-content: center; flex-direction: column; gap: 3px; cursor: pointer; flex-shrink: 0;">
+            <span style="width: 16px; height: 2px; background: #1A1A1A; border-radius: 1px;"></span>
+            <span style="width: 16px; height: 2px; background: #1A1A1A; border-radius: 1px;"></span>
+            <span style="width: 16px; height: 2px; background: #1A1A1A; border-radius: 1px;"></span>
+          </button>
+          <div style="flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;">
+            <div>
+              <h1 style="font-family: 'Sora', sans-serif; font-weight: 800; font-size: 22px; margin: 0; color: #1A1A1A;">{{ pageTitle }}</h1>
+              <p style="margin: 4px 0 0; font-size: 13.5px; color: #837B6E;">{{ pageSubtitle }}</p>
+            </div>
+            <sc-if value="{{ isMembersManageable }}" hint-placeholder-val="{{ false }}">
+              <button onclick="{{ openInviteModal }}" style="display: flex; align-items: center; gap: 6px; padding: 10px 16px; border-radius: 10px; border: none; background: #1C7C8C; color: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13.5px; cursor: pointer; white-space: nowrap;" style-hover="background: #145F6B;">
+                <span style="font-size: 16px; line-height: 1;">+</span>Convidar membro
+              </button>
+            </sc-if>
+            <sc-if value="{{ canCreateMinistry }}" hint-placeholder-val="{{ false }}">
+              <button onclick="{{ openMinistryModal }}" style="display: flex; align-items: center; gap: 6px; padding: 10px 16px; border-radius: 10px; border: none; background: #1C7C8C; color: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13.5px; cursor: pointer; white-space: nowrap;" style-hover="background: #145F6B;">
+                <span style="font-size: 16px; line-height: 1;">+</span>Novo ministério
+              </button>
+            </sc-if>
+            <sc-if value="{{ canCreateRole }}" hint-placeholder-val="{{ false }}">
+              <button onclick="{{ openRoleModal }}" style="display: flex; align-items: center; gap: 6px; padding: 10px 16px; border-radius: 10px; border: none; background: #1C7C8C; color: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13.5px; cursor: pointer; white-space: nowrap;" style-hover="background: #145F6B;">
+                <span style="font-size: 16px; line-height: 1;">+</span>Nova função
+              </button>
+            </sc-if>
+            <sc-if value="{{ isEventos }}" hint-placeholder-val="{{ false }}">
+              <sc-if value="{{ canManageEvents }}" hint-placeholder-val="{{ true }}">
+                <button onclick="{{ openEventModal }}" style="display: flex; align-items: center; gap: 6px; padding: 10px 16px; border-radius: 10px; border: none; background: #1C7C8C; color: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13.5px; cursor: pointer; white-space: nowrap;" style-hover="background: #145F6B;">
+                  <span style="font-size: 16px; line-height: 1;">+</span>Novo evento
+                </button>
+              </sc-if>
+            </sc-if>
+            <sc-if value="{{ isScheduleList }}" hint-placeholder-val="{{ false }}">
+              <sc-if value="{{ canManageSchedules }}" hint-placeholder-val="{{ true }}">
+                <button onclick="{{ openNewScheduleModal }}" style="display: flex; align-items: center; gap: 6px; padding: 10px 16px; border-radius: 10px; border: none; background: #1C7C8C; color: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13.5px; cursor: pointer; white-space: nowrap;" style-hover="background: #145F6B;">
+                  <span style="font-size: 16px; line-height: 1;">+</span>Nova escala
+                </button>
+              </sc-if>
+            </sc-if>
+          </div>
+        </div>
+
+        <sc-if value="{{ isAgenda }}" hint-placeholder-val="{{ true }}">
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
+            <button onclick="{{ onPrevAgendaMonth }}" style="width: 30px; height: 30px; border-radius: 8px; border: 1px solid #EAE2D4; background: #FFFFFF; font-size: 15px; color: #1A1A1A; cursor: pointer;">‹</button>
+            <h3 style="font-family: 'Sora', sans-serif; font-weight: 700; font-size: 16px; margin: 0; min-width: 150px; color: #1A1A1A;">{{ agendaMonthLabel }}</h3>
+            <button onclick="{{ onNextAgendaMonth }}" style="width: 30px; height: 30px; border-radius: 8px; border: 1px solid #EAE2D4; background: #FFFFFF; font-size: 15px; color: #1A1A1A; cursor: pointer;">›</button>
+            <div style="display: flex; gap: 12px; margin-left: auto; flex-wrap: wrap;">
+              <span style="display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: #837B6E;"><span style="width: 10px; height: 10px; border-radius: 3px; background: #E7DFCB; display: inline-block;"></span>Aberto</span>
+              <span style="display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: #837B6E;"><span style="width: 10px; height: 10px; border-radius: 3px; background: #1C7C8C; display: inline-block;"></span>Você escalado</span>
+              <span style="display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: #837B6E;"><span style="width: 10px; height: 10px; border-radius: 3px; background: #F0C550; display: inline-block;"></span>Escalado com conflito</span>
+              <span style="display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: #837B6E;"><span style="width: 10px; height: 10px; border-radius: 3px; background: #FDEDEB; border: 1px solid #C0392B; display: inline-block;"></span>Indisponibilidade marcada</span>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: #EAE2D4; border: 1px solid #EAE2D4; border-radius: 12px; overflow: hidden;">
+            <sc-for list="{{ agendaWeekdayLabels }}" as="wd" hint-placeholder-count="7">
+              <div style="background: #FBF6EE; padding: 8px 6px; font-size: 11px; font-weight: 700; color: #837B6E; text-align: center; text-transform: uppercase; letter-spacing: 0.03em;">{{ wd.label }}</div>
+            </sc-for>
+            <sc-for list="{{ agendaWeeks }}" as="week" hint-placeholder-count="6">
+              <sc-for list="{{ week.days }}" as="day" hint-placeholder-count="7">
+                <div onclick="{{ day.onClick }}" style="{{ day.cellStyle }}">
+                  <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <span style="{{ day.dayNumStyle }}">{{ day.day }}</span>
+                    <sc-if value="{{ day.isUnavailableDay }}" hint-placeholder-val="{{ false }}">
+                      <span style="font-size: 9px; font-weight: 700; color: #C0392B;" title="Você marcou indisponibilidade">✕</span>
+                    </sc-if>
+                  </div>
+                  <sc-for list="{{ day.chips }}" as="chip" hint-placeholder-count="2">
+                    <div style="{{ chip.style }}">{{ chip.label }}</div>
+                  </sc-for>
+                  <sc-if value="{{ day.extraLabel }}" hint-placeholder-val="{{ false }}">
+                    <span style="font-size: 10px; color: #B7AF9F; font-weight: 600;">{{ day.extraLabel }}</span>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </sc-for>
+          </div>
+
+          <sc-if value="{{ hasAgendaSelectedDay }}" hint-placeholder-val="{{ false }}">
+            <div style="margin-top: 18px; background: #FFFFFF; border: 1px solid #EAE2D4; border-radius: 14px; padding: 18px;">
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px;">
+                <p style="margin: 0; font-family: 'Sora', sans-serif; font-weight: 700; font-size: 14px; color: #1A1A1A; text-transform: capitalize;">{{ agendaSelectedDayLabel }}</p>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                  <sc-if value="{{ hasSelectedDateUnavailability }}" hint-placeholder-val="{{ false }}">
+                    <button onclick="{{ onQuickRemoveAvailability }}" style="display: flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 8px; border: none; background: #C0392B; color: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 12.5px; cursor: pointer; white-space: nowrap;">Desfazer indisponibilidade</button>
+                  </sc-if>
+                  <sc-if value="{{ noSelectedDateUnavailability }}" hint-placeholder-val="{{ true }}">
+                    <button onclick="{{ onOpenAvailabilityModal }}" style="display: flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 8px; border: 1px solid #C0392B; background: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 12.5px; color: #C0392B; cursor: pointer; white-space: nowrap;">{{ availabilityButtonLabel }}</button>
+                  </sc-if>
+                  <sc-if value="{{ canManageAgenda }}" hint-placeholder-val="{{ false }}">
+                    <button onclick="{{ onAgendaCreateEvent }}" style="display: flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 8px; border: 1px solid #EAE2D4; background: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 12.5px; color: #1A1A1A; cursor: pointer; white-space: nowrap;">+ Evento</button>
+                    <button onclick="{{ onAgendaCreateSchedule }}" style="display: flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 8px; border: none; background: #1C7C8C; color: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 12.5px; cursor: pointer; white-space: nowrap;">+ Escala</button>
+                  </sc-if>
+                </div>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                <sc-for list="{{ agendaSelectedDayEvents }}" as="ev" hint-placeholder-count="2">
+                  <div style="padding: 10px 12px; border: 1px solid #EAE2D4; border-radius: 10px;">
+                    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                      <span style="font-size: 12px; font-weight: 700; color: #837B6E; min-width: 90px;">{{ ev.whenLabel }}</span>
+                      <p style="margin: 0; font-weight: 700; font-size: 13.5px; color: #1A1A1A; flex: 1; min-width: 140px;">{{ ev.name }}</p>
+                      <span style="font-size: 11.5px; font-weight: 600; padding: 4px 10px; border-radius: 20px; background: {{ ev.statusBg }}; color: {{ ev.statusFg }};">{{ ev.statusLabel }}</span>
+                    </div>
+                    <sc-if value="{{ ev.hasAssignments }}" hint-placeholder-val="{{ false }}">
+                      <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px;">
+                        <sc-for list="{{ ev.assignments }}" as="asg" hint-placeholder-count="1">
+                          <span style="{{ asg.style }}">{{ asg.label }}</span>
+                        </sc-for>
+                      </div>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+        </sc-if>
+        <sc-if value="{{ isEventos }}" hint-placeholder-val="{{ false }}">
+          <div style="display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap;">
+            <sc-for list="{{ eventTypeFilters }}" as="ef" hint-placeholder-count="6">
+              <button onclick="{{ ef.onClick }}" style="{{ ef.style }}">{{ ef.label }}</button>
+            </sc-for>
+          </div>
+          <sc-if value="{{ hasEvents }}" hint-placeholder-val="{{ true }}">
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <sc-for list="{{ visibleEvents }}" as="ev" hint-placeholder-count="4">
+                <div style="background: #FFFFFF; border: 1px solid #EAE2D4; border-radius: 12px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                  <p style="margin: 0; font-weight: 700; font-size: 14px; color: #1A1A1A; flex: 1; min-width: 160px;">{{ ev.name }}</p>
+                  <span style="font-size: 11.5px; font-weight: 600; padding: 4px 10px; border-radius: 20px; background: {{ ev.typeBg }}; color: {{ ev.typeFg }}; white-space: nowrap;">{{ ev.type }}</span>
+                  <span style="font-size: 12.5px; color: #837B6E; white-space: nowrap;">{{ ev.whenLabel }}</span>
+                  <sc-if value="{{ canManageEvents }}" hint-placeholder-val="{{ true }}">
+                    <div style="display: flex; align-items: center; gap: 14px; flex-shrink: 0; white-space: nowrap; margin-left: auto;">
+                      <button onclick="{{ ev.onEdit }}" style="border: none; background: none; padding: 0; font-family: 'Public Sans', sans-serif; font-size: 13px; font-weight: 600; color: #1C7C8C; cursor: pointer;">Editar</button>
+                      <sc-if value="{{ ev.notConfirmingDelete }}" hint-placeholder-val="{{ true }}">
+                        <button onclick="{{ ev.onDelete }}" style="border: none; background: none; padding: 0; font-family: 'Public Sans', sans-serif; font-size: 13px; font-weight: 600; color: #B7AF9F; cursor: pointer;">Excluir</button>
+                      </sc-if>
+                      <sc-if value="{{ ev.confirmingDelete }}" hint-placeholder-val="{{ false }}">
+                        <button onclick="{{ ev.onConfirmDelete }}" style="border: none; background: none; padding: 0; font-family: 'Public Sans', sans-serif; font-size: 13px; font-weight: 600; color: #C0392B; cursor: pointer;">Confirmar exclusão</button>
+                        <button onclick="{{ ev.onCancelDelete }}" style="border: none; background: none; padding: 0; font-family: 'Public Sans', sans-serif; font-size: 13px; font-weight: 600; color: #B7AF9F; cursor: pointer;">Cancelar</button>
+                      </sc-if>
+                    </div>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+          <sc-if value="{{ noEvents }}" hint-placeholder-val="{{ false }}">
+            <div style="background: #FBF6EE; border: 1px dashed #EAE2D4; border-radius: 14px; padding: 40px 20px; text-align: center; color: #837B6E; font-size: 13.5px;">Nenhum evento cadastrado ainda.</div>
+          </sc-if>
+        </sc-if>
+
+        <sc-if value="{{ eventModal.open }}" hint-placeholder-val="{{ false }}">
+          <div style="position: absolute; inset: 0; background: rgba(26,26,26,0.4); display: flex; align-items: center; justify-content: center; z-index: 20; padding: 20px;">
+            <div style="background: #FFFFFF; border-radius: 16px; padding: 28px; width: 100%; max-width: 400px; max-height: 85vh; overflow-y: auto;">
+              <h3 style="font-family: 'Sora', sans-serif; font-weight: 700; font-size: 18px; margin: 0 0 18px; color: #1A1A1A;">{{ eventModal.title }}</h3>
+              <sc-if value="{{ eventModal.hasError }}" hint-placeholder-val="{{ false }}">
+                <div style="background: #FDEDEB; border: 1px solid #F3C6BE; border-radius: 10px; padding: 12px 14px; margin-bottom: 16px; display: flex; gap: 10px; align-items: flex-start;">
+                  <span style="width: 18px; height: 18px; border-radius: 50%; background: #C0392B; color: #FFFFFF; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px;">!</span>
+                  <p style="margin: 0; font-size: 13px; color: #9B2C1E; line-height: 1.5;">{{ eventModal.errorMessage }}</p>
+                </div>
+              </sc-if>
+              <label style="font-size: 12.5px; font-weight: 600; color: #837B6E; display: block; margin-bottom: 6px;">Nome do evento</label>
+              <input value="{{ eventModal.name }}" oninput="{{ eventModal.onNameChange }}" style="width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #EAE2D4; font-family: 'Public Sans', sans-serif; font-size: 14px; margin-bottom: 14px;" />
+              <label style="font-size: 12.5px; font-weight: 600; color: #837B6E; display: block; margin-bottom: 6px;">Tipo</label>
+              <select value="{{ eventModal.type }}" onchange="{{ eventModal.onTypeChange }}" style="width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #EAE2D4; font-family: 'Public Sans', sans-serif; font-size: 14px; margin-bottom: 14px; background: #FFFFFF;">
+                <sc-for list="{{ eventModal.typeOptions }}" as="to" hint-placeholder-count="6">
+                  <option value="{{ to.id }}">{{ to.name }}</option>
+                </sc-for>
+              </select>
+              <div style="display: flex; gap: 10px; margin-bottom: 14px;">
+                <div style="flex: 1;">
+                  <label style="font-size: 12.5px; font-weight: 600; color: #837B6E; display: block; margin-bottom: 6px;">Início — data</label>
+                  <input type="date" value="{{ eventModal.startDate }}" oninput="{{ eventModal.onStartDateChange }}" style="width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #EAE2D4; font-family: 'Public Sans', sans-serif; font-size: 14px;" />
+                </div>
+                <div style="flex: 1;">
+                  <label style="font-size: 12.5px; font-weight: 600; color: #837B6E; display: block; margin-bottom: 6px;">Início — hora</label>
+                  <input type="time" value="{{ eventModal.startTime }}" oninput="{{ eventModal.onStartTimeChange }}" style="width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #EAE2D4; font-family: 'Public Sans', sans-serif; font-size: 14px;" />
+                </div>
+              </div>
+              <div style="display: flex; gap: 10px; margin-bottom: 22px;">
+                <div style="flex: 1;">
+                  <label style="font-size: 12.5px; font-weight: 600; color: #837B6E; display: block; margin-bottom: 6px;">Término — data</label>
+                  <input type="date" value="{{ eventModal.endDate }}" oninput="{{ eventModal.onEndDateChange }}" style="width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #EAE2D4; font-family: 'Public Sans', sans-serif; font-size: 14px;" />
+                </div>
+                <div style="flex: 1;">
+                  <label style="font-size: 12.5px; font-weight: 600; color: #837B6E; display: block; margin-bottom: 6px;">Término — hora</label>
+                  <input type="time" value="{{ eventModal.endTime }}" oninput="{{ eventModal.onEndTimeChange }}" style="width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #EAE2D4; font-family: 'Public Sans', sans-serif; font-size: 14px;" />
+                </div>
+              </div>
+              <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                <button onclick="{{ eventModal.onCancel }}" style="padding: 10px 16px; border-radius: 10px; border: 1px solid #EAE2D4; background: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13.5px; color: #1A1A1A; cursor: pointer;">Cancelar</button>
+                <button onclick="{{ eventModal.onSave }}" style="padding: 10px 16px; border-radius: 10px; border: none; background: #1C7C8C; color: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13.5px; cursor: pointer;">{{ eventModal.saveLabel }}</button>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ isMinistries }}" hint-placeholder-val="{{ false }}">
+          <sc-if value="{{ hasMinistryCards }}" hint-placeholder-val="{{ true }}">
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px;">
+              <sc-for list="{{ ministryCards }}" as="m" hint-placeholder-count="4">
+                <div style="background: #FFFFFF; border: {{ m.cardBorder }}; border-radius: 14px; padding: 18px;">
+                  <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap;">
+                    <p style="margin: 0; font-weight: 700; font-size: 15px; color: #1A1A1A; flex: 1;">{{ m.name }}</p>
+                    <sc-if value="{{ m.isCurrentUserAdmin }}" hint-placeholder-val="{{ false }}">
+                      <span style="font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 20px; background: #E3F0F1; color: #1C7C8C;">Você administra</span>
+                    </sc-if>
+                    <sc-if value="{{ m.canEditMinistry }}" hint-placeholder-val="{{ false }}">
+                      <button onclick="{{ m.onEditMinistry }}" style="border: none; background: none; padding: 0; font-family: 'Public Sans', sans-serif; font-size: 12.5px; font-weight: 600; color: #1C7C8C; cursor: pointer;">Editar</button>
+                    </sc-if>
+                  </div>
+                  <sc-if value="{{ m.hasDescription }}" hint-placeholder-val="{{ true }}">
+                    <p style="margin: 0 0 12px; font-size: 13px; color: #837B6E; line-height: 1.5;">{{ m.description }}</p>
+                  </sc-if>
+                  <p style="margin: 0; font-size: 12px; color: #B7AF9F;">Administradores: {{ m.adminNames }}</p>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+          <sc-if value="{{ noMinistryCards }}" hint-placeholder-val="{{ false }}">
+            <div style="background: #FBF6EE; border: 1px dashed #EAE2D4; border-radius: 14px; padding: 40px 20px; text-align: center; color: #837B6E; font-size: 13.5px;">{{ ministriesEmptyMessage }}</div>
+          </sc-if>
+        </sc-if>
+
+        <sc-if value="{{ ministryModal.open }}" hint-placeholder-val="{{ false }}">
+          <div style="position: absolute; inset: 0; background: rgba(26,26,26,0.4); display: flex; align-items: center; justify-content: center; z-index: 20; padding: 20px;">
+            <div style="background: #FFFFFF; border-radius: 16px; padding: 28px; width: 100%; max-width: 380px;">
+              <h3 style="font-family: 'Sora', sans-serif; font-weight: 700; font-size: 18px; margin: 0 0 18px; color: #1A1A1A;">{{ ministryModal.title }}</h3>
+              <label style="font-size: 12.5px; font-weight: 600; color: #837B6E; display: block; margin-bottom: 6px;">Nome</label>
+              <input value="{{ ministryModal.name }}" oninput="{{ ministryModal.onNameChange }}" style="width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #EAE2D4; font-family: 'Public Sans', sans-serif; font-size: 14px; margin-bottom: 14px;" />
+              <label style="font-size: 12.5px; font-weight: 600; color: #837B6E; display: block; margin-bottom: 6px;">Descrição (opcional)</label>
+              <input value="{{ ministryModal.description }}" oninput="{{ ministryModal.onDescriptionChange }}" style="width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #EAE2D4; font-family: 'Public Sans', sans-serif; font-size: 14px; margin-bottom: 22px;" />
+              <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                <button onclick="{{ ministryModal.onCancel }}" style="padding: 10px 16px; border-radius: 10px; border: 1px solid #EAE2D4; background: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13.5px; color: #1A1A1A; cursor: pointer;">Cancelar</button>
+                <button onclick="{{ ministryModal.onSave }}" style="padding: 10px 16px; border-radius: 10px; border: none; background: #1C7C8C; color: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13.5px; cursor: pointer;">{{ ministryModal.saveLabel }}</button>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ isRoles }}" hint-placeholder-val="{{ false }}">
+          <div style="display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap;">
+            <sc-for list="{{ roleFilters }}" as="rf" hint-placeholder-count="5">
+              <button onclick="{{ rf.onClick }}" style="{{ rf.style }}">{{ rf.label }}</button>
+            </sc-for>
+          </div>
+          <sc-if value="{{ hasRoleCards }}" hint-placeholder-val="{{ true }}">
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <sc-for list="{{ roleCards }}" as="rc" hint-placeholder-count="4">
+                <div style="background: #FFFFFF; border: 1px solid #EAE2D4; border-radius: 12px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                  <p style="margin: 0; font-weight: 700; font-size: 14px; color: #1A1A1A; flex: 1; min-width: 140px;">{{ rc.name }}</p>
+                  <span style="font-size: 11.5px; font-weight: 600; padding: 4px 10px; border-radius: 20px; background: #F5EFE2; color: #6B6456;">{{ rc.ministryName }}</span>
+                  <sc-if value="{{ canManageRoles }}" hint-placeholder-val="{{ true }}">
+                    <button onclick="{{ rc.onEdit }}" style="border: none; background: none; padding: 0; font-family: 'Public Sans', sans-serif; font-size: 13px; font-weight: 600; color: #1C7C8C; cursor: pointer;">Editar</button>
+                    <sc-if value="{{ rc.notConfirmingDelete }}" hint-placeholder-val="{{ true }}">
+                      <button onclick="{{ rc.onDelete }}" style="border: none; background: none; padding: 0; font-family: 'Public Sans', sans-serif; font-size: 13px; font-weight: 600; color: #B7AF9F; cursor: pointer;">Excluir</button>
+                    </sc-if>
+                    <sc-if value="{{ rc.confirmingDelete }}" hint-placeholder-val="{{ false }}">
+                      <button onclick="{{ rc.onConfirmDelete }}" style="border: none; background: none; padding: 0; font-family: 'Public Sans', sans-serif; font-size: 13px; font-weight: 600; color: #C0392B; cursor: pointer;">Confirmar exclusão</button>
+                      <button onclick="{{ rc.onCancelDelete }}" style="border: none; background: none; padding: 0; font-family: 'Public Sans', sans-serif; font-size: 13px; font-weight: 600; color: #B7AF9F; cursor: pointer;">Cancelar</button>
+                    </sc-if>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+          <sc-if value="{{ noRoleCards }}" hint-placeholder-val="{{ false }}">
+            <div style="background: #FBF6EE; border: 1px dashed #EAE2D4; border-radius: 14px; padding: 40px 20px; text-align: center; color: #837B6E; font-size: 13.5px;">Nenhuma função cadastrada ainda.</div>
+          </sc-if>
+        </sc-if>
+
+        <sc-if value="{{ roleModal.open }}" hint-placeholder-val="{{ false }}">
+          <div style="position: absolute; inset: 0; background: rgba(26,26,26,0.4); display: flex; align-items: center; justify-content: center; z-index: 20; padding: 20px;">
+            <div style="background: #FFFFFF; border-radius: 16px; padding: 28px; width: 100%; max-width: 420px; max-height: 85vh; overflow-y: auto;">
+
+              <sc-if value="{{ roleModal.isFormStep }}" hint-placeholder-val="{{ true }}">
+                <h3 style="font-family: 'Sora', sans-serif; font-weight: 700; font-size: 18px; margin: 0 0 18px; color: #1A1A1A;">{{ roleModal.title }}</h3>
+                <sc-if value="{{ roleModal.hasError }}" hint-placeholder-val="{{ false }}">
+                  <div style="background: #FDEDEB; border: 1px solid #F3C6BE; border-radius: 10px; padding: 12px 14px; margin-bottom: 16px; display: flex; gap: 10px; align-items: flex-start;">
+                    <span style="width: 18px; height: 18px; border-radius: 50%; background: #C0392B; color: #FFFFFF; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px;">!</span>
+                    <p style="margin: 0; font-size: 13px; color: #9B2C1E; line-height: 1.5;">{{ roleModal.errorMessage }}</p>
+                  </div>
+                </sc-if>
+                <label style="font-size: 12.5px; font-weight: 600; color: #837B6E; display: block; margin-bottom: 6px;">Nome da função</label>
+                <input value="{{ roleModal.name }}" oninput="{{ roleModal.onNameChange }}" style="width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #EAE2D4; font-family: 'Public Sans', sans-serif; font-size: 14px; margin-bottom: 14px;" />
+                <label style="font-size: 12.5px; font-weight: 600; color: #837B6E; display: block; margin-bottom: 6px;">Ministério</label>
+                <select value="{{ roleModal.ministryId }}" onchange="{{ roleModal.onMinistryChange }}" style="width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #EAE2D4; font-family: 'Public Sans', sans-serif; font-size: 14px; margin-bottom: 18px; background: #FFFFFF;">
+                  <sc-for list="{{ roleModal.ministryOptions }}" as="ro" hint-placeholder-count="2">
+                    <option value="{{ ro.id }}">{{ ro.name }}</option>
+                  </sc-for>
+                </select>
+
+                <div style="background: #FDEDEB; border: 1px solid #F3C6BE; border-radius: 10px; padding: 10px 12px; margin-bottom: 14px; display: flex; gap: 8px; align-items: flex-start;">
+                  <span style="width: 16px; height: 16px; border-radius: 50%; background: #C0392B; color: #FFFFFF; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px;">!</span>
+                  <p style="margin: 0; font-size: 12.5px; color: #9B2C1E; line-height: 1.4;">Por padrão, funções não marcadas abaixo <strong>não podem</strong> ser exercidas pela mesma pessoa no mesmo evento.</p>
+                </div>
+                <label style="font-size: 12.5px; font-weight: 600; color: #837B6E; display: block; margin-bottom: 8px;">Marque as funções que podem ser exercidas em um mesmo evento com "{{ roleModal.roleName }}"</label>
+                <input value="{{ roleModal.compatibleSearch }}" oninput="{{ roleModal.onCompatibleSearch }}" placeholder="Buscar função" style="width: 100%; padding: 9px 12px; border-radius: 10px; border: 1px solid #EAE2D4; font-family: 'Public Sans', sans-serif; font-size: 13.5px; margin-bottom: 10px; background: #FFFFFF;" />
+                <sc-if value="{{ roleModal.hasCompatibleOptions }}" hint-placeholder-val="{{ true }}">
+                  <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; max-height: 220px; overflow-y: auto;">
+                    <sc-for list="{{ roleModal.compatibleOptions }}" as="co" hint-placeholder-count="4">
+                      <div style="display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid #EAE2D4; border-radius: 10px;">
+                        <div style="flex: 1; min-width: 0;">
+                          <p style="margin: 0; font-size: 13px; font-weight: 600; color: #1A1A1A;">{{ co.name }}</p>
+                          <span style="font-size: 10.5px; font-weight: 600; color: #837B6E;">{{ co.ministryName }}</span>
+                        </div>
+                        <button onclick="{{ co.onToggle }}" style="{{ co.toggleStyle }}">
+                          <span style="{{ co.knobStyle }}"></span>
+                        </button>
+                      </div>
+                    </sc-for>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ roleModal.noCompatibleOptions }}" hint-placeholder-val="{{ false }}">
+                  <p style="font-size: 12.5px; color: #B7AF9F; margin: 0 0 14px;">Nenhuma outra função disponível para combinar.</p>
+                </sc-if>
+
+                <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px;">
+                  <button onclick="{{ roleModal.onCancel }}" style="padding: 10px 16px; border-radius: 10px; border: 1px solid #EAE2D4; background: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13.5px; color: #1A1A1A; cursor: pointer;">Cancelar</button>
+                  <button onclick="{{ roleModal.onContinue }}" style="padding: 10px 16px; border-radius: 10px; border: none; background: #1C7C8C; color: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13.5px; cursor: pointer;">Continuar</button>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ roleModal.isConfirmStep }}" hint-placeholder-val="{{ false }}">
+                <h3 style="font-family: 'Sora', sans-serif; font-weight: 700; font-size: 18px; margin: 0 0 12px; color: #1A1A1A;">Confirmar {{ roleModal.title }}</h3>
+                <p style="font-size: 13px; color: #837B6E; margin: 0 0 6px; line-height: 1.5;">Função: <strong style="color: #1A1A1A;">{{ roleModal.roleName }}</strong></p>
+                <sc-if value="{{ roleModal.hasCompatibleSelection }}" hint-placeholder-val="{{ false }}">
+                  <p style="font-size: 13px; color: #837B6E; margin: 0 0 20px; line-height: 1.5;">Poderá ser exercida junto com: <strong style="color: #1A1A1A;">{{ roleModal.confirmSummary }}</strong>. Todas as demais funções continuam em conflito com ela.</p>
+                </sc-if>
+                <sc-if value="{{ roleModal.noCompatibleSelection }}" hint-placeholder-val="{{ true }}">
+                  <p style="font-size: 13px; color: #837B6E; margin: 0 0 20px; line-height: 1.5;">Nenhuma outra função foi marcada como acumulável — ela entrará em conflito com todas as demais.</p>
+                </sc-if>
+                <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                  <button onclick="{{ roleModal.onBack }}" style="padding: 10px 16px; border-radius: 10px; border: 1px solid #EAE2D4; background: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13.5px; color: #1A1A1A; cursor: pointer;">Voltar</button>
+                  <button onclick="{{ roleModal.onSave }}" style="padding: 10px 16px; border-radius: 10px; border: none; background: #1C7C8C; color: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13.5px; cursor: pointer;">Confirmar</button>
+                </div>
+              </sc-if>
+
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ isMembers }}" hint-placeholder-val="{{ false }}">
+          <div>
+            <div style="display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap;">
+              <sc-for list="{{ ministryFilters }}" as="f" hint-placeholder-count="5">
+                <button onclick="{{ f.onClick }}" style="{{ f.style }}">{{ f.label }}</button>
+              </sc-for>
+            </div>
+            <input value="{{ memberSearch }}" oninput="{{ onMemberSearch }}" placeholder="Buscar por nome ou e-mail" style="width: 100%; max-width: 320px; padding: 10px 14px; border-radius: 10px; border: 1px solid #EAE2D4; font-family: 'Public Sans', sans-serif; font-size: 13.5px; margin-bottom: 16px; background: #FFFFFF;" />
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <sc-for list="{{ visibleMembers }}" as="mem" hint-placeholder-count="4">
+                <div style="background: #FFFFFF; border: 1px solid #EAE2D4; border-radius: 12px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                  <div style="width: 34px; height: 34px; border-radius: 50%; background: #F5EFE2; color: #1A1A1A; font-weight: 700; font-size: 13px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">{{ mem.initials }}</div>
+                  <div style="flex: 1; min-width: 160px;">
+                    <div style="display: flex; align-items: flex-start; gap: 8px; flex-wrap: wrap; row-gap: 4px;">
+                      <p style="margin: 0; font-weight: 700; font-size: 14px; color: #1A1A1A; white-space: nowrap;">{{ mem.name }}</p>
+                      <sc-if value="{{ mem.isGeneralAdmin }}" hint-placeholder-val="{{ false }}">
+                        <span style="font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 20px; background: #FBE6DE; color: #C4431E; white-space: nowrap; flex-shrink: 0;">Administrador geral</span>
+                      </sc-if>
+                    </div>
+                    <p style="margin: 4px 0 0; font-size: 12.5px; color: #837B6E; white-space: nowrap;">{{ mem.email }}</p>
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap; flex-basis: 100%; order: 3;">
+                    <sc-for list="{{ mem.ministryChips }}" as="mc" hint-placeholder-count="2">
+                      <span style="{{ mc.style }}">{{ mc.label }}</span>
+                    </sc-for>
+                    <span style="font-size: 11.5px; font-weight: 600; padding: 4px 10px; border-radius: 20px; background: {{ mem.statusTagBg }}; color: {{ mem.statusTagFg }};">{{ mem.status }}</span>
+                  </div>
+                  <sc-if value="{{ canManageMembers }}" hint-placeholder-val="{{ true }}">
+                    <div style="display: flex; align-items: center; gap: 14px; flex-shrink: 0; white-space: nowrap; margin-left: auto;">
+                      <button onclick="{{ mem.onEdit }}" style="border: none; background: none; padding: 0; font-family: 'Public Sans', sans-serif; font-size: 13px; font-weight: 600; color: #1C7C8C; cursor: pointer;">Editar</button>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ mem.canPromote }}" hint-placeholder-val="{{ false }}">
+                    <div style="display: flex; align-items: center; gap: 14px; flex-shrink: 0; white-space: nowrap; margin-left: auto;">
+                      <button onclick="{{ mem.onPromote }}" style="padding: 6px 12px; border-radius: 8px; border: 1px solid #1C7C8C; background: #FFFFFF; font-family: 'Public Sans', sans-serif; font-size: 12.5px; font-weight: 600; color: #1C7C8C; cursor: pointer;">Promover</button>
+                    </div>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ memberModal.open }}" hint-placeholder-val="{{ false }}">
+          <div style="position: absolute; inset: 0; background: rgba(26,26,26,0.4); display: flex; align-items: center; justify-content: center; z-index: 20; padding: 20px;">
+            <div style="background: #FFFFFF; border-radius: 16px; padding: 28px; width: 100%; max-width: 400px; max-height: 85vh; overflow-y: auto;">
+              <h3 style="font-family: 'Sora', sans-serif; font-weight: 700; font-size: 18px; margin: 0 0 18px; color: #1A1A1A;">{{ memberModal.title }}</h3>
+              <label style="font-size: 12.5px; font-weight: 600; color: #837B6E; display: block; margin-bottom: 6px;">Nome</label>
+              <input value="{{ memberModal.name }}" oninput="{{ memberModal.onNameChange }}" style="width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #EAE2D4; font-family: 'Public Sans', sans-serif; font-size: 14px; margin-bottom: 14px;" />
+              <label style="font-size: 12.5px; font-weight: 600; color: #837B6E; display: block; margin-bottom: 6px;">E-mail</label>
+              <sc-if value="{{ memberModal.emailLocked }}" hint-placeholder-val="{{ false }}">
+                <div style="width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #EAE2D4; background: #F5EFE2; font-family: 'Public Sans', sans-serif; font-size: 14px; color: #837B6E; margin-bottom: 6px; box-sizing: border-box;">{{ memberModal.email }}</div>
+                <p style="font-size: 11.5px; color: #B7AF9F; margin: 0 0 14px;">E-mail não pode ser alterado após a ativação do membro.</p>
+              </sc-if>
+              <sc-if value="{{ memberModal.emailLockedInverse }}" hint-placeholder-val="{{ true }}">
+                <input value="{{ memberModal.email }}" oninput="{{ memberModal.onEmailChange }}" style="width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #EAE2D4; font-family: 'Public Sans', sans-serif; font-size: 14px; margin-bottom: 14px;" />
+              </sc-if>
+
+              <sc-if value="{{ memberModal.isGroupInvite }}" hint-placeholder-val="{{ false }}">
+                <label style="font-size: 12.5px; font-weight: 600; color: #837B6E; display: block; margin-bottom: 6px;">Ministério</label>
+                <select value="{{ memberModal.inviteMinistryId }}" onchange="{{ memberModal.onInviteMinistryChange }}" style="width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #EAE2D4; font-family: 'Public Sans', sans-serif; font-size: 14px; margin-bottom: 14px; background: #FFFFFF;">
+                  <sc-for list="{{ memberModal.groupInviteMinistryOptions }}" as="gm" hint-placeholder-count="2">
+                    <option value="{{ gm.id }}">{{ gm.name }}</option>
+                  </sc-for>
+                </select>
+              </sc-if>
+
+              <sc-if value="{{ memberModal.editingId }}" hint-placeholder-val="{{ false }}">
+                <sc-if value="{{ memberModal.showGeneralAdminControl }}" hint-placeholder-val="{{ true }}">
+                  <label style="font-size: 12.5px; font-weight: 600; color: #837B6E; display: block; margin-bottom: 8px;">Acesso geral</label>
+                  <button onclick="{{ memberModal.onToggleGeneralAdmin }}" style="{{ memberModal.generalAdminButtonStyle }}">{{ memberModal.generalAdminButtonLabel }}</button>
+                </sc-if>
+
+                <label style="font-size: 12.5px; font-weight: 600; color: #837B6E; display: block; margin: 18px 0 8px;">Ministérios</label>
+                <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px;">
+                  <sc-for list="{{ memberModal.ministryRows }}" as="mr" hint-placeholder-count="4">
+                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 10px; border: 1px solid #EAE2D4; border-radius: 10px;">
+                      <span style="font-size: 13px; font-weight: 600; color: #1A1A1A; flex: 1; min-width: 90px;">{{ mr.name }}</span>
+                      <button onclick="{{ mr.onToggleMember }}" style="{{ mr.memberButtonStyle }}">{{ mr.memberButtonLabel }}</button>
+                      <button onclick="{{ mr.onToggleAdmin }}" style="{{ mr.adminButtonStyle }}">{{ mr.adminButtonLabel }}</button>
+                    </div>
+                  </sc-for>
+                </div>
+
+                <sc-if value="{{ memberModal.canDemote }}" hint-placeholder-val="{{ false }}">
+                  <button onclick="{{ memberModal.onDemote }}" style="width: 100%; margin-top: 4px; padding: 10px 12px; border-radius: 10px; border: 1px solid #EAE2D4; background: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13px; color: #837B6E; cursor: pointer;">Rebaixar para Membro</button>
+                </sc-if>
+              </sc-if>
+
+              <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px;">
+                <button onclick="{{ memberModal.onCancel }}" style="padding: 10px 16px; border-radius: 10px; border: 1px solid #EAE2D4; background: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13.5px; color: #1A1A1A; cursor: pointer;">Cancelar</button>
+                <button onclick="{{ memberModal.onSave }}" style="padding: 10px 16px; border-radius: 10px; border: none; background: #1C7C8C; color: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13.5px; cursor: pointer;">{{ memberModal.saveLabel }}</button>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ promoteModal.open }}" hint-placeholder-val="{{ false }}">
+          <div style="position: absolute; inset: 0; background: rgba(26,26,26,0.4); display: flex; align-items: center; justify-content: center; z-index: 20; padding: 20px;">
+            <div style="background: #FFFFFF; border-radius: 16px; padding: 28px; width: 100%; max-width: 360px;">
+              <sc-if value="{{ promoteModal.isSelectStep }}" hint-placeholder-val="{{ true }}">
+                <h3 style="font-family: 'Sora', sans-serif; font-weight: 700; font-size: 18px; margin: 0 0 6px; color: #1A1A1A;">Promover {{ promoteModal.memberName }}</h3>
+                <p style="font-size: 13px; color: #837B6E; margin: 0 0 16px; line-height: 1.5;">Escolha o ministério em que este membro se tornará administrador.</p>
+                <select value="{{ promoteModal.ministryId }}" onchange="{{ promoteModal.onMinistryChange }}" style="width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #EAE2D4; font-family: 'Public Sans', sans-serif; font-size: 14px; margin-bottom: 22px; background: #FFFFFF;">
+                  <sc-for list="{{ promoteModal.ministryOptions }}" as="po" hint-placeholder-count="2">
+                    <option value="{{ po.id }}">{{ po.name }}</option>
+                  </sc-for>
+                </select>
+                <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                  <button onclick="{{ promoteModal.onCancel }}" style="padding: 10px 16px; border-radius: 10px; border: 1px solid #EAE2D4; background: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13.5px; color: #1A1A1A; cursor: pointer;">Cancelar</button>
+                  <button onclick="{{ promoteModal.onContinue }}" style="padding: 10px 16px; border-radius: 10px; border: none; background: #1C7C8C; color: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13.5px; cursor: pointer;">Continuar</button>
+                </div>
+              </sc-if>
+              <sc-if value="{{ promoteModal.isConfirmStep }}" hint-placeholder-val="{{ false }}">
+                <h3 style="font-family: 'Sora', sans-serif; font-weight: 700; font-size: 18px; margin: 0 0 12px; color: #1A1A1A;">Confirmar promoção</h3>
+                <div style="background: #FDEDEB; border: 1px solid #F3C6BE; border-radius: 10px; padding: 12px 14px; margin-bottom: 20px; display: flex; gap: 10px; align-items: flex-start;">
+                  <span style="width: 18px; height: 18px; border-radius: 50%; background: #C0392B; color: #FFFFFF; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px;">!</span>
+                  <p style="margin: 0; font-size: 13px; color: #9B2C1E; line-height: 1.5;">Tem certeza que deseja promover <strong>{{ promoteModal.memberName }}</strong> a administrador de <strong>{{ promoteModal.ministryName }}</strong>? Essa ação não pode ser desfeita.</p>
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                  <button onclick="{{ promoteModal.onCancel }}" style="padding: 10px 16px; border-radius: 10px; border: 1px solid #EAE2D4; background: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13.5px; color: #1A1A1A; cursor: pointer;">Cancelar</button>
+                  <button onclick="{{ promoteModal.onConfirm }}" style="padding: 10px 16px; border-radius: 10px; border: none; background: #C0392B; color: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13.5px; cursor: pointer;">Confirmar promoção</button>
+                </div>
+              </sc-if>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isScheduleList }}" hint-placeholder-val="{{ false }}">
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap;">
+            <select value="{{ scheduleViewMode }}" onchange="{{ onScheduleViewModeChange }}" style="padding: 8px 12px; border-radius: 10px; border: 1px solid #EAE2D4; background: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13px; color: #1A1A1A;">
+              <option value="dia">Dia</option>
+              <option value="semana">Semana</option>
+              <option value="mes">Mês</option>
+            </select>
+            <button onclick="{{ onPrevSchedulePeriod }}" style="width: 30px; height: 30px; border-radius: 8px; border: 1px solid #EAE2D4; background: #FFFFFF; font-size: 15px; color: #1A1A1A; cursor: pointer;">‹</button>
+            <h3 style="font-family: 'Sora', sans-serif; font-weight: 700; font-size: 15px; margin: 0; color: #1A1A1A;">{{ schedulePeriodLabel }}</h3>
+            <button onclick="{{ onNextSchedulePeriod }}" style="width: 30px; height: 30px; border-radius: 8px; border: 1px solid #EAE2D4; background: #FFFFFF; font-size: 15px; color: #1A1A1A; cursor: pointer;">›</button>
+            <sc-if value="{{ showOnlyMineToggle }}" hint-placeholder-val="{{ false }}">
+              <button onclick="{{ onToggleScheduleOnlyMine }}" style="{{ scheduleOnlyMineStyle }}">Minhas escalas</button>
+            </sc-if>
+          </div>
+          <sc-if value="{{ showScheduleFilters }}" hint-placeholder-val="{{ true }}">
+            <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px;">
+              <sc-for list="{{ scheduleMinistryFilters }}" as="mf" hint-placeholder-count="3">
+                <button onclick="{{ mf.onClick }}" style="{{ mf.style }}">{{ mf.label }}</button>
+              </sc-for>
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px;">
+              <sc-for list="{{ scheduleStatusFilters }}" as="sf" hint-placeholder-count="3">
+                <button onclick="{{ sf.onClick }}" style="{{ sf.style }}">{{ sf.label }}</button>
+              </sc-for>
+            </div>
+          </sc-if>
+          <sc-if value="{{ hasSchedules }}" hint-placeholder-val="{{ true }}">
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <sc-for list="{{ visibleSchedules }}" as="sc" hint-placeholder-count="3">
+                <div onclick="{{ sc.onOpen }}" style="background: {{ sc.cardBg }}; border: {{ sc.cardBorder }}; border-radius: 12px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; cursor: pointer; opacity: {{ sc.cardOpacity }}; position: relative;">
+                  <sc-if value="{{ sc.isMemberIn }}" hint-placeholder-val="{{ false }}">
+                    <div style="position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: {{ sc.checkBg }}; border-radius: 12px 0 0 12px;"></div>
+                    <div style="width: 28px; height: 28px; border-radius: 50%; background: {{ sc.checkBg }}; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; flex-shrink: 0;" title="Você está escalado">✓</div>
+                  </sc-if>
+                  <div style="flex: 1; min-width: 160px;">
+                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                      <p style="margin: 0; font-weight: 700; font-size: 14px; color: #1A1A1A;">{{ sc.displayName }}</p>
+                      <sc-if value="{{ sc.memberHasConflict }}" hint-placeholder-val="{{ false }}">
+                        <span style="font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 20px; background: #FBF0D9; color: #8A6D1F; white-space: nowrap;">Conflito com escala</span>
+                      </sc-if>
+                      <sc-if value="{{ sc.hasUnavailableMember }}" hint-placeholder-val="{{ false }}">
+                        <span style="font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 20px; background: #C0392B; color: #FFFFFF; white-space: nowrap;">Membro indisponível</span>
+                      </sc-if>
+                    </div>
+                    <p style="margin: 2px 0 0; font-size: 12px; color: #B7AF9F;">{{ sc.eventName }} · {{ sc.whenLabel }}</p>
+                  </div>
+                  <span style="font-size: 11.5px; font-weight: 600; padding: 4px 10px; border-radius: 20px; background: #F5EFE2; color: #6B6456;">{{ sc.ministryName }}</span>
+                  <span style="font-size: 11.5px; font-weight: 600; padding: 4px 10px; border-radius: 20px; background: {{ sc.statusBg }}; color: {{ sc.statusFg }};">{{ sc.statusLabel }}</span>
+                  <sc-if value="{{ sc.isMemberIn }}" hint-placeholder-val="{{ false }}">
+                    <span style="font-size: 11.5px; font-weight: 700; padding: 4px 10px; border-radius: 20px; background: #1C7C8C; color: #FFFFFF; display: flex; align-items: center; gap: 4px;">✓ Você está escalado</span>
+                  </sc-if>
+                  <span style="font-size: 12px; color: #B7AF9F; white-space: nowrap;">{{ sc.allocationCount }} escalado(s)</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+          <sc-if value="{{ noSchedules }}" hint-placeholder-val="{{ false }}">
+            <div style="background: #FBF6EE; border: 1px dashed #EAE2D4; border-radius: 14px; padding: 40px 20px; text-align: center; color: #837B6E; font-size: 13.5px;">Nenhuma escala criada ainda.</div>
+          </sc-if>
+        </sc-if>
+
+        <sc-if value="{{ isScheduleDetail }}" hint-placeholder-val="{{ false }}">
+          <div>
+            <button onclick="{{ scheduleDetail.onBack }}" style="border: none; background: none; padding: 0 0 14px; font-family: 'Public Sans', sans-serif; font-size: 13px; font-weight: 600; color: #1C7C8C; cursor: pointer;">← Voltar para escalas</button>
+            <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 20px;">
+              <div>
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; row-gap: 6px; margin-bottom: 8px;">
+                  <p style="margin: 0; font-family: 'Sora', sans-serif; font-weight: 700; font-size: 17px; color: #1A1A1A; white-space: nowrap;">{{ scheduleDetail.eventName }}</p>
+                  <span style="font-size: 11.5px; font-weight: 600; padding: 4px 10px; border-radius: 20px; background: {{ scheduleDetail.statusBg }}; color: {{ scheduleDetail.statusFg }}; white-space: nowrap; flex-shrink: 0;">{{ scheduleDetail.statusLabel }}</span>
+                </div>
+                <p style="margin: 0; font-size: 13px; color: #837B6E;">{{ scheduleDetail.whenLabel }} · {{ scheduleDetail.ministryName }}</p>
+                <sc-if value="{{ scheduleDetail.hasLabel }}" hint-placeholder-val="{{ false }}">
+                  <p style="margin: 2px 0 0; font-size: 12.5px; color: #B7AF9F;">{{ scheduleDetail.label }}</p>
+                </sc-if>
+              </div>
+              <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <sc-if value="{{ scheduleDetail.hasConflicts }}" hint-placeholder-val="{{ false }}">
+                  <button onclick="{{ scheduleDetail.onOpenReview }}" style="padding: 8px 14px; border-radius: 10px; border: 1px solid #C0392B; background: #FDEDEB; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 12.5px; color: #C0392B; cursor: pointer;">Revisar conflitos</button>
+                </sc-if>
+                <sc-if value="{{ scheduleDetail.canManageThis }}" hint-placeholder-val="{{ true }}">
+                  <sc-if value="{{ scheduleDetail.isDraft }}" hint-placeholder-val="{{ true }}">
+                    <button onclick="{{ scheduleDetail.onOpenPublish }}" style="padding: 8px 14px; border-radius: 10px; border: none; background: #1C7C8C; color: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 12.5px; cursor: pointer;">Publicar</button>
+                  </sc-if>
+                </sc-if>
+              </div>
+            </div>
+
+            <sc-if value="{{ scheduleDetail.hasAllocations }}" hint-placeholder-val="{{ true }}">
+              <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px;">
+                <sc-for list="{{ scheduleDetail.allocationRows }}" as="al" hint-placeholder-count="2">
+                  <div style="background: {{ al.rowBg }}; border: {{ al.rowBorder }}; border-radius: 12px; padding: 12px 14px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; position: relative;">
+                    <sc-if value="{{ al.conflict }}" hint-placeholder-val="{{ false }}">
+                      <div style="position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: #C0392B; border-radius: 12px 0 0 12px;"></div>
+                      <div style="width: 24px; height: 24px; border-radius: 50%; background: #C0392B; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0;" title="Conflito">!</div>
+                    </sc-if>
+                    <sc-if value="{{ al.isUnavailable }}" hint-placeholder-val="{{ false }}">
+                      <div style="position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: #C0392B; border-radius: 12px 0 0 12px;"></div>
+                    </sc-if>
+                    <p style="margin: 0; font-weight: 700; font-size: 13.5px; color: {{ al.memberNameColor }}; flex: 1; min-width: 120px;">{{ al.memberName }}</p>
+                    <span style="font-size: 11px; font-weight: 600; padding: 4px 9px; border-radius: 20px; background: #F5EFE2; color: #6B6456;">{{ al.roleName }}</span>
+                    <sc-if value="{{ al.conflict }}" hint-placeholder-val="{{ false }}">
+                      <span style="font-size: 11px; font-weight: 700; padding: 4px 9px; border-radius: 20px; background: #FDEDEB; color: #C0392B;">Conflito</span>
+                    </sc-if>
+                    <sc-if value="{{ al.isUnavailable }}" hint-placeholder-val="{{ false }}">
+                      <span style="font-size: 11px; font-weight: 700; padding: 4px 9px; border-radius: 20px; background: #C0392B; color: #FFFFFF;">Indisponível</span>
+                    </sc-if>
+                    <sc-if value="{{ scheduleDetail.canManageThis }}" hint-placeholder-val="{{ true }}">
+                      <div style="display: flex; align-items: center; gap: 12px; margin-left: auto; white-space: nowrap;">
+                        <sc-if value="{{ al.notConfirmingDelete }}" hint-placeholder-val="{{ true }}">
+                          <button onclick="{{ al.onRemove }}" style="border: none; background: none; padding: 0; font-family: 'Public Sans', sans-serif; font-size: 12.5px; font-weight: 600; color: #B7AF9F; cursor: pointer;">Remover</button>
+                        </sc-if>
+                        <sc-if value="{{ al.confirmingDelete }}" hint-placeholder-val="{{ false }}">
+                          <button onclick="{{ al.onConfirmRemove }}" style="border: none; background: none; padding: 0; font-family: 'Public Sans', sans-serif; font-size: 12.5px; font-weight: 600; color: #C0392B; cursor: pointer;">Confirmar</button>
+                          <button onclick="{{ al.onCancelRemove }}" style="border: none; background: none; padding: 0; font-family: 'Public Sans', sans-serif; font-size: 12.5px; font-weight: 600; color: #B7AF9F; cursor: pointer;">Cancelar</button>
+                        </sc-if>
+                      </div>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+            <sc-if value="{{ scheduleDetail.noAllocations }}" hint-placeholder-val="{{ false }}">
+              <div style="background: #FBF6EE; border: 1px dashed #EAE2D4; border-radius: 14px; padding: 30px 20px; text-align: center; color: #837B6E; font-size: 13.5px; margin-bottom: 20px;">Nenhuma pessoa escalada ainda.</div>
+            </sc-if>
+
+            <sc-if value="{{ scheduleDetail.hasPendingConflict }}" hint-placeholder-val="{{ false }}">
+              <div style="background: #FDEDEB; border: 1px solid #F3C6BE; border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+                <p style="margin: 0 0 8px; font-weight: 700; font-size: 13.5px; color: #C0392B;">{{ scheduleDetail.pendingConflict.memberName }} já tem compromisso nesse horário</p>
+                <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px;">
+                  <sc-for list="{{ scheduleDetail.pendingConflict.conflicts }}" as="cf" hint-placeholder-count="1">
+                    <p style="margin: 0; font-size: 12.5px; color: #9B2C1E; line-height: 1.5;">{{ cf.eventName }} · {{ cf.ministryName }} · {{ cf.roleName }} — {{ cf.whenLabel }}</p>
+                  </sc-for>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                  <button onclick="{{ scheduleDetail.pendingConflict.onCancel }}" style="padding: 8px 14px; border-radius: 10px; border: 1px solid #F3C6BE; background: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 12.5px; color: #C0392B; cursor: pointer;">Cancelar</button>
+                  <button onclick="{{ scheduleDetail.pendingConflict.onConfirm }}" style="padding: 8px 14px; border-radius: 10px; border: none; background: #C0392B; color: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 12.5px; cursor: pointer;">Escalar mesmo assim</button>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ scheduleDetail.canManageThis }}" hint-placeholder-val="{{ true }}">
+              <div style="background: #FFFFFF; border: 1px solid #EAE2D4; border-radius: 12px; padding: 16px;">
+                <p style="margin: 0 0 12px; font-weight: 700; font-size: 13.5px; color: #1A1A1A;">Adicionar à escala</p>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end;">
+                  <div style="flex: 1; min-width: 140px;">
+                    <label style="font-size: 12px; font-weight: 600; color: #837B6E; display: block; margin-bottom: 6px;">Pessoa</label>
+                    <select value="{{ scheduleDetail.addAllocation.memberId }}" onchange="{{ scheduleDetail.addAllocation.onMemberChange }}" style="width: 100%; padding: 9px 10px; border-radius: 10px; border: 1px solid #EAE2D4; font-family: 'Public Sans', sans-serif; font-size: 13.5px; background: #FFFFFF;">
+                      <option value="">Selecione</option>
+                      <sc-for list="{{ scheduleDetail.addAllocation.memberOptions }}" as="mo" hint-placeholder-count="3">
+                        <option value="{{ mo.id }}">{{ mo.name }}</option>
+                      </sc-for>
+                    </select>
+                  </div>
+                  <div style="flex: 1; min-width: 140px;">
+                    <label style="font-size: 12px; font-weight: 600; color: #837B6E; display: block; margin-bottom: 6px;">Função</label>
+                    <select value="{{ scheduleDetail.addAllocation.roleId }}" onchange="{{ scheduleDetail.addAllocation.onRoleChange }}" style="width: 100%; padding: 9px 10px; border-radius: 10px; border: 1px solid #EAE2D4; font-family: 'Public Sans', sans-serif; font-size: 13.5px; background: #FFFFFF;">
+                      <option value="">Selecione</option>
+                      <sc-for list="{{ scheduleDetail.addAllocation.roleOptions }}" as="ro2" hint-placeholder-count="2">
+                        <option value="{{ ro2.id }}">{{ ro2.name }}</option>
+                      </sc-for>
+                    </select>
+                  </div>
+                  <button onclick="{{ scheduleDetail.addAllocation.onAdd }}" style="padding: 9px 16px; border-radius: 10px; border: none; background: #1C7C8C; color: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13.5px; cursor: pointer; white-space: nowrap;">Adicionar</button>
+                </div>
+              </div>
+            </sc-if>
+          </div>
+
+          <sc-if value="{{ scheduleDetail.reviewConflictsOpen }}" hint-placeholder-val="{{ false }}">
+            <div style="position: absolute; inset: 0; background: rgba(26,26,26,0.4); display: flex; align-items: center; justify-content: center; z-index: 20; padding: 20px;">
+              <div style="background: #FFFFFF; border-radius: 16px; padding: 28px; width: 100%; max-width: 440px; max-height: 80vh; overflow-y: auto;">
+                <h3 style="font-family: 'Sora', sans-serif; font-weight: 700; font-size: 18px; margin: 0 0 16px; color: #1A1A1A;">Conflitos desta escala</h3>
+                <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;">
+                  <sc-for list="{{ scheduleDetail.conflictRows }}" as="cr" hint-placeholder-count="2">
+                    <div style="background: #FDEDEB; border: 1px solid #F3C6BE; border-radius: 10px; padding: 12px 14px;">
+                      <p style="margin: 0 0 6px; font-weight: 700; font-size: 13px; color: #C0392B;">{{ cr.memberName }} — {{ cr.roleName }}</p>
+                      <sc-for list="{{ cr.otherInfo }}" as="oi" hint-placeholder-count="1">
+                        <p style="margin: 0; font-size: 12px; color: #9B2C1E; line-height: 1.5;">também em {{ oi.ministryName }} · {{ oi.roleName }} — {{ oi.whenLabel }} <sc-if value="{{ oi.hasPriority }}" hint-placeholder-val="{{ false }}"><strong>(tem prioridade — publicada antes)</strong></sc-if></p>
+                      </sc-for>
+                    </div>
+                  </sc-for>
+                </div>
+                <div style="display: flex; justify-content: flex-end;">
+                  <button onclick="{{ scheduleDetail.onCloseReview }}" style="padding: 10px 16px; border-radius: 10px; border: 1px solid #EAE2D4; background: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13.5px; color: #1A1A1A; cursor: pointer;">Fechar</button>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ scheduleDetail.publishModalOpen }}" hint-placeholder-val="{{ false }}">
+            <div style="position: absolute; inset: 0; background: rgba(26,26,26,0.4); display: flex; align-items: center; justify-content: center; z-index: 20; padding: 20px;">
+              <div style="background: #FFFFFF; border-radius: 16px; padding: 28px; width: 100%; max-width: 380px;">
+                <h3 style="font-family: 'Sora', sans-serif; font-weight: 700; font-size: 18px; margin: 0 0 12px; color: #1A1A1A;">Publicar escala</h3>
+                <p style="font-size: 13px; color: #837B6E; margin: 0 0 20px; line-height: 1.5;">A escala ficará visível aos membros e os escalados serão notificados. A publicação é <strong>definitiva</strong> — não é possível despublicar.</p>
+                <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                  <button onclick="{{ scheduleDetail.onClosePublish }}" style="padding: 10px 16px; border-radius: 10px; border: 1px solid #EAE2D4; background: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13.5px; color: #1A1A1A; cursor: pointer;">Cancelar</button>
+                  <button onclick="{{ scheduleDetail.onConfirmPublish }}" style="padding: 10px 16px; border-radius: 10px; border: none; background: #1C7C8C; color: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13.5px; cursor: pointer;">Publicar escala</button>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+        </sc-if>
+
+        <sc-if value="{{ availabilityModal.open }}" hint-placeholder-val="{{ false }}">
+          <div style="position: absolute; inset: 0; background: rgba(26,26,26,0.4); display: flex; align-items: center; justify-content: center; z-index: 20; padding: 20px;">
+            <div style="background: #FFFFFF; border-radius: 16px; padding: 28px; width: 100%; max-width: 380px;">
+              <h3 style="font-family: 'Sora', sans-serif; font-weight: 700; font-size: 18px; margin: 0 0 6px; color: #1A1A1A; text-transform: capitalize;">Indisponibilidade — {{ availabilityModal.dateLabel }}</h3>
+              <p style="font-size: 13px; color: #837B6E; margin: 0 0 18px; line-height: 1.5;">Por padrão vale o dia todo; ajuste o período se for indisponível só em parte do dia.</p>
+              <button onclick="{{ availabilityModal.onToggleAllDay }}" style="width: 100%; text-align: left; padding: 10px 12px; border-radius: 10px; border: 1px solid #EAE2D4; background: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13.5px; color: #1A1A1A; cursor: pointer; margin-bottom: 14px;">{{ availabilityModal.allDay }} Dia todo</button>
+              <sc-if value="{{ availabilityModal.isPartial }}" hint-placeholder-val="{{ false }}">
+                <div style="display: flex; gap: 10px; margin-bottom: 18px;">
+                  <div style="flex: 1;">
+                    <label style="font-size: 12.5px; font-weight: 600; color: #837B6E; display: block; margin-bottom: 6px;">Indisponível de</label>
+                    <input type="time" value="{{ availabilityModal.startTime }}" oninput="{{ availabilityModal.onStartTimeChange }}" style="width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #EAE2D4; font-family: 'Public Sans', sans-serif; font-size: 14px;" />
+                  </div>
+                  <div style="flex: 1;">
+                    <label style="font-size: 12.5px; font-weight: 600; color: #837B6E; display: block; margin-bottom: 6px;">até</label>
+                    <input type="time" value="{{ availabilityModal.endTime }}" oninput="{{ availabilityModal.onEndTimeChange }}" style="width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #EAE2D4; font-family: 'Public Sans', sans-serif; font-size: 14px;" />
+                  </div>
+                </div>
+              </sc-if>
+              <div style="display: flex; justify-content: space-between; gap: 10px;">
+                <sc-if value="{{ availabilityModal.hasExisting }}" hint-placeholder-val="{{ false }}">
+                  <button onclick="{{ availabilityModal.onRemove }}" style="padding: 10px 16px; border-radius: 10px; border: 1px solid #EAE2D4; background: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13.5px; color: #837B6E; cursor: pointer;">Remover</button>
+                </sc-if>
+                <div style="display: flex; gap: 10px; margin-left: auto;">
+                  <button onclick="{{ availabilityModal.onCancel }}" style="padding: 10px 16px; border-radius: 10px; border: 1px solid #EAE2D4; background: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13.5px; color: #1A1A1A; cursor: pointer;">Cancelar</button>
+                  <button onclick="{{ availabilityModal.onSave }}" style="padding: 10px 16px; border-radius: 10px; border: none; background: #C0392B; color: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13.5px; cursor: pointer;">Salvar</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ newScheduleModal.open }}" hint-placeholder-val="{{ false }}">
+          <div style="position: absolute; inset: 0; background: rgba(26,26,26,0.4); display: flex; align-items: center; justify-content: center; z-index: 20; padding: 20px;">
+            <div style="background: #FFFFFF; border-radius: 16px; padding: 28px; width: 100%; max-width: 380px;">
+              <h3 style="font-family: 'Sora', sans-serif; font-weight: 700; font-size: 18px; margin: 0 0 18px; color: #1A1A1A;">Nova escala</h3>
+              <sc-if value="{{ newScheduleModal.hasError }}" hint-placeholder-val="{{ false }}">
+                <div style="background: #FDEDEB; border: 1px solid #F3C6BE; border-radius: 10px; padding: 12px 14px; margin-bottom: 16px; display: flex; gap: 10px; align-items: flex-start;">
+                  <span style="width: 18px; height: 18px; border-radius: 50%; background: #C0392B; color: #FFFFFF; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px;">!</span>
+                  <p style="margin: 0; font-size: 13px; color: #9B2C1E; line-height: 1.5;">{{ newScheduleModal.errorMessage }}</p>
+                </div>
+              </sc-if>
+              <label style="font-size: 12.5px; font-weight: 600; color: #837B6E; display: block; margin-bottom: 6px;">Ministério</label>
+              <select value="{{ newScheduleModal.ministryId }}" onchange="{{ newScheduleModal.onMinistryChange }}" style="width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #EAE2D4; font-family: 'Public Sans', sans-serif; font-size: 14px; margin-bottom: 16px; background: #FFFFFF;">
+                <sc-for list="{{ newScheduleModal.ministryOptions }}" as="mno" hint-placeholder-count="2">
+                  <option value="{{ mno.id }}">{{ mno.name }}</option>
+                </sc-for>
+              </select>
+              <label style="font-size: 12.5px; font-weight: 600; color: #837B6E; display: block; margin-bottom: 8px;">Data do evento</label>
+              <div style="border: 1px solid #EAE2D4; border-radius: 12px; padding: 12px; margin-bottom: 16px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                  <button onclick="{{ newScheduleModal.onPrevMonth }}" style="width: 26px; height: 26px; border-radius: 7px; border: 1px solid #EAE2D4; background: #FFFFFF; font-size: 13px; color: #1A1A1A; cursor: pointer;">‹</button>
+                  <p style="margin: 0; font-size: 12.5px; font-weight: 700; color: #1A1A1A;">{{ newScheduleModal.calMonthLabel }}</p>
+                  <button onclick="{{ newScheduleModal.onNextMonth }}" style="width: 26px; height: 26px; border-radius: 7px; border: 1px solid #EAE2D4; background: #FFFFFF; font-size: 13px; color: #1A1A1A; cursor: pointer;">›</button>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px;">
+                  <sc-for list="{{ newScheduleModal.calWeeks }}" as="cw" hint-placeholder-count="6">
+                    <sc-for list="{{ cw.days }}" as="cd" hint-placeholder-count="7">
+                      <div onclick="{{ cd.onClick }}" style="{{ cd.style }}">{{ cd.day }}</div>
+                    </sc-for>
+                  </sc-for>
+                </div>
+                <p style="margin: 8px 0 0; font-size: 11px; color: #B7AF9F;">Datas destacadas têm evento cadastrado.</p>
+              </div>
+              <label style="font-size: 12.5px; font-weight: 600; color: #837B6E; display: block; margin-bottom: 6px;">Evento</label>
+              <sc-if value="{{ newScheduleModal.hasSelectedDate }}" hint-placeholder-val="{{ false }}">
+                <select value="{{ newScheduleModal.eventId }}" onchange="{{ newScheduleModal.onEventChange }}" style="width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #EAE2D4; font-family: 'Public Sans', sans-serif; font-size: 14px; margin-bottom: 14px; background: #FFFFFF;">
+                  <option value="">Selecione</option>
+                  <sc-for list="{{ newScheduleModal.eventOptions }}" as="eno" hint-placeholder-count="2">
+                    <option value="{{ eno.id }}">{{ eno.name }}</option>
+                  </sc-for>
+                </select>
+              </sc-if>
+              <sc-if value="{{ newScheduleModal.noSelectedDate }}" hint-placeholder-val="{{ true }}">
+                <p style="font-size: 12.5px; color: #B7AF9F; margin: 0 0 14px;">Selecione uma data no calendário para escolher o evento.</p>
+              </sc-if>
+              <label style="font-size: 12.5px; font-weight: 600; color: #837B6E; display: block; margin-bottom: 6px;">Nome da escala (opcional)</label>
+              <input value="{{ newScheduleModal.label }}" oninput="{{ newScheduleModal.onLabelChange }}" placeholder="Ex.: Berçário, Sala 1" style="width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #EAE2D4; font-family: 'Public Sans', sans-serif; font-size: 14px; margin-bottom: 22px;" />
+              <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                <button onclick="{{ newScheduleModal.onCancel }}" style="padding: 10px 16px; border-radius: 10px; border: 1px solid #EAE2D4; background: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13.5px; color: #1A1A1A; cursor: pointer;">Cancelar</button>
+                <button onclick="{{ newScheduleModal.onSave }}" style="padding: 10px 16px; border-radius: 10px; border: none; background: #1C7C8C; color: #FFFFFF; font-family: 'Public Sans', sans-serif; font-weight: 600; font-size: 13.5px; cursor: pointer;">Criar escala</button>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const ROLES = {
+  admin_geral: { label: 'Administrador geral', name: 'Ana Souza', initials: 'AS', nav: ['agenda', 'escalas', 'eventos', 'ministerios', 'membros', 'funcoes'], memberId: 'u1' },
+  admin_grupo: { label: 'Administrador de grupo', name: 'Carlos Lima', initials: 'CL', nav: ['agenda', 'escalas', 'eventos', 'ministerios', 'membros', 'funcoes'], memberId: 'u2' },
+  membro: { label: 'Membro', name: 'Beatriz Alves', initials: 'BA', nav: ['agenda', 'escalas', 'eventos', 'ministerios'], memberId: 'u3' },
+};
+const NAV_LABELS = { agenda: 'Agenda', eventos: 'Eventos', ministerios: 'Ministérios', funcoes: 'Funções', membros: 'Membros', escalas: 'Escalas' };
+const PAGE_META = {
+  agenda: { title: 'Agenda', subtitle: 'Visão de calendário das escalas' },
+  eventos: { title: 'Eventos', subtitle: 'Lista de todas as escalas e eventos' },
+  ministerios: { title: 'Ministérios', subtitle: 'Grupos e equipes da sua igreja' },
+  funcoes: { title: 'Funções', subtitle: 'Papéis dentro de cada ministério' },
+  membros: { title: 'Membros', subtitle: 'Pessoas com acesso ao Escacev' },
+  escalas: { title: 'Escalas', subtitle: 'Designação de membros às funções em cada evento' },
+};
+
+const NOW_REF = new Date(2026, 6, 19); // referência fixa de "hoje" p/ o protótipo, consistente com os dados semeados
+const EVENT_TYPES = ['Culto', 'Ensaio', 'Especial', 'Reunião', 'Café', 'Conferência'];
+const EVENT_TYPE_COLORS = {
+  'Culto': { bg: '#E3F0F1', fg: '#145F6B' },
+  'Ensaio': { bg: '#EAF2E3', fg: '#4F7A3A' },
+  'Especial': { bg: '#E6EDF9', fg: '#3E5C8C' },
+  'Reunião': { bg: '#F5EFE2', fg: '#6B6456' },
+  'Café': { bg: '#F6E4D2', fg: '#9B5E33' },
+  'Conferência': { bg: '#EEE3F2', fg: '#7A4C8C' },
+};
+
+const MINISTRIES = [
+  { id: 'm1', name: 'Louvor', color: '#1C7C8C', description: 'Equipe de música e adoração nos cultos.' },
+  { id: 'm2', name: 'Infantil', color: '#C9962D', description: 'Cuidado e ensino das crianças durante os cultos.' },
+  { id: 'm3', name: 'Recepção', color: '#1A1A1A', description: '' },
+  { id: 'm4', name: 'Mídia', color: '#3E7CB1', description: 'Som, transmissão e projeção.' },
+];
+
+class Component extends DCLogic {
+  state = {
+    role: 'admin_geral', appView: 'agenda', mobileMenuOpen: false,
+    ministryFilter: 'all', memberSearch: '',
+    members: [
+      { id: 'u1', name: 'Ana Souza', email: 'ana@escacev.com', status: 'Ativo', isGeneralAdmin: true, ministryIds: ['m1'], adminMinistryIds: [] },
+      { id: 'u2', name: 'Carlos Lima', email: 'carlos@escacev.com', status: 'Ativo', isGeneralAdmin: false, ministryIds: ['m2'], adminMinistryIds: ['m2'] },
+      { id: 'u3', name: 'Beatriz Alves', email: 'bia@escacev.com', status: 'Ativo', isGeneralAdmin: false, ministryIds: ['m3', 'm1'], adminMinistryIds: [] },
+      { id: 'u4', name: 'Diego Farias', email: 'diego@escacev.com', status: 'Convite pendente', isGeneralAdmin: false, ministryIds: ['m4'], adminMinistryIds: [] },
+    ],
+    memberModal: { open: false, editingId: null, name: '', email: '', isGeneralAdmin: false, ministryIds: [], adminMinistryIds: [] },
+    promoteModal: { open: false, memberId: null, ministryId: null, step: 'select' },
+    ministryModal: { open: false, editingId: null, name: '', description: '' },
+    roles: [
+      { id: 'r1', name: 'Vocal', ministryId: 'm1', confirmingDelete: false },
+      { id: 'r2', name: 'Guitarra', ministryId: 'm1', confirmingDelete: false },
+      { id: 'r3', name: 'Contador de história', ministryId: 'm2', confirmingDelete: false },
+    ],
+    roleModal: { open: false, editingId: null, name: '', ministryId: '', compatibleIds: [], step: 'form', compatibleSearch: '' },
+    roleFilter: 'all',
+    rolePairs: [],
+    events: [
+      { id: 'ev1', name: 'Culto de Domingo à Noite', type: 'Culto', startsAt: '2026-07-20T19:00', endsAt: '2026-07-20T21:00', confirmingDelete: false },
+      { id: 'ev2', name: 'Ensaio do Louvor', type: 'Ensaio', startsAt: '2026-07-22T19:30', endsAt: '2026-07-22T21:00', confirmingDelete: false },
+      { id: 'ev3', name: 'Culto de Ação de Graças', type: 'Especial', startsAt: '2026-07-26T19:00', endsAt: '2026-07-26T21:30', confirmingDelete: false, hasSchedules: true },
+      { id: 'ev4', name: 'Reunião de Líderes', type: 'Reunião', startsAt: '2026-06-10T20:00', endsAt: '2026-06-10T21:30', confirmingDelete: false },
+    ],
+    eventTypeFilter: 'all',
+    eventModal: { open: false, editingId: null, name: '', type: 'Culto', startDate: '', startTime: '', endDate: '', endTime: '', error: null },
+
+    schedules: [
+      { id: 's1', ministryId: 'm1', eventId: 'ev1', label: '', status: 'Publicada', allocations: [
+        { id: 'a1', memberId: 'u3', roleId: 'r1', conflict: false },
+      ] },
+      { id: 's2', ministryId: 'm2', eventId: 'ev1', label: 'Berçário', status: 'Publicada', allocations: [
+        { id: 'a2', memberId: 'u2', roleId: 'r3', conflict: false },
+      ] },
+      { id: 's3', ministryId: 'm1', eventId: 'ev3', label: '', status: 'Rascunho', allocations: [] },
+    ],
+    scheduleFilterEvent: 'all', scheduleFilterMinistry: 'all', scheduleFilterStatus: 'all',
+    scheduleMonth: NOW_REF.getMonth(), scheduleYear: NOW_REF.getFullYear(),
+    scheduleDay: NOW_REF.getDate(),
+    agendaMonth: NOW_REF.getMonth(), agendaYear: NOW_REF.getFullYear(),
+    agendaSelectedDate: null,
+    unavailabilities: [],
+    availabilityModal: { open: false, date: '', allDay: true, startTime: '08:00', endTime: '18:00' },
+    scheduleViewMode: 'mes',
+    scheduleOnlyMine: false,
+    scheduleDetailId: null,
+    newScheduleModal: { open: false, ministryId: '', eventId: '', label: '', selectedDate: '', calYear: 2026, calMonth: 6, error: null },
+    addAllocation: { memberId: '', roleId: '' },
+    pendingConflict: null,
+    reviewConflictsOpen: false,
+    publishModalOpen: false,
+    allocationDeleteConfirm: null,
+    toast: null,
+    profileModal: { open: false, name: '' },
+  };
+
+  showToast = (type, message) => {
+    this.setState({ toast: { type, message } });
+    clearTimeout(this._toastTimer);
+    this._toastTimer = setTimeout(() => this.setState({ toast: null }), 3500);
+  };
+  dismissToast = () => this.setState({ toast: null });
+
+  setRole = (role) => {
+    const nav = ROLES[role].nav;
+    this.setState({ role, appView: nav.includes(this.state.appView) ? this.state.appView : nav[0] });
+  };
+  openProfileModal = () => this.setState({ profileModal: { open: true, name: ROLES[this.state.role].name } });
+  closeProfileModal = () => this.setState({ profileModal: { ...this.state.profileModal, open: false } });
+  setProfileName = (e) => this.setState({ profileModal: { ...this.state.profileModal, name: e.target.value } });
+  saveProfileName = () => {
+    const pm = this.state.profileModal;
+    if (!pm.name.trim()) { this.showToast('error', 'Informe um nome válido.'); return; }
+    ROLES[this.state.role].name = pm.name.trim();
+    this.setState({ profileModal: { ...pm, open: false } });
+    this.showToast('success', 'Nome atualizado com sucesso.');
+  };
+  goTo = (v) => this.setState({ appView: v, mobileMenuOpen: false });
+  openMobileMenu = () => this.setState({ mobileMenuOpen: true });
+  closeMobileMenu = () => this.setState({ mobileMenuOpen: false });
+
+  setMinistryFilter = (id) => this.setState({ ministryFilter: id });
+  setMemberSearch = (e) => this.setState({ memberSearch: e.target.value });
+
+  openMemberModal = (id) => {
+    const m = id ? this.state.members.find(x => x.id === id) : null;
+    this.setState({ memberModal: { open: true, editingId: id, name: m ? m.name : '', email: m ? m.email : '', isGeneralAdmin: m ? m.isGeneralAdmin : false, ministryIds: m ? [...m.ministryIds] : [], adminMinistryIds: m ? [...m.adminMinistryIds] : [] } });
+  };
+  closeMemberModal = () => this.setState({ memberModal: { ...this.state.memberModal, open: false } });
+  setMemberModalField = (field) => (e) => this.setState({ memberModal: { ...this.state.memberModal, [field]: e.target.value } });
+  toggleGeneralAdmin = () => {
+    const mm = this.state.memberModal;
+    if (mm.isGeneralAdmin) return;
+    this.setState({ memberModal: { ...mm, isGeneralAdmin: true } });
+  };
+  toggleMinistryMembership = (id) => {
+    const mm = this.state.memberModal;
+    const has = mm.ministryIds.includes(id);
+    const ministryIds = has ? mm.ministryIds.filter(x => x !== id) : [...mm.ministryIds, id];
+    const adminMinistryIds = has ? mm.adminMinistryIds.filter(x => x !== id) : mm.adminMinistryIds;
+    this.setState({ memberModal: { ...mm, ministryIds, adminMinistryIds } });
+  };
+  toggleMinistryAdmin = (id) => {
+    const mm = this.state.memberModal;
+    const has = mm.adminMinistryIds.includes(id);
+    const adminMinistryIds = has ? mm.adminMinistryIds.filter(x => x !== id) : [...mm.adminMinistryIds, id];
+    const ministryIds = has ? mm.ministryIds : (mm.ministryIds.includes(id) ? mm.ministryIds : [...mm.ministryIds, id]);
+    this.setState({ memberModal: { ...mm, ministryIds, adminMinistryIds } });
+  };
+  saveMember = () => {
+    const mm = this.state.memberModal;
+    const isGroupInvite = !mm.editingId && this.state.role === 'admin_grupo';
+    if (!mm.name.trim() || !mm.email.trim() || (isGroupInvite && !mm.inviteMinistryId)) {
+      this.showToast('error', isGroupInvite ? 'Preencha nome, e-mail e ministério para continuar.' : 'Preencha nome e e-mail para continuar.');
+      return;
+    }
+    if (mm.editingId) {
+      this.setState({ members: this.state.members.map(m => m.id === mm.editingId ? { ...m, name: mm.name, isGeneralAdmin: mm.isGeneralAdmin, ministryIds: mm.ministryIds, adminMinistryIds: mm.adminMinistryIds } : m), memberModal: { ...mm, open: false } });
+      this.showToast('success', 'Membro atualizado com sucesso.');
+    } else {
+      const ministryIds = isGroupInvite ? [mm.inviteMinistryId] : [];
+      this.setState({ members: [...this.state.members, { id: 'u' + Date.now(), name: mm.name, email: mm.email, isGeneralAdmin: false, ministryIds, adminMinistryIds: [], status: 'Convite pendente' }], memberModal: { ...mm, open: false } });
+      this.showToast('success', 'Convite enviado com sucesso.');
+    }
+  };
+  demoteToMember = () => {
+    const mm = this.state.memberModal;
+    if (!mm.editingId) return;
+    this.setState({
+      members: this.state.members.map(m => m.id === mm.editingId ? { ...m, isGeneralAdmin: false, adminMinistryIds: [] } : m),
+      memberModal: { ...mm, isGeneralAdmin: false, adminMinistryIds: [] },
+    });
+    this.showToast('success', 'Membro rebaixado com sucesso.');
+  };
+
+  currentUserAdminMinistryIds() {
+    const currentMember = this.state.members.find(x => x.id === ROLES[this.state.role].memberId);
+    return currentMember ? currentMember.adminMinistryIds : [];
+  }
+  openPromoteModal = (memberId) => {
+    const member = this.state.members.find(x => x.id === memberId);
+    const adminMinistryIds = this.currentUserAdminMinistryIds();
+    const eligible = member.ministryIds.filter(id => adminMinistryIds.includes(id) && !member.adminMinistryIds.includes(id));
+    this.setState({ promoteModal: { open: true, memberId, ministryId: eligible[0] || null, step: 'select' } });
+  };
+  setPromoteMinistry = (e) => this.setState({ promoteModal: { ...this.state.promoteModal, ministryId: e.target.value } });
+  continuePromote = () => this.setState({ promoteModal: { ...this.state.promoteModal, step: 'confirm' } });
+  cancelPromote = () => this.setState({ promoteModal: { ...this.state.promoteModal, open: false } });
+  confirmPromote = () => {
+    const pm = this.state.promoteModal;
+    this.setState({
+      members: this.state.members.map(m => m.id === pm.memberId ? { ...m, adminMinistryIds: [...new Set([...m.adminMinistryIds, pm.ministryId])] } : m),
+      promoteModal: { ...pm, open: false },
+    });
+    this.showToast('success', 'Membro promovido a administrador do ministério.');
+  };
+
+  openMinistryModal = (id) => {
+    const m = id ? MINISTRIES.find(x => x.id === id) : null;
+    this.setState({ ministryModal: { open: true, editingId: id || null, name: m ? m.name : '', description: m ? m.description : '' } });
+  };
+  closeMinistryModal = () => this.setState({ ministryModal: { ...this.state.ministryModal, open: false } });
+  setMinistryModalField = (field) => (e) => this.setState({ ministryModal: { ...this.state.ministryModal, [field]: e.target.value } });
+  saveMinistry = () => {
+    const mm = this.state.ministryModal;
+    if (!mm.name.trim()) { this.showToast('error', 'Informe o nome do ministério.'); return; }
+    if (mm.editingId) {
+      const target = MINISTRIES.find(x => x.id === mm.editingId);
+      if (target) { target.name = mm.name.trim(); target.description = mm.description.trim(); }
+      this.showToast('success', 'Ministério atualizado com sucesso.');
+    } else {
+      MINISTRIES.push({ id: 'm' + Date.now(), name: mm.name.trim(), color: '#1C7C8C', description: mm.description.trim() });
+      this.showToast('success', 'Ministério criado com sucesso.');
+    }
+    this.setState({ ministryModal: { ...mm, open: false } });
+  };
+
+  openRoleModal = (id) => {
+    const r = id ? this.state.roles.find(x => x.id === id) : null;
+    const eligible = this.eligibleRoleMinistries();
+    const compatibleIds = id ? this.state.rolePairs.filter(p => p.includes(id)).map(p => p.find(x => x !== id)) : [];
+    this.setState({ roleModal: { open: true, editingId: id || null, name: r ? r.name : '', ministryId: r ? r.ministryId : (eligible[0] ? eligible[0].id : ''), compatibleIds, step: 'form', error: null, compatibleSearch: '' } });
+  };
+  closeRoleModal = () => this.setState({ roleModal: { ...this.state.roleModal, open: false } });
+  setRoleModalField = (field) => (e) => this.setState({ roleModal: { ...this.state.roleModal, [field]: e.target.value } });
+  setRoleFilter = (id) => this.setState({ roleFilter: id });
+  toggleCompatibleRole = (id) => {
+    const rm = this.state.roleModal;
+    const has = rm.compatibleIds.includes(id);
+    this.setState({ roleModal: { ...rm, compatibleIds: has ? rm.compatibleIds.filter(x => x !== id) : [...rm.compatibleIds, id] } });
+  };
+  goToConfirmRole = () => {
+    const rm = this.state.roleModal;
+    if (!rm.name.trim() || !rm.ministryId) {
+      this.setState({ roleModal: { ...rm, error: 'Informe o nome e o ministério da função.' } });
+      return;
+    }
+    this.setState({ roleModal: { ...rm, step: 'confirm', error: null } });
+  };
+  backToRoleForm = () => this.setState({ roleModal: { ...this.state.roleModal, step: 'form' } });
+  eligibleRoleMinistries() {
+    const s = this.state;
+    if (s.role === 'admin_geral') return MINISTRIES;
+    if (s.role === 'admin_grupo') return MINISTRIES.filter(m => this.currentUserAdminMinistryIds().includes(m.id));
+    return [];
+  }
+  saveRole = () => {
+    const rm = this.state.roleModal;
+    const roleId = rm.editingId || ('r' + Date.now());
+    let roles = this.state.roles;
+    if (rm.editingId) {
+      roles = roles.map(r => r.id === rm.editingId ? { ...r, name: rm.name.trim(), ministryId: rm.ministryId } : r);
+    } else {
+      roles = [...roles, { id: roleId, name: rm.name.trim(), ministryId: rm.ministryId }];
+    }
+    let rolePairs = this.state.rolePairs.filter(p => !p.includes(roleId));
+    rolePairs = [...rolePairs, ...rm.compatibleIds.map(otherId => [roleId, otherId])];
+    this.setState({ roles, rolePairs, roleModal: { ...rm, open: false } });
+    this.showToast('success', rm.editingId ? 'Função atualizada com sucesso.' : 'Função criada com sucesso.');
+  };
+  askDeleteRole = (id) => this.setState({ roles: this.state.roles.map(r => r.id === id ? { ...r, confirmingDelete: true } : r) });
+  cancelDeleteRole = (id) => this.setState({ roles: this.state.roles.map(r => r.id === id ? { ...r, confirmingDelete: false } : r) });
+  deleteRole = (id) => {
+    this.setState({ roles: this.state.roles.filter(r => r.id !== id) });
+    this.showToast('success', 'Função excluída com sucesso.');
+  };
+
+  setEventTypeFilter = (t) => this.setState({ eventTypeFilter: t });
+  splitDateTime(iso) {
+    if (!iso) return { date: '', time: '' };
+    const [date, time] = iso.split('T');
+    return { date, time: time || '' };
+  }
+  openEventModal = (id, presetDate) => {
+    const ev = id ? this.state.events.find(x => x.id === id) : null;
+    const start = this.splitDateTime(ev ? ev.startsAt : '');
+    const end = this.splitDateTime(ev ? ev.endsAt : '');
+    this.setState({ eventModal: { open: true, editingId: id || null, name: ev ? ev.name : '', type: ev ? ev.type : 'Culto', startDate: ev ? start.date : (presetDate || ''), startTime: start.time, endDate: ev ? end.date : (presetDate || ''), endTime: end.time, error: null } });
+  };
+  closeEventModal = () => this.setState({ eventModal: { ...this.state.eventModal, open: false } });
+  setEventModalField = (field) => (e) => this.setState({ eventModal: { ...this.state.eventModal, [field]: e.target.value } });
+  saveEvent = () => {
+    const em = this.state.eventModal;
+    if (!em.name.trim()) { this.setState({ eventModal: { ...em, error: 'Informe o nome do evento.' } }); return; }
+    if (!em.startDate || !em.startTime || !em.endDate || !em.endTime) { this.setState({ eventModal: { ...em, error: 'Preencha o início e o término do evento.' } }); return; }
+    const startsAt = `${em.startDate}T${em.startTime}`;
+    const endsAt = `${em.endDate}T${em.endTime}`;
+    if (new Date(endsAt) <= new Date(startsAt)) { this.setState({ eventModal: { ...em, error: 'O término deve ser depois do início.' } }); return; }
+    if (em.editingId) {
+      this.setState({ events: this.state.events.map(e => e.id === em.editingId ? { ...e, name: em.name.trim(), type: em.type, startsAt, endsAt } : e), eventModal: { ...em, open: false } });
+      this.showToast('success', 'Evento atualizado com sucesso.');
+    } else {
+      this.setState({ events: [...this.state.events, { id: 'ev' + Date.now(), name: em.name.trim(), type: em.type, startsAt, endsAt, confirmingDelete: false }], eventModal: { ...em, open: false } });
+      this.showToast('success', 'Evento criado com sucesso.');
+    }
+  };
+  askDeleteEvent = (id) => this.setState({ events: this.state.events.map(e => e.id === id ? { ...e, confirmingDelete: true } : e) });
+  cancelDeleteEvent = (id) => this.setState({ events: this.state.events.map(e => e.id === id ? { ...e, confirmingDelete: false } : e) });
+  deleteEvent = (id) => {
+    const ev = this.state.events.find(x => x.id === id);
+    if (ev && ev.hasSchedules) {
+      this.setState({ events: this.state.events.map(e => e.id === id ? { ...e, confirmingDelete: false } : e) });
+      this.showToast('error', 'Não é possível excluir: há escalas vinculadas a este evento.');
+      return;
+    }
+    this.setState({ events: this.state.events.filter(e => e.id !== id) });
+    this.showToast('success', 'Evento excluído com sucesso.');
+  };
+
+  prevAgendaMonth = () => {
+    let { agendaYear, agendaMonth } = this.state;
+    agendaMonth--; if (agendaMonth < 0) { agendaMonth = 11; agendaYear--; }
+    this.setState({ agendaYear, agendaMonth, agendaSelectedDate: null });
+  };
+  nextAgendaMonth = () => {
+    let { agendaYear, agendaMonth } = this.state;
+    agendaMonth++; if (agendaMonth > 11) { agendaMonth = 0; agendaYear++; }
+    this.setState({ agendaYear, agendaMonth, agendaSelectedDate: null });
+  };
+  selectAgendaDate = (dateKey) => this.setState({ agendaSelectedDate: this.state.agendaSelectedDate === dateKey ? null : dateKey });
+
+  currentMemberIdForRole() { return ROLES[this.state.role].memberId; }
+  memberUnavailabilityForDate(memberId, dateKey) {
+    return this.state.unavailabilities.find(u => u.memberId === memberId && u.date === dateKey) || null;
+  }
+  isMemberUnavailableForEvent(memberId, ev) {
+    if (!ev) return false;
+    const dateKey = ev.startsAt.split('T')[0];
+    const u = this.memberUnavailabilityForDate(memberId, dateKey);
+    if (!u) return false;
+    if (u.allDay) return true;
+    const evStart = ev.startsAt.split('T')[1], evEnd = ev.endsAt.split('T')[1];
+    return u.startTime < evEnd && evStart < u.endTime;
+  }
+  openAvailabilityModal = () => {
+    const dateKey = this.state.agendaSelectedDate;
+    const existing = this.memberUnavailabilityForDate(this.currentMemberIdForRole(), dateKey);
+    this.setState({ availabilityModal: { open: true, date: dateKey, allDay: existing ? existing.allDay : true, startTime: existing ? existing.startTime : '08:00', endTime: existing ? existing.endTime : '18:00' } });
+  };
+  closeAvailabilityModal = () => this.setState({ availabilityModal: { ...this.state.availabilityModal, open: false } });
+  setAvailabilityField = (field) => (e) => this.setState({ availabilityModal: { ...this.state.availabilityModal, [field]: e.target.value } });
+  toggleAvailabilityAllDay = () => this.setState({ availabilityModal: { ...this.state.availabilityModal, allDay: !this.state.availabilityModal.allDay } });
+  saveAvailability = () => {
+    const am = this.state.availabilityModal;
+    const memberId = this.currentMemberIdForRole();
+    const rest = this.state.unavailabilities.filter(u => !(u.memberId === memberId && u.date === am.date));
+    this.setState({
+      unavailabilities: [...rest, { id: 'un' + Date.now(), memberId, date: am.date, allDay: am.allDay, startTime: am.allDay ? '00:00' : am.startTime, endTime: am.allDay ? '23:59' : am.endTime }],
+      availabilityModal: { ...am, open: false },
+    });
+    this.showToast('success', 'Indisponibilidade registrada com sucesso.');
+  };
+  quickRemoveAvailability = () => {
+    const memberId = this.currentMemberIdForRole();
+    const dateKey = this.state.agendaSelectedDate;
+    this.setState({ unavailabilities: this.state.unavailabilities.filter(u => !(u.memberId === memberId && u.date === dateKey)) });
+    this.showToast('success', 'Disponibilidade restaurada.');
+  };
+  removeAvailability = () => {
+    const am = this.state.availabilityModal;
+    const memberId = this.currentMemberIdForRole();
+    this.setState({
+      unavailabilities: this.state.unavailabilities.filter(u => !(u.memberId === memberId && u.date === am.date)),
+      availabilityModal: { ...am, open: false },
+    });
+    this.showToast('success', 'Disponibilidade restaurada.');
+  };
+
+  agendaVals() {
+    const s = this.state;
+    const currentMemberId = ROLES[s.role].memberId;
+    const pad2 = (n) => String(n).padStart(2, '0');
+    const t = (iso) => iso.split('T')[1] ? iso.split('T')[1].replace(':', 'h') : '';
+
+    // status por evento para o usuário logado + detalhes de onde está escalado
+    const eventStatus = {};
+    const eventAssignments = {};
+    s.events.forEach(ev => {
+      let status = 'open'; // gray
+      const assignments = [];
+      s.schedules.forEach(sc => {
+        if (sc.eventId !== ev.id) return;
+        sc.allocations.forEach(a => {
+          if (a.memberId !== currentMemberId) return;
+          if (a.conflict) status = 'conflict';
+          else if (status !== 'conflict') status = 'scheduled';
+          const mn = MINISTRIES.find(m => m.id === sc.ministryId);
+          const role = s.roles.find(r => r.id === a.roleId);
+          assignments.push({ ministryName: mn ? mn.name : '—', roleName: role ? role.name : '—', conflict: a.conflict });
+        });
+      });
+      eventStatus[ev.id] = status;
+      eventAssignments[ev.id] = assignments;
+    });
+    const STATUS_STYLE = {
+      open: { bg: '#E7DFCB', fg: '#5C5340' },
+      scheduled: { bg: '#1C7C8C', fg: '#FFFFFF' },
+      conflict: { bg: '#F0C550', fg: '#5C4813' },
+    };
+
+    const eventsByDate = {};
+    s.events.forEach(ev => {
+      const key = ev.startsAt.split('T')[0];
+      (eventsByDate[key] = eventsByDate[key] || []).push(ev);
+    });
+
+    const firstWeekday = new Date(s.agendaYear, s.agendaMonth, 1).getDay();
+    const daysInMonth = new Date(s.agendaYear, s.agendaMonth + 1, 0).getDate();
+    const daysInPrevMonth = new Date(s.agendaYear, s.agendaMonth, 0).getDate();
+    const todayKey = `${NOW_REF.getFullYear()}-${pad2(NOW_REF.getMonth() + 1)}-${pad2(NOW_REF.getDate())}`;
+    const cells = [];
+    for (let i = 0; i < firstWeekday; i++) cells.push({ inMonth: false, day: daysInPrevMonth - firstWeekday + 1 + i, dateKey: null });
+    for (let d = 1; d <= daysInMonth; d++) cells.push({ inMonth: true, day: d, dateKey: `${s.agendaYear}-${pad2(s.agendaMonth + 1)}-${pad2(d)}` });
+    let trail = 1;
+    while (cells.length < 42) cells.push({ inMonth: false, day: trail++, dateKey: null });
+
+    const weeks = [];
+    for (let i = 0; i < 42; i += 7) {
+      weeks.push({ key: 'aw' + i, days: cells.slice(i, i + 7).map(c => {
+        const dayEvents = (c.dateKey && eventsByDate[c.dateKey]) || [];
+        const shown = dayEvents.slice(0, 3);
+        const extra = dayEvents.length - shown.length;
+        const selected = c.dateKey && c.dateKey === s.agendaSelectedDate;
+        const isUnavailableDay = c.dateKey && !!this.memberUnavailabilityForDate(currentMemberId, c.dateKey);
+        return {
+          day: c.day,
+          isToday: c.dateKey === todayKey,
+          isUnavailableDay,
+          cellStyle: `min-height:88px; padding:6px; background:${selected ? '#F5EFE2' : isUnavailableDay ? '#FDEDEB' : '#FFFFFF'}; opacity:${c.inMonth ? 1 : 0.4}; cursor:${c.dateKey ? 'pointer' : 'default'}; display:flex; flex-direction:column; gap:3px; border:${isUnavailableDay ? '1px solid #F3C6BE' : 'none'};`,
+          dayNumStyle: `font-size:12px; font-weight:${c.dateKey === todayKey ? '800' : '600'}; color:${c.dateKey === todayKey ? '#FFFFFF' : '#1A1A1A'}; background:${c.dateKey === todayKey ? '#1C7C8C' : 'transparent'}; width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center;`,
+          onClick: c.dateKey ? () => this.selectAgendaDate(c.dateKey) : undefined,
+          chips: shown.map(ev => {
+            const st = STATUS_STYLE[eventStatus[ev.id]];
+            return { id: ev.id, label: ev.name, style: `font-size:10.5px; font-weight:600; padding:2px 6px; border-radius:5px; background:${st.bg}; color:${st.fg}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;` };
+          }),
+          extraLabel: extra > 0 ? `+${extra} mais` : '',
+        };
+      }) });
+    }
+
+    const agendaMonthLabel = `${['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][s.agendaMonth]} ${s.agendaYear}`;
+    const selectedDayEvents = s.agendaSelectedDate ? (eventsByDate[s.agendaSelectedDate] || []).map(ev => {
+      const st = STATUS_STYLE[eventStatus[ev.id]];
+      const assignments = eventAssignments[ev.id] || [];
+      return { id: ev.id, name: ev.name, whenLabel: `${t(ev.startsAt)}–${t(ev.endsAt)}`, statusBg: st.bg, statusFg: st.fg,
+        statusLabel: eventStatus[ev.id] === 'conflict' ? 'Você está escalado (conflito)' : eventStatus[ev.id] === 'scheduled' ? 'Você está escalado' : 'Aberto',
+        hasAssignments: assignments.length > 0,
+        assignments: assignments.map(a => ({ label: `${a.ministryName} · ${a.roleName}`, style: `font-size:11px; font-weight:600; padding:3px 9px; border-radius:20px; background:${a.conflict ? '#F0C550' : '#E3F0F1'}; color:${a.conflict ? '#5C4813' : '#145F6B'};` })) };
+    }) : [];
+    const selectedDayLabel = s.agendaSelectedDate ? new Date(s.agendaSelectedDate + 'T00:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' }) : '';
+
+    return {
+      agendaMonthLabel,
+      agendaWeekdayLabels: ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].map(l => ({ label: l })),
+      agendaWeeks: weeks,
+      onPrevAgendaMonth: this.prevAgendaMonth,
+      onNextAgendaMonth: this.nextAgendaMonth,
+      hasAgendaSelectedDay: !!s.agendaSelectedDate,
+      agendaSelectedDayLabel: selectedDayLabel,
+      agendaSelectedDayEvents: selectedDayEvents,
+      canManageAgenda: s.role === 'admin_geral' || s.role === 'admin_grupo',
+      onAgendaCreateEvent: () => this.openEventModal(null, s.agendaSelectedDate),
+      onAgendaCreateSchedule: () => this.openNewScheduleModalForDate(s.agendaSelectedDate),
+      selectedDateUnavailable: this.memberUnavailabilityForDate(currentMemberId, s.agendaSelectedDate) ? '#FDEDEB' : '#FFFFFF',
+      hasSelectedDateUnavailability: !!this.memberUnavailabilityForDate(currentMemberId, s.agendaSelectedDate),
+      noSelectedDateUnavailability: !this.memberUnavailabilityForDate(currentMemberId, s.agendaSelectedDate),
+      onOpenAvailabilityModal: this.openAvailabilityModal,
+      onQuickRemoveAvailability: this.quickRemoveAvailability,
+      availabilityButtonLabel: 'Marcar indisponibilidade',
+      availabilityModal: this.availabilityModalVals(),
+    };
+  }
+
+  availabilityModalVals() {
+    const am = this.state.availabilityModal;
+    const dateLabel = am.date ? new Date(am.date + 'T00:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' }) : '';
+    const hasExisting = !!this.memberUnavailabilityForDate(this.currentMemberIdForRole(), am.date);
+    return {
+      open: am.open, dateLabel, allDay: am.allDay ? '☑' : '☐', startTime: am.startTime, endTime: am.endTime,
+      isPartial: !am.allDay, hasExisting,
+      onToggleAllDay: this.toggleAvailabilityAllDay,
+      onStartTimeChange: this.setAvailabilityField('startTime'),
+      onEndTimeChange: this.setAvailabilityField('endTime'),
+      onCancel: this.closeAvailabilityModal,
+      onSave: this.saveAvailability,
+      onRemove: this.removeAvailability,
+    };
+  }
+
+  eventsOverlap(evA, evB) {
+    if (!evA || !evB) return false;
+    return new Date(evA.startsAt) < new Date(evB.endsAt) && new Date(evB.startsAt) < new Date(evA.endsAt);
+  }
+  openScheduleDetail = (id) => this.setState({ scheduleDetailId: id, addAllocation: { memberId: '', roleId: '' }, pendingConflict: null });
+  backToScheduleList = () => this.setState({ scheduleDetailId: null });
+  setScheduleFilter = (field) => (id) => this.setState({ [field]: id });
+  setScheduleViewMode = (e) => this.setState({ scheduleViewMode: e.target.value });
+  toggleScheduleOnlyMine = () => this.setState({ scheduleOnlyMine: !this.state.scheduleOnlyMine });
+  schedulePeriodAnchor() {
+    const s = this.state;
+    if (s.scheduleViewMode === 'dia') return new Date(s.scheduleYear, s.scheduleMonth, s.scheduleDay);
+    if (s.scheduleViewMode === 'semana') return new Date(s.scheduleYear, s.scheduleMonth, s.scheduleDay);
+    return new Date(s.scheduleYear, s.scheduleMonth, 1);
+  }
+  shiftSchedulePeriod = (dir) => {
+    const s = this.state;
+    if (s.scheduleViewMode === 'mes') {
+      let m = s.scheduleMonth + dir, y = s.scheduleYear;
+      if (m < 0) { m = 11; y--; } if (m > 11) { m = 0; y++; }
+      this.setState({ scheduleMonth: m, scheduleYear: y });
+      return;
+    }
+    const days = s.scheduleViewMode === 'semana' ? 7 : 1;
+    const d = new Date(s.scheduleYear, s.scheduleMonth, s.scheduleDay);
+    d.setDate(d.getDate() + dir * days);
+    this.setState({ scheduleYear: d.getFullYear(), scheduleMonth: d.getMonth(), scheduleDay: d.getDate() });
+  };
+  prevSchedulePeriod = () => this.shiftSchedulePeriod(-1);
+  nextSchedulePeriod = () => this.shiftSchedulePeriod(1);
+
+  openNewScheduleModal = () => {
+    const eligible = this.eligibleRoleMinistries();
+    this.setState({ newScheduleModal: { open: true, ministryId: eligible[0] ? eligible[0].id : '', eventId: '', label: '', selectedDate: '', calYear: NOW_REF.getFullYear(), calMonth: NOW_REF.getMonth(), error: null } });
+  };
+  openNewScheduleModalForDate = (dateKey) => {
+    const eligible = this.eligibleRoleMinistries();
+    const d = dateKey ? new Date(dateKey + 'T00:00:00') : NOW_REF;
+    this.setState({ newScheduleModal: { open: true, ministryId: eligible[0] ? eligible[0].id : '', eventId: '', label: '', selectedDate: dateKey || '', calYear: d.getFullYear(), calMonth: d.getMonth(), error: null } });
+  };
+  closeNewScheduleModal = () => this.setState({ newScheduleModal: { ...this.state.newScheduleModal, open: false } });
+  setNewScheduleField = (field) => (e) => this.setState({ newScheduleModal: { ...this.state.newScheduleModal, [field]: e.target.value } });
+  prevNewScheduleCalMonth = () => {
+    let { calYear, calMonth } = this.state.newScheduleModal;
+    calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; }
+    this.setState({ newScheduleModal: { ...this.state.newScheduleModal, calYear, calMonth } });
+  };
+  nextNewScheduleCalMonth = () => {
+    let { calYear, calMonth } = this.state.newScheduleModal;
+    calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; }
+    this.setState({ newScheduleModal: { ...this.state.newScheduleModal, calYear, calMonth } });
+  };
+  selectNewScheduleDate = (dateKey) => this.setState({ newScheduleModal: { ...this.state.newScheduleModal, selectedDate: dateKey, eventId: '', error: null } });
+  createSchedule = () => {
+    const nm = this.state.newScheduleModal;
+    if (!nm.ministryId) { this.setState({ newScheduleModal: { ...nm, error: 'Selecione o ministério.' } }); return; }
+    if (!nm.selectedDate) { this.setState({ newScheduleModal: { ...nm, error: 'Selecione uma data no calendário.' } }); return; }
+    if (!nm.eventId) { this.setState({ newScheduleModal: { ...nm, error: 'Selecione o evento.' } }); return; }
+    const id = 's' + Date.now();
+    this.setState({
+      schedules: [...this.state.schedules, { id, ministryId: nm.ministryId, eventId: nm.eventId, label: nm.label.trim(), status: 'Rascunho', allocations: [] }],
+      newScheduleModal: { ...nm, open: false },
+      scheduleDetailId: id,
+    });
+    this.showToast('success', 'Escala criada com sucesso.');
+  };
+  setAddAllocationField = (field) => (e) => this.setState({ addAllocation: { ...this.state.addAllocation, [field]: e.target.value } });
+  addAllocationToSchedule = (forceConflict) => {
+    const s = this.state;
+    const schedule = s.schedules.find(x => x.id === s.scheduleDetailId);
+    if (!schedule) return;
+    const aa = s.addAllocation;
+    if (!aa.memberId || !aa.roleId) { this.showToast('error', 'Selecione a pessoa e a função.'); return; }
+    if (schedule.allocations.some(a => a.memberId === aa.memberId && a.roleId === aa.roleId)) {
+      this.showToast('error', 'Essa pessoa já está escalada nessa função.');
+      return;
+    }
+    const event = s.events.find(x => x.id === schedule.eventId);
+    if (!forceConflict) {
+      const conflicts = [];
+      s.schedules.forEach(other => {
+        if (other.id === schedule.id) return;
+        const otherEvent = s.events.find(x => x.id === other.eventId);
+        if (!this.eventsOverlap(event, otherEvent)) return;
+        other.allocations.filter(a => a.memberId === aa.memberId).forEach(a => {
+          const role = s.roles.find(r => r.id === a.roleId);
+          const mn = MINISTRIES.find(m => m.id === other.ministryId);
+          conflicts.push({ eventName: otherEvent ? otherEvent.name : '—', ministryName: mn ? mn.name : '—', roleName: role ? role.name : '—', whenLabel: otherEvent ? this.formatEventWhen(otherEvent) : '' });
+        });
+      });
+      if (conflicts.length > 0) {
+        this.setState({ pendingConflict: { memberId: aa.memberId, roleId: aa.roleId, conflicts } });
+        return;
+      }
+    }
+    const newAlloc = { id: 'al' + Date.now(), memberId: aa.memberId, roleId: aa.roleId, conflict: !!forceConflict };
+    this.setState({
+      schedules: s.schedules.map(sc => sc.id === schedule.id ? { ...sc, allocations: [...sc.allocations, newAlloc] } : sc),
+      addAllocation: { memberId: '', roleId: '' },
+      pendingConflict: null,
+    });
+    this.showToast('success', 'Pessoa escalada com sucesso.');
+  };
+  cancelPendingConflict = () => this.setState({ pendingConflict: null });
+  confirmPendingConflict = () => this.addAllocationToSchedule(true);
+  askRemoveAllocation = (id) => this.setState({ allocationDeleteConfirm: id });
+  cancelRemoveAllocation = () => this.setState({ allocationDeleteConfirm: null });
+  removeAllocation = (id) => {
+    const schedule = this.state.schedules.find(x => x.id === this.state.scheduleDetailId);
+    if (!schedule) return;
+    this.setState({
+      schedules: this.state.schedules.map(sc => sc.id === schedule.id ? { ...sc, allocations: sc.allocations.filter(a => a.id !== id) } : sc),
+      allocationDeleteConfirm: null,
+    });
+    this.showToast('success', 'Pessoa removida da escala.');
+  };
+  openReviewConflicts = () => this.setState({ reviewConflictsOpen: true });
+  closeReviewConflicts = () => this.setState({ reviewConflictsOpen: false });
+  openPublishModal = () => this.setState({ publishModalOpen: true });
+  closePublishModal = () => this.setState({ publishModalOpen: false });
+  publishSchedule = () => {
+    const schedule = this.state.schedules.find(x => x.id === this.state.scheduleDetailId);
+    if (!schedule) return;
+    this.setState({
+      schedules: this.state.schedules.map(sc => sc.id === schedule.id ? { ...sc, status: 'Publicada' } : sc),
+      publishModalOpen: false,
+      scheduleDetailId: null,
+    });
+    this.showToast('success', 'Escala publicada com sucesso.');
+  };
+  formatEventWhen(ev) {
+    const d = new Date(ev.startsAt);
+    const dateLabel = d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' });
+    const cap = dateLabel.charAt(0).toUpperCase() + dateLabel.slice(1);
+    const t = (iso) => iso.split('T')[1] ? iso.split('T')[1].replace(':', 'h') : '';
+    return `${cap} · ${t(ev.startsAt)}–${t(ev.endsAt)}`;
+  }
+
+  schedulesVals() {
+    const s = this.state;
+    const isGroupAdmin = s.role === 'admin_grupo';
+    const isMemberRole = s.role === 'membro';
+    const canManageSchedules = s.role === 'admin_geral' || isGroupAdmin;
+    const currentMemberForScope = s.members.find(x => x.id === ROLES[s.role].memberId);
+    const scopedMinistryIds = isGroupAdmin
+      ? this.currentUserAdminMinistryIds()
+      : isMemberRole
+        ? (currentMemberForScope ? currentMemberForScope.ministryIds : [])
+        : MINISTRIES.map(m => m.id);
+
+    const ministryFilterDefs = [{ id: 'all', name: 'Todos' }, ...MINISTRIES.filter(m => scopedMinistryIds.includes(m.id))];
+    const scheduleMinistryFilters = ministryFilterDefs.map(m => {
+      const active = s.scheduleFilterMinistry === m.id;
+      const style = `padding:7px 14px; border-radius:20px; border:1px solid ${active ? '#1A1A1A' : '#EAE2D4'}; background:${active ? '#1A1A1A' : '#FFFFFF'}; font-family:'Public Sans',sans-serif; font-weight:600; font-size:12.5px; color:${active ? '#FFFFFF' : '#1A1A1A'}; cursor:pointer; white-space:nowrap;`;
+      return { label: m.name, style, onClick: () => this.setScheduleFilter('scheduleFilterMinistry')(m.id) };
+    });
+    const eventFilterDefs = [{ id: 'all', name: 'Todos os eventos' }, ...s.events];
+    const scheduleEventFilters = eventFilterDefs.map(e => {
+      const active = s.scheduleFilterEvent === e.id;
+      const style = `padding:7px 14px; border-radius:20px; border:1px solid ${active ? '#1A1A1A' : '#EAE2D4'}; background:${active ? '#1A1A1A' : '#FFFFFF'}; font-family:'Public Sans',sans-serif; font-weight:600; font-size:12.5px; color:${active ? '#FFFFFF' : '#1A1A1A'}; cursor:pointer; white-space:nowrap;`;
+      return { label: e.name, style, onClick: () => this.setScheduleFilter('scheduleFilterEvent')(e.id) };
+    });
+    const statusFilterDefs = [{ id: 'all', name: 'Todas' }, { id: 'Rascunho', name: 'Rascunho' }, { id: 'Publicada', name: 'Publicada' }];
+    const scheduleStatusFilters = statusFilterDefs.map(f => {
+      const active = s.scheduleFilterStatus === f.id;
+      const style = `padding:7px 14px; border-radius:20px; border:1px solid ${active ? '#1A1A1A' : '#EAE2D4'}; background:${active ? '#1A1A1A' : '#FFFFFF'}; font-family:'Public Sans',sans-serif; font-weight:600; font-size:12.5px; color:${active ? '#FFFFFF' : '#1A1A1A'}; cursor:pointer; white-space:nowrap;`;
+      return { label: f.name, style, onClick: () => this.setScheduleFilter('scheduleFilterStatus')(f.id) };
+    });
+
+    const now = NOW_REF;
+    const anchor = this.schedulePeriodAnchor();
+    const startOfWeek = (d) => { const x = new Date(d); const day = x.getDay(); x.setDate(x.getDate() - day); x.setHours(0,0,0,0); return x; };
+    const endOfWeek = (d) => { const x = startOfWeek(d); x.setDate(x.getDate() + 7); return x; };
+    const weekStart = startOfWeek(anchor), weekEnd = endOfWeek(anchor);
+    const currentMemberId = ROLES[s.role].memberId;
+
+    const scopedSchedules = s.schedules
+      .filter(sc => scopedMinistryIds.includes(sc.ministryId))
+      .filter(sc => s.role !== 'membro' || sc.status === 'Publicada')
+      .filter(sc => !s.scheduleOnlyMine || sc.allocations.some(a => a.memberId === currentMemberId))
+      .filter(sc => {
+        const ev = s.events.find(x => x.id === sc.eventId);
+        if (!ev) return false;
+        const d = new Date(ev.startsAt);
+        if (s.scheduleViewMode === 'dia') return d.toDateString() === anchor.toDateString();
+        if (s.scheduleViewMode === 'semana') return d >= weekStart && d < weekEnd;
+        return d.getFullYear() === s.scheduleYear && d.getMonth() === s.scheduleMonth;
+      });
+    const sorted = [...scopedSchedules].sort((a, b) => {
+      const ea = s.events.find(x => x.id === a.eventId), eb = s.events.find(x => x.id === b.eventId);
+      const da = new Date(ea ? ea.startsAt : 0), db = new Date(eb ? eb.startsAt : 0);
+      const aPast = da < now, bPast = db < now;
+      if (aPast !== bPast) return aPast ? 1 : -1;
+      return da - db;
+    });
+    const visibleSchedules = sorted
+      .filter(sc => s.scheduleFilterMinistry === 'all' || sc.ministryId === s.scheduleFilterMinistry)
+      .filter(sc => s.scheduleFilterStatus === 'all' || sc.status === s.scheduleFilterStatus)
+      .map(sc => {
+        const ev = s.events.find(x => x.id === sc.eventId);
+        const mn = MINISTRIES.find(x => x.id === sc.ministryId);
+        const isPublished = sc.status === 'Publicada';
+        const isPast = ev ? new Date(ev.startsAt) < now : false;
+        const isMemberIn = sc.allocations.some(a => a.memberId === currentMemberId);
+        const hasUnavailableMember = sc.allocations.some(a => this.isMemberUnavailableForEvent(a.memberId, ev));
+        const memberHasConflict = sc.allocations.some(a => a.memberId === currentMemberId && a.conflict);
+        return {
+          id: sc.id,
+          displayName: sc.label || (ev ? ev.name : '—'),
+          eventName: ev ? ev.name : '—',
+          whenLabel: ev ? this.formatEventWhen(ev) : '',
+          ministryName: mn ? mn.name : '—',
+          hasLabel: !!sc.label,
+          statusLabel: sc.status,
+          statusBg: isPublished ? '#E3F0F1' : '#F5EFE2', statusFg: isPublished ? '#145F6B' : '#6B6456',
+          allocationCount: sc.allocations.length,
+          isPast,
+          cardOpacity: isPast ? '0.55' : '1',
+          isMemberIn, memberHasConflict, hasUnavailableMember,
+          cardBorder: hasUnavailableMember ? '2px solid #C0392B' : isMemberIn ? (memberHasConflict ? '2px solid #8A6D1F' : '2px solid #1C7C8C') : '1px solid #EAE2D4',
+          cardBg: hasUnavailableMember ? '#FDEDEB' : isMemberIn ? (memberHasConflict ? '#FEFAF0' : '#F2F9F8') : '#FFFFFF',
+          checkBg: memberHasConflict ? '#8A6D1F' : '#1C7C8C',
+          onOpen: () => this.openScheduleDetail(sc.id),
+        };
+      });
+
+    const eligibleMinistries = this.eligibleRoleMinistries();
+    const nm = s.newScheduleModal;
+    const pad2 = (n) => String(n).padStart(2, '0');
+    const eventDateKeys = new Set(s.events.map(e => e.startsAt.split('T')[0]));
+    const firstWeekday = new Date(nm.calYear, nm.calMonth, 1).getDay();
+    const daysInMonth = new Date(nm.calYear, nm.calMonth + 1, 0).getDate();
+    const daysInPrevMonth = new Date(nm.calYear, nm.calMonth, 0).getDate();
+    const cells = [];
+    for (let i = 0; i < firstWeekday; i++) cells.push({ inMonth: false, day: daysInPrevMonth - firstWeekday + 1 + i, dateKey: null });
+    for (let d = 1; d <= daysInMonth; d++) cells.push({ inMonth: true, day: d, dateKey: `${nm.calYear}-${pad2(nm.calMonth + 1)}-${pad2(d)}` });
+    let trail = 1;
+    while (cells.length < 42) cells.push({ inMonth: false, day: trail++, dateKey: null });
+    const calWeeks = [];
+    for (let i = 0; i < 42; i += 7) {
+      calWeeks.push({ key: 'ncw' + i, days: cells.slice(i, i + 7).map(c => {
+        const hasEvent = c.dateKey && eventDateKeys.has(c.dateKey);
+        const selected = c.dateKey && c.dateKey === nm.selectedDate;
+        return {
+          day: c.day,
+          style: `min-height:36px; display:flex; align-items:center; justify-content:center; border-radius:8px; font-size:12.5px; font-weight:${hasEvent ? '700' : '500'}; cursor:${hasEvent ? 'pointer' : 'default'}; opacity:${c.inMonth ? 1 : 0.35}; background:${selected ? '#1C7C8C' : hasEvent ? '#E3F0F1' : 'transparent'}; color:${selected ? '#FFFFFF' : hasEvent ? '#145F6B' : '#1A1A1A'};`,
+          onClick: hasEvent ? () => this.selectNewScheduleDate(c.dateKey) : undefined,
+        };
+      }) });
+    }
+    const calMonthLabel = `${['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][nm.calMonth]} ${nm.calYear}`;
+    const eventsOnSelectedDate = nm.selectedDate ? s.events.filter(e => e.startsAt.split('T')[0] === nm.selectedDate) : [];
+
+    // --- detail ---
+    const schedule = s.scheduleDetailId ? s.schedules.find(x => x.id === s.scheduleDetailId) : null;
+    let detail = null;
+    if (schedule) {
+      const ev = s.events.find(x => x.id === schedule.eventId);
+      const mn = MINISTRIES.find(x => x.id === schedule.ministryId);
+      const isPublished = schedule.status === 'Publicada';
+      const canManageThis = s.role === 'admin_geral' || this.currentUserAdminMinistryIds().includes(schedule.ministryId);
+      const allocationRows = schedule.allocations.map(a => {
+        const mem = s.members.find(x => x.id === a.memberId);
+        const role = s.roles.find(x => x.id === a.roleId);
+        const confirmingDelete = s.allocationDeleteConfirm === a.id;
+        const isUnavailable = this.isMemberUnavailableForEvent(a.memberId, ev);
+        return {
+          id: a.id, memberName: mem ? mem.name : '—', roleName: role ? role.name : '—', conflict: a.conflict,
+          isUnavailable,
+          rowBg: isUnavailable ? '#FDEDEB' : a.conflict ? '#FDEDEB' : '#FFFFFF', rowBorder: isUnavailable ? '1px solid #C0392B' : a.conflict ? '1px solid #F3C6BE' : '1px solid #EAE2D4',
+          memberNameColor: isUnavailable ? '#C0392B' : '#1A1A1A',
+          confirmingDelete, notConfirmingDelete: !confirmingDelete,
+          onEdit: () => {},
+          onRemove: () => this.askRemoveAllocation(a.id),
+          onConfirmRemove: () => this.removeAllocation(a.id),
+          onCancelRemove: () => this.cancelRemoveAllocation(),
+        };
+      });
+      const ministryMembers = s.members.filter(m => m.ministryIds.includes(schedule.ministryId) && !this.isMemberUnavailableForEvent(m.id, ev));
+      const ministryRoles = s.roles.filter(r => r.ministryId === schedule.ministryId);
+
+      const conflictRows = schedule.allocations.filter(a => a.conflict).map(a => {
+        const mem = s.members.find(x => x.id === a.memberId);
+        const role = s.roles.find(x => x.id === a.roleId);
+        const otherInfo = [];
+        s.schedules.forEach(other => {
+          if (other.id === schedule.id) return;
+          const otherEv = s.events.find(x => x.id === other.eventId);
+          if (!this.eventsOverlap(ev, otherEv)) return;
+          other.allocations.filter(oa => oa.memberId === a.memberId).forEach(oa => {
+            const oRole = s.roles.find(r => r.id === oa.roleId);
+            const oMn = MINISTRIES.find(m => m.id === other.ministryId);
+            otherInfo.push({ ministryName: oMn ? oMn.name : '—', roleName: oRole ? oRole.name : '—', whenLabel: otherEv ? this.formatEventWhen(otherEv) : '', hasPriority: other.status === 'Publicada' });
+          });
+        });
+        return { id: a.id, memberName: mem ? mem.name : '—', roleName: role ? role.name : '—', otherInfo };
+      });
+
+      const pc = s.pendingConflict;
+      const pendingConflictVal = pc ? {
+        memberName: (s.members.find(m => m.id === pc.memberId) || {}).name || '—',
+        conflicts: pc.conflicts,
+        onConfirm: this.confirmPendingConflict,
+        onCancel: this.cancelPendingConflict,
+      } : null;
+
+      detail = {
+        id: schedule.id,
+        eventName: ev ? ev.name : '—',
+        whenLabel: ev ? this.formatEventWhen(ev) : '',
+        ministryName: mn ? mn.name : '—',
+        hasLabel: !!schedule.label, label: schedule.label,
+        statusLabel: schedule.status,
+        statusBg: isPublished ? '#E3F0F1' : '#F5EFE2', statusFg: isPublished ? '#145F6B' : '#6B6456',
+        isPublished, isDraft: !isPublished,
+        canManageThis,
+        onBack: this.backToScheduleList,
+        onOpenReview: this.openReviewConflicts,
+        onOpenPublish: this.openPublishModal,
+        allocationRows, hasAllocations: allocationRows.length > 0, noAllocations: allocationRows.length === 0,
+        hasConflicts: conflictRows.length > 0,
+        addAllocation: {
+          memberId: s.addAllocation.memberId, roleId: s.addAllocation.roleId,
+          memberOptions: ministryMembers, roleOptions: ministryRoles,
+          onMemberChange: this.setAddAllocationField('memberId'),
+          onRoleChange: this.setAddAllocationField('roleId'),
+          onAdd: () => this.addAllocationToSchedule(false),
+        },
+        pendingConflict: pendingConflictVal, hasPendingConflict: !!pendingConflictVal,
+        reviewConflictsOpen: s.reviewConflictsOpen, conflictRows,
+        onCloseReview: this.closeReviewConflicts,
+        publishModalOpen: s.publishModalOpen,
+        onClosePublish: this.closePublishModal,
+        onConfirmPublish: this.publishSchedule,
+      };
+    }
+
+    return {
+      isEscalas: s.appView === 'escalas',
+      isScheduleList: s.appView === 'escalas' && !s.scheduleDetailId,
+      isScheduleDetail: s.appView === 'escalas' && !!s.scheduleDetailId,
+      canManageSchedules,
+      showScheduleFilters: !isMemberRole,
+      schedulePeriodLabel: (() => {
+        const MONTHS = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+        const fmtDay = (d) => `${d.getDate()} de ${MONTHS[d.getMonth()]} de ${d.getFullYear()}`;
+        if (s.scheduleViewMode === 'dia') return fmtDay(anchor);
+        if (s.scheduleViewMode === 'semana') { const end = new Date(weekEnd); end.setDate(end.getDate() - 1); return `${fmtDay(weekStart)} – ${fmtDay(end)}`; }
+        return `${MONTHS[s.scheduleMonth].charAt(0).toUpperCase() + MONTHS[s.scheduleMonth].slice(1)} de ${s.scheduleYear}`;
+      })(),
+      scheduleViewMode: s.scheduleViewMode,
+      onScheduleViewModeChange: this.setScheduleViewMode,
+      onPrevSchedulePeriod: this.prevSchedulePeriod,
+      onNextSchedulePeriod: this.nextSchedulePeriod,
+      scheduleOnlyMineStyle: `margin-left:auto; padding:8px 14px; border-radius:10px; border:1px solid ${s.scheduleOnlyMine ? '#1C7C8C' : '#EAE2D4'}; background:${s.scheduleOnlyMine ? '#1C7C8C' : '#FFFFFF'}; font-family:'Public Sans',sans-serif; font-weight:600; font-size:12.5px; color:${s.scheduleOnlyMine ? '#FFFFFF' : '#1A1A1A'}; cursor:pointer; white-space:nowrap; flex-shrink:0;`,
+      onToggleScheduleOnlyMine: this.toggleScheduleOnlyMine,
+      showOnlyMineToggle: true,
+      scheduleMinistryFilters, scheduleEventFilters, scheduleStatusFilters,
+      visibleSchedules, hasSchedules: visibleSchedules.length > 0, noSchedules: visibleSchedules.length === 0,
+      openNewScheduleModal: this.openNewScheduleModal,
+      newScheduleModal: {
+        open: nm.open, ministryId: nm.ministryId, eventId: nm.eventId, label: nm.label,
+        hasError: !!nm.error, errorMessage: nm.error || '',
+        ministryOptions: eligibleMinistries,
+        calMonthLabel, calWeeks,
+        hasSelectedDate: !!nm.selectedDate,
+        noSelectedDate: !nm.selectedDate,
+        eventOptions: eventsOnSelectedDate,
+        onPrevMonth: this.prevNewScheduleCalMonth,
+        onNextMonth: this.nextNewScheduleCalMonth,
+        onMinistryChange: this.setNewScheduleField('ministryId'),
+        onEventChange: this.setNewScheduleField('eventId'),
+        onLabelChange: this.setNewScheduleField('label'),
+        onCancel: this.closeNewScheduleModal,
+        onSave: this.createSchedule,
+      },
+      scheduleDetail: detail,
+    };
+  }
+
+  eventsVals() {
+    const s = this.state;
+    const filterDefs = [{ id: 'all', name: 'Todos' }, ...EVENT_TYPES.map(t => ({ id: t, name: t }))];
+    const eventTypeFilters = filterDefs.map(f => {
+      const active = s.eventTypeFilter === f.id;
+      const style = `padding:7px 14px; border-radius:20px; border:1px solid ${active ? '#1A1A1A' : '#EAE2D4'}; background:${active ? '#1A1A1A' : '#FFFFFF'}; font-family:'Public Sans',sans-serif; font-weight:600; font-size:12.5px; color:${active ? '#FFFFFF' : '#1A1A1A'}; cursor:pointer; white-space:nowrap;`;
+      return { label: f.name, style, onClick: () => this.setEventTypeFilter(f.id) };
+    });
+
+    const fmt = (iso) => {
+      const d = new Date(iso);
+      const dateLabel = d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' });
+      return dateLabel.charAt(0).toUpperCase() + dateLabel.slice(1);
+    };
+    const time = (iso) => iso.split('T')[1] ? iso.split('T')[1].replace(':', 'h') : '';
+
+    const sorted = [...s.events].sort((a, b) => new Date(a.startsAt) - new Date(b.startsAt));
+    const visibleEvents = sorted
+      .filter(e => s.eventTypeFilter === 'all' || e.type === s.eventTypeFilter)
+      .map(e => {
+        const colors = EVENT_TYPE_COLORS[e.type] || { bg: '#F5EFE2', fg: '#6B6456' };
+        return {
+          id: e.id, name: e.name, type: e.type,
+          typeBg: colors.bg, typeFg: colors.fg,
+          whenLabel: `${fmt(e.startsAt)} · ${time(e.startsAt)}–${time(e.endsAt)}`,
+          confirmingDelete: e.confirmingDelete, notConfirmingDelete: !e.confirmingDelete,
+          onEdit: () => this.openEventModal(e.id),
+          onDelete: () => this.askDeleteEvent(e.id),
+          onConfirmDelete: () => this.deleteEvent(e.id),
+          onCancelDelete: () => this.cancelDeleteEvent(e.id),
+        };
+      });
+
+    const em = s.eventModal;
+    const typeOptions = EVENT_TYPES.map(t => ({ id: t, name: t }));
+
+    return {
+      canManageEvents: s.role === 'admin_geral' || s.role === 'admin_grupo',
+      eventTypeFilters,
+      visibleEvents,
+      hasEvents: visibleEvents.length > 0,
+      noEvents: visibleEvents.length === 0,
+      openEventModal: () => this.openEventModal(null),
+      eventModal: {
+        open: em.open, name: em.name, type: em.type,
+        startDate: em.startDate, startTime: em.startTime, endDate: em.endDate, endTime: em.endTime,
+        hasError: !!em.error, errorMessage: em.error || '',
+        title: em.editingId ? 'Editar evento' : 'Novo evento',
+        saveLabel: em.editingId ? 'Salvar evento' : 'Criar evento',
+        typeOptions,
+        onNameChange: this.setEventModalField('name'),
+        onTypeChange: this.setEventModalField('type'),
+        onStartDateChange: this.setEventModalField('startDate'),
+        onStartTimeChange: this.setEventModalField('startTime'),
+        onEndDateChange: this.setEventModalField('endDate'),
+        onEndTimeChange: this.setEventModalField('endTime'),
+        onCancel: this.closeEventModal,
+        onSave: this.saveEvent,
+      },
+    };
+  }
+
+  profileTag(profile) {
+    if (profile === 'Administrador geral') return { bg: '#FBE6DE', fg: '#C4431E' };
+    if (profile === 'Administrador de grupo') return { bg: '#E3F0F1', fg: '#1C7C8C' };
+    return { bg: '#EFEBE3', fg: '#6B6456' };
+  }
+  statusTag(status) {
+    return status === 'Ativo' ? { bg: '#E3F0F1', fg: '#1C7C8C' } : { bg: '#FCEEE3', fg: '#B5651D' };
+  }
+  initials(name) {
+    return name.split(' ').filter(Boolean).slice(0, 2).map(p => p[0].toUpperCase()).join('');
+  }
+
+  membersVals() {
+    const s = this.state;
+    const isGroupAdmin = s.role === 'admin_grupo';
+    const canManageMembers = s.role === 'admin_geral';
+    const groupAdminMinistryIds = isGroupAdmin ? this.currentUserAdminMinistryIds() : [];
+
+    const filterDefs = [{ id: 'all', name: 'Todos' }, ...(isGroupAdmin ? MINISTRIES.filter(m => groupAdminMinistryIds.includes(m.id)) : MINISTRIES)];
+    const ministryFilters = filterDefs.map(m => {
+      const active = s.ministryFilter === m.id;
+      const style = `padding:7px 14px; border-radius:20px; border:1px solid ${active ? '#1A1A1A' : '#EAE2D4'}; background:${active ? '#1A1A1A' : '#FFFFFF'}; font-family:'Public Sans',sans-serif; font-weight:600; font-size:12.5px; color:${active ? '#FFFFFF' : '#1A1A1A'}; cursor:pointer; white-space:nowrap;`;
+      return { label: m.name, style, onClick: () => this.setMinistryFilter(m.id) };
+    });
+
+    const q = s.memberSearch.trim().toLowerCase();
+    const visibleMembers = s.members
+      .filter(m => isGroupAdmin
+        ? m.ministryIds.some(id => groupAdminMinistryIds.includes(id)) && (s.ministryFilter === 'all' || m.ministryIds.includes(s.ministryFilter))
+        : (s.ministryFilter === 'all' || m.ministryIds.includes(s.ministryFilter)))
+      .filter(m => !q || m.name.toLowerCase().includes(q) || m.email.toLowerCase().includes(q))
+      .map(m => {
+        const statusTag = this.statusTag(m.status);
+        const ministryChips = m.ministryIds.map(id => {
+          const mn = MINISTRIES.find(x => x.id === id);
+          if (!mn) return null;
+          const isAdminHere = m.adminMinistryIds.includes(id);
+          const label = isAdminHere ? `${mn.name} · admin` : mn.name;
+          const bg = isAdminHere ? '#E3F0F1' : '#F5EFE2';
+          const fg = isAdminHere ? '#1C7C8C' : '#6B6456';
+          return { id: mn.id, label, style: `font-size:11px; font-weight:${isAdminHere ? '700' : '600'}; padding:3px 9px; border-radius:20px; background:${bg}; color:${fg}; white-space:nowrap; flex-shrink:0;` };
+        }).filter(Boolean);
+        const eligibleForPromotion = m.ministryIds.filter(id => groupAdminMinistryIds.includes(id) && !m.adminMinistryIds.includes(id));
+        const canPromote = isGroupAdmin && !m.isGeneralAdmin && eligibleForPromotion.length > 0;
+        return {
+          ...m, initials: this.initials(m.name),
+          statusTagBg: statusTag.bg, statusTagFg: statusTag.fg,
+          ministryChips, canPromote,
+          onEdit: () => this.openMemberModal(m.id),
+          onPromote: () => this.openPromoteModal(m.id),
+        };
+      });
+
+    const mm = s.memberModal;
+    const editingMember = mm.editingId ? s.members.find(x => x.id === mm.editingId) : null;
+    const emailLocked = !!mm.editingId;
+    const currentUserMemberId = ROLES[s.role].memberId;
+    const isEditingSelf = mm.editingId === currentUserMemberId;
+    const canEditGeneralAdmin = !isEditingSelf && !mm.isGeneralAdmin;
+    const canDemote = !isEditingSelf && !!editingMember && (editingMember.isGeneralAdmin || editingMember.adminMinistryIds.length > 0);
+    const isGroupInvite = !mm.editingId && s.role === 'admin_grupo';
+    const groupInviteMinistryOptions = isGroupInvite ? MINISTRIES.filter(mn => this.currentUserAdminMinistryIds().includes(mn.id)) : [];
+
+    const ministryRows = MINISTRIES.map(mn => {
+      const isMember = mm.ministryIds.includes(mn.id);
+      const isAdmin = mm.adminMinistryIds.includes(mn.id);
+      return {
+        id: mn.id, name: mn.name,
+        memberButtonLabel: isMember ? 'No ministério' : 'Adicionar',
+        memberButtonStyle: `padding:6px 12px; border-radius:8px; border:1px solid ${isMember ? '#1C7C8C' : '#EAE2D4'}; background:${isMember ? '#1C7C8C' : '#FFFFFF'}; color:${isMember ? '#FFFFFF' : '#1A1A1A'}; font-family:'Public Sans',sans-serif; font-weight:600; font-size:12px; cursor:pointer; white-space:nowrap;`,
+        onToggleMember: () => this.toggleMinistryMembership(mn.id),
+        adminButtonLabel: isAdmin ? 'Administrador' : '+ Admin',
+        adminButtonStyle: `padding:6px 12px; border-radius:8px; border:1px solid ${isAdmin ? '#C4431E' : '#EAE2D4'}; background:${isAdmin ? '#FBE6DE' : '#FFFFFF'}; color:${isAdmin ? '#C4431E' : '#1A1A1A'}; font-family:'Public Sans',sans-serif; font-weight:700; font-size:12px; cursor:pointer; white-space:nowrap;`,
+        onToggleAdmin: () => this.toggleMinistryAdmin(mn.id),
+      };
+    });
+
+    const pm = s.promoteModal;
+    const promoteMember = pm.memberId ? s.members.find(x => x.id === pm.memberId) : null;
+    const currentAdminMinistryIds = this.currentUserAdminMinistryIds();
+    const promoteMinistryOptions = promoteMember ? promoteMember.ministryIds
+      .filter(id => currentAdminMinistryIds.includes(id) && !promoteMember.adminMinistryIds.includes(id))
+      .map(id => MINISTRIES.find(x => x.id === id)).filter(Boolean) : [];
+    const promoteMinistryName = pm.ministryId ? (MINISTRIES.find(x => x.id === pm.ministryId) || {}).name : '';
+
+    return {
+      ministryFilters, memberSearch: s.memberSearch, onMemberSearch: this.setMemberSearch,
+      visibleMembers, canManageMembers,
+      memberModal: {
+        open: mm.open, editingId: mm.editingId, name: mm.name, email: mm.email,
+        emailLocked, emailLockedInverse: !emailLocked,
+        title: mm.editingId ? 'Editar membro' : 'Convidar membro',
+        saveLabel: mm.editingId ? 'Salvar' : 'Enviar convite',
+        onNameChange: this.setMemberModalField('name'),
+        onEmailChange: this.setMemberModalField('email'),
+        onCancel: this.closeMemberModal,
+        onSave: this.saveMember,
+        isEditingSelf,
+        showGeneralAdminControl: !isEditingSelf,
+        canDemote,
+        onDemote: this.demoteToMember,
+        isGroupInvite,
+        inviteMinistryId: mm.inviteMinistryId || (groupInviteMinistryOptions[0] ? groupInviteMinistryOptions[0].id : ''),
+        onInviteMinistryChange: this.setMemberModalField('inviteMinistryId'),
+        groupInviteMinistryOptions,
+        generalAdminButtonLabel: mm.isGeneralAdmin ? 'Administrador geral' : 'Promover a administrador geral',
+        generalAdminButtonStyle: `width:100%; padding:10px 12px; border-radius:10px; border:1px solid ${mm.isGeneralAdmin ? '#C4431E' : '#EAE2D4'}; background:${mm.isGeneralAdmin ? '#FBE6DE' : '#FFFFFF'}; color:${mm.isGeneralAdmin ? '#C4431E' : '#1A1A1A'}; font-family:'Public Sans',sans-serif; font-weight:700; font-size:13px; cursor:${canEditGeneralAdmin ? 'pointer' : 'default'}; opacity:${mm.isGeneralAdmin ? '1' : '1'};`,
+        onToggleGeneralAdmin: canEditGeneralAdmin ? this.toggleGeneralAdmin : undefined,
+        ministryRows,
+      },
+      promoteModal: {
+        open: pm.open, memberName: promoteMember ? promoteMember.name : '', ministryId: pm.ministryId, ministryName: promoteMinistryName,
+        ministryOptions: promoteMinistryOptions,
+        isSelectStep: pm.step === 'select', isConfirmStep: pm.step === 'confirm',
+        onMinistryChange: this.setPromoteMinistry,
+        onCancel: this.cancelPromote,
+        onContinue: this.continuePromote,
+        onConfirm: this.confirmPromote,
+      },
+    };
+  }
+
+  renderVals() {
+    const s = this.state;
+    const roleInfo = ROLES[s.role];
+
+    const roleSwitcher = Object.keys(ROLES).map(key => {
+      const active = s.role === key;
+      const style = `padding:7px 14px; border-radius:20px; border:1px solid ${active ? '#1A1A1A' : '#EAE2D4'}; background:${active ? '#1A1A1A' : '#FFFFFF'}; font-family:'Public Sans',sans-serif; font-weight:600; font-size:12px; color:${active ? '#FFFFFF' : '#1A1A1A'}; cursor:pointer; white-space:nowrap;`;
+      return { label: ROLES[key].label, style, onClick: () => this.setRole(key) };
+    });
+
+    const navItems = roleInfo.nav.map(key => {
+      const active = s.appView === key;
+      const style = `text-align:left; padding:10px 12px; border-radius:10px; border:none; background:${active ? '#F5EFE2' : 'transparent'}; font-family:'Public Sans',sans-serif; font-weight:600; font-size:14px; color:${active ? '#1A1A1A' : '#837B6E'}; cursor:pointer; margin-bottom:2px; white-space:nowrap;`;
+      return { label: NAV_LABELS[key], style, onClick: () => this.goTo(key), onClickMobile: () => this.goTo(key) };
+    });
+
+    return {
+      roleSwitcher,
+      navItems,
+      user: { name: roleInfo.name, initials: roleInfo.initials, roleLabel: roleInfo.label },
+      mobileMenuOpen: s.mobileMenuOpen,
+      openMobileMenu: this.openMobileMenu,
+      closeMobileMenu: this.closeMobileMenu,
+      pageTitle: PAGE_META[s.appView].title,
+      pageSubtitle: PAGE_META[s.appView].subtitle,
+      isAgenda: s.appView === 'agenda',
+      isEventos: s.appView === 'eventos',
+      isMinistries: s.appView === 'ministerios',
+      isRoles: s.appView === 'funcoes',
+      isMembers: s.appView === 'membros',
+      isEscalas: s.appView === 'escalas',
+      openInviteModal: () => this.openMemberModal(null),
+      isMembersManageable: s.appView === 'membros' && (s.role === 'admin_geral' || s.role === 'admin_grupo'),
+      toast: s.toast ? {
+        message: s.toast.message,
+        icon: s.toast.type === 'success' ? '✓' : '!',
+        bg: s.toast.type === 'success' ? '#E3F0F1' : '#FDEDEB',
+        border: s.toast.type === 'success' ? '#BFE0E2' : '#F3C6BE',
+        iconBg: s.toast.type === 'success' ? '#1C7C8C' : '#C0392B',
+        fg: s.toast.type === 'success' ? '#145F6B' : '#9B2C1E',
+      } : null,
+      dismissToast: this.dismissToast,
+      openProfileModal: this.openProfileModal,
+      profileModal: {
+        open: s.profileModal.open, name: s.profileModal.name,
+        onNameChange: this.setProfileName,
+        onCancel: this.closeProfileModal,
+        onSave: this.saveProfileName,
+      },
+      ...this.membersVals(),
+      ...this.ministriesVals(),
+      ...this.rolesVals(),
+      ...this.eventsVals(),
+      ...this.schedulesVals(),
+      ...this.agendaVals(),
+    };
+  }
+
+  rolesVals() {
+    const s = this.state;
+    const canManageRoles = s.role === 'admin_geral' || s.role === 'admin_grupo';
+    const eligible = this.eligibleRoleMinistries();
+    const eligibleIds = eligible.map(m => m.id);
+
+    const scopedRoles = s.role === 'admin_grupo' ? s.roles.filter(r => eligibleIds.includes(r.ministryId)) : s.roles;
+    const filterableMinistries = s.role === 'admin_grupo' ? eligible : MINISTRIES;
+    const roleFilterDefs = [{ id: 'all', name: 'Todos' }, ...filterableMinistries];
+    const roleFilters = roleFilterDefs.map(m => {
+      const active = s.roleFilter === m.id;
+      const style = `padding:7px 14px; border-radius:20px; border:1px solid ${active ? '#1A1A1A' : '#EAE2D4'}; background:${active ? '#1A1A1A' : '#FFFFFF'}; font-family:'Public Sans',sans-serif; font-weight:600; font-size:12.5px; color:${active ? '#FFFFFF' : '#1A1A1A'}; cursor:pointer; white-space:nowrap;`;
+      return { label: m.name, style, onClick: () => this.setRoleFilter(m.id) };
+    });
+    const visibleRoles = scopedRoles.filter(r => s.roleFilter === 'all' || r.ministryId === s.roleFilter);
+    const roleCards = visibleRoles.map(r => {
+      const mn = MINISTRIES.find(x => x.id === r.ministryId);
+      return {
+        id: r.id, name: r.name,
+        ministryName: mn ? mn.name : '—',
+        confirmingDelete: r.confirmingDelete, notConfirmingDelete: !r.confirmingDelete,
+        onEdit: () => this.openRoleModal(r.id),
+        onDelete: () => this.askDeleteRole(r.id),
+        onConfirmDelete: () => this.deleteRole(r.id),
+        onCancelDelete: () => this.cancelDeleteRole(r.id),
+      };
+    });
+
+    const rm = s.roleModal;
+    // Admin geral e admin de grupo veem todas as funções da instituição na hora de marcar compatibilidade.
+    const csq = (rm.compatibleSearch || '').trim().toLowerCase();
+    const compatibleOptions = s.roles
+      .filter(r => r.id !== rm.editingId)
+      .filter(r => !csq || r.name.toLowerCase().includes(csq))
+      .map(r => {
+        const mn = MINISTRIES.find(x => x.id === r.ministryId);
+        const active = rm.compatibleIds.includes(r.id);
+        return {
+          id: r.id, name: r.name, ministryName: mn ? mn.name : '—',
+          active,
+          toggleStyle: `width:42px; height:24px; border-radius:20px; border:none; background:${active ? '#1C7C8C' : '#EAE2D4'}; position:relative; cursor:pointer; flex-shrink:0; padding:0;`,
+          knobStyle: `width:18px; height:18px; border-radius:50%; background:#FFFFFF; position:absolute; top:3px; left:${active ? '21px' : '3px'}; transition:left .15s ease;`,
+          onToggle: () => this.toggleCompatibleRole(r.id),
+        };
+      });
+    const confirmSummary = rm.compatibleIds.map(id => {
+      const r = s.roles.find(x => x.id === id);
+      return r ? r.name : '';
+    }).filter(Boolean).join(', ');
+
+    return {
+      canCreateRole: s.appView === 'funcoes' && canManageRoles,
+      canManageRoles,
+      roleFilters,
+      roleCards,
+      hasRoleCards: roleCards.length > 0,
+      noRoleCards: roleCards.length === 0,
+      openRoleModal: () => this.openRoleModal(null),
+      roleModal: {
+        open: rm.open, name: rm.name, ministryId: rm.ministryId,
+        hasError: !!rm.error, errorMessage: rm.error || '',
+        isFormStep: rm.step === 'form', isConfirmStep: rm.step === 'confirm',
+        title: rm.editingId ? 'Editar função' : 'Nova função',
+        onNameChange: this.setRoleModalField('name'),
+        onMinistryChange: this.setRoleModalField('ministryId'),
+        onCancel: this.closeRoleModal,
+        onContinue: this.goToConfirmRole,
+        onBack: this.backToRoleForm,
+        onSave: this.saveRole,
+        ministryOptions: eligible,
+        compatibleSearch: rm.compatibleSearch,
+        onCompatibleSearch: this.setRoleModalField('compatibleSearch'),
+        compatibleOptions,
+        hasCompatibleOptions: compatibleOptions.length > 0,
+        noCompatibleOptions: compatibleOptions.length === 0,
+        hasCompatibleSelection: rm.compatibleIds.length > 0,
+        noCompatibleSelection: rm.compatibleIds.length === 0,
+        confirmSummary,
+        roleName: rm.name,
+      },
+    };
+  }
+
+  ministriesVals() {
+    const s = this.state;
+    const currentMember = s.members.find(x => x.id === ROLES[s.role].memberId);
+    const currentMemberMinistryIds = currentMember ? currentMember.ministryIds : [];
+
+    let visibleMinistries = MINISTRIES;
+    if (s.role === 'admin_grupo') visibleMinistries = MINISTRIES.filter(m => currentMemberMinistryIds.includes(m.id));
+    if (s.role === 'membro') visibleMinistries = MINISTRIES.filter(m => currentMemberMinistryIds.includes(m.id));
+
+    const currentMemberId = ROLES[s.role].memberId;
+    const ministryCards = visibleMinistries.map(m => {
+      const admins = s.members.filter(mem => mem.adminMinistryIds.includes(m.id));
+      const adminLabel = admins.length
+        ? admins.map(a => a.id === currentMemberId ? `${a.name} (você)` : a.name).join(', ')
+        : 'Nenhum administrador definido';
+      const isCurrentUserAdmin = admins.some(a => a.id === currentMemberId);
+      const canEditMinistry = s.role === 'admin_geral' || isCurrentUserAdmin;
+      return {
+        id: m.id, name: m.name,
+        hasDescription: !!m.description, description: m.description,
+        adminNames: adminLabel,
+        isCurrentUserAdmin,
+        cardBorder: isCurrentUserAdmin ? '2px solid #1C7C8C' : '1px solid #EAE2D4',
+        canEditMinistry,
+        onEditMinistry: () => this.openMinistryModal(m.id),
+      };
+    });
+
+    const emptyMessage = s.role === 'admin_grupo'
+      ? 'Você ainda não administra nenhum ministério.'
+      : 'Você ainda não participa de nenhum ministério.';
+
+    const mm = s.ministryModal;
+    return {
+      canCreateMinistry: s.appView === 'ministerios' && s.role === 'admin_geral',
+      ministryCards,
+      hasMinistryCards: ministryCards.length > 0,
+      noMinistryCards: ministryCards.length === 0,
+      ministriesEmptyMessage: emptyMessage,
+      openMinistryModal: () => this.openMinistryModal(null),
+      ministryModal: {
+        open: mm.open, editingId: mm.editingId, name: mm.name, description: mm.description,
+        title: mm.editingId ? 'Editar ministério' : 'Novo ministério',
+        saveLabel: mm.editingId ? 'Salvar' : 'Criar',
+        onNameChange: this.setMinistryModalField('name'),
+        onDescriptionChange: this.setMinistryModalField('description'),
+        onCancel: this.closeMinistryModal,
+        onSave: this.saveMinistry,
+      },
+    };
+  }
+}
+</script>
+</body>
+</html>
