@@ -131,17 +131,21 @@ class FakeScheduleRepository implements ScheduleRepository {
   async findById(id: string): Promise<Schedule | null> {
     return this.schedules.find((s) => s.id === id) ?? null;
   }
-  async findByMinistryEventAndName(
+  async findByMinistryEventDayAndName(
     ministryId: string,
     eventId: string,
+    day: Date | null,
     name: string,
   ): Promise<Schedule | null> {
+    const sameDay = (a: Date | null, b: Date | null) =>
+      a === null ? b === null : b !== null && a.getTime() === b.getTime();
     // Case-insensitive, como o repositório real (mode: 'insensitive').
     return (
       this.schedules.find(
         (s) =>
           s.ministryId === ministryId &&
           s.eventId === eventId &&
+          sameDay(s.date, day) &&
           s.name.toLowerCase() === name.toLowerCase(),
       ) ?? null
     );
@@ -341,6 +345,21 @@ describe('CreateScheduleUseCase', () => {
       build(s).execute({ institutionId: INST, actor: ADMIN_GERAL, ministryId: s.ministry.id, eventId: foreignEvent.id }),
     ).rejects.toMatchObject({ statusCode: 404, message: expect.stringContaining('Evento') });
   });
+
+  it('permite a escala padrão em DIAS diferentes do mesmo evento (multi-dia); colide no mesmo dia', async () => {
+    const s = await scenario();
+    const useCase = build(s);
+    const common = { institutionId: INST, actor: ADMIN_GERAL, ministryId: s.ministry.id, eventId: s.event.id };
+    const dia20 = new Date('2026-07-20T00:00:00Z');
+    const dia21 = new Date('2026-07-21T00:00:00Z');
+
+    await useCase.execute({ ...common, date: dia20 });
+    await useCase.execute({ ...common, date: dia21 }); // outro dia → não colide
+    expect(s.scheduleRepo.schedules).toHaveLength(2);
+
+    // mesmo dia + mesmo nome ("") colide
+    await expect(useCase.execute({ ...common, date: dia20 })).rejects.toMatchObject({ statusCode: 409 });
+  });
 });
 
 describe('GetScheduleUseCase', () => {
@@ -400,6 +419,34 @@ describe('GetScheduleUseCase', () => {
       new GetScheduleUseCase(s.scheduleRepo, s.ministryRepo, new FakeAssignmentRepository()).execute({
         institutionId: INST, id: 'nao-existe',
       }),
+    ).rejects.toMatchObject({ statusCode: 404 });
+  });
+
+  it('MEMBRO só vê escala PUBLICADA de ministério que participa (404 caso contrário)', async () => {
+    const s = await scenario();
+    const created = await new CreateScheduleUseCase(s.scheduleRepo, s.ministryRepo, s.eventRepo, s.policy).execute({
+      institutionId: INST, actor: ADMIN_GERAL, ministryId: s.ministry.id, eventId: s.event.id,
+    });
+    s.membershipRepo.memberships.push(
+      MinistryMembership.create({ memberId: 'mb', ministryId: s.ministry.id, isAdmin: false }),
+    );
+    const MEMBER: Actor = { memberId: 'mb', role: 'MEMBRO' };
+    const get = () =>
+      new GetScheduleUseCase(s.scheduleRepo, s.ministryRepo, new FakeAssignmentRepository(), s.membershipRepo);
+
+    // Rascunho: invisível ao membro (404, não revela).
+    await expect(get().execute({ institutionId: INST, id: created.id, actor: MEMBER })).rejects.toMatchObject({
+      statusCode: 404,
+    });
+
+    // Publicada e do ministério dele: 200.
+    await s.scheduleRepo.update(created.publish());
+    const ok = await get().execute({ institutionId: INST, id: created.id, actor: MEMBER });
+    expect(ok.schedule.status).toBe('PUBLICADA');
+
+    // Membro que NÃO participa: 404 mesmo publicada.
+    await expect(
+      get().execute({ institutionId: INST, id: created.id, actor: { memberId: 'stranger', role: 'MEMBRO' } }),
     ).rejects.toMatchObject({ statusCode: 404 });
   });
 });
@@ -469,6 +516,23 @@ describe('ListSchedulesUseCase', () => {
         institutionId: INST, eventId: foreignEvent.id,
       }),
     ).rejects.toMatchObject({ statusCode: 404 });
+  });
+
+  it('MEMBRO lista só escalas PUBLICADA dos ministérios que participa', async () => {
+    const { s } = await withTwoMinistriesOnSameEvent(); // A (s.ministry) e B, ambas RASCUNHO
+    const inA = s.scheduleRepo.schedules.find((x) => x.ministryId === s.ministry.id)!;
+    await s.scheduleRepo.update(inA.publish()); // publica só a de A
+    s.membershipRepo.memberships.push(
+      MinistryMembership.create({ memberId: 'mb', ministryId: s.ministry.id, isAdmin: false }),
+    );
+
+    const list = await new ListSchedulesUseCase(
+      s.scheduleRepo, s.ministryRepo, s.eventRepo, s.membershipRepo,
+    ).execute({ institutionId: INST, actor: { memberId: 'mb', role: 'MEMBRO' } });
+
+    expect(list).toHaveLength(1);
+    expect(list[0].ministryId).toBe(s.ministry.id);
+    expect(list[0].status).toBe('PUBLICADA');
   });
 });
 

@@ -5,14 +5,14 @@ import { AppError } from '../../shared/errors/AppError';
 /**
  * Schedule — a escala de UM ministério para UM evento (model `Escala` do Prisma).
  * É a "casca" que depois é preenchida com alocações (pessoa + função). Nasce
- * vazia com status RASCUNHO e só fica visível ao membro após ser PUBLICADA (RN04);
- * a publicação e as alocações entram em blocos posteriores da Fase 5.
+ * vazia com status RASCUNHO e só fica visível ao membro após ser PUBLICADA (RN04).
  *
  * Um ministério pode ter VÁRIAS escalas para o mesmo evento, distinguidas pelo
- * nome/rótulo (ex: infantil com "Berçário", "Sala 1", "Sala 2"). O par é único por
- * (ministério, evento, nome) no schema; nome = "" é a escala única padrão do
- * ministério — o segundo "" no mesmo evento colide (preserva "um ministério = uma
- * escala por evento" no caso comum).
+ * nome/rótulo (ex: infantil com "Berçário", "Sala 1", "Sala 2"). `date` fixa a
+ * qual DIA do evento a escala se refere: em evento MULTI-DIA, cada dia pode ter
+ * suas escalas. O par é único por (ministério, evento, dia, nome) no schema; nome
+ * = "" é a escala única padrão do ministério NAQUELE dia. `date` é uma data pura
+ * (sem hora); null = não fixado (evento de um dia, ou escala legada).
  *
  * Construtor privado + factory create() (padrão da Seção 4.1). As propriedades em
  * inglês são traduzidas de/para as colunas em português no repositório (Seção 4.6).
@@ -25,6 +25,7 @@ export class Schedule {
     public readonly ministryId: string,
     public readonly eventId: string,
     public readonly name: string,
+    public readonly date: Date | null,
     public readonly status: StatusEscala,
     public readonly publishedAt: Date | null,
     public readonly createdAt: Date,
@@ -33,11 +34,16 @@ export class Schedule {
   /**
    * Cria uma escala vazia (status RASCUNHO, sem data de publicação) de um
    * ministério para um evento. O nome é opcional (rótulo da sala/turma); omitido
-   * ou em branco vira "" (a escala única do ministério). A existência do
-   * ministério/evento e o escopo de instituição são validados no use case; aqui
-   * garantimos apenas os ids e normalizamos o nome.
+   * ou em branco vira "" (a escala única do ministério). `date` é o dia do evento
+   * a que a escala se refere (opcional; null quando não fixado). A existência do
+   * ministério/evento e o escopo de instituição são validados no use case.
    */
-  static create(props: { ministryId: string; eventId: string; name?: string }): Schedule {
+  static create(props: {
+    ministryId: string;
+    eventId: string;
+    name?: string;
+    date?: Date | null;
+  }): Schedule {
     if (typeof props.ministryId !== 'string' || !props.ministryId.trim()) {
       throw new AppError('Ministério é obrigatório', 400);
     }
@@ -50,6 +56,7 @@ export class Schedule {
       props.ministryId,
       props.eventId,
       Schedule.normalizeName(props.name),
+      props.date ?? null,
       'RASCUNHO',
       null,
       new Date(),
@@ -72,6 +79,7 @@ export class Schedule {
       this.ministryId,
       this.eventId,
       this.name,
+      this.date,
       'PUBLICADA',
       new Date(),
       this.createdAt,
@@ -84,6 +92,7 @@ export class Schedule {
     ministryId: string;
     eventId: string;
     name: string;
+    date: Date | null;
     status: StatusEscala;
     publishedAt: Date | null;
     createdAt: Date;
@@ -93,6 +102,7 @@ export class Schedule {
       props.ministryId,
       props.eventId,
       props.name,
+      props.date,
       props.status,
       props.publishedAt,
       props.createdAt,

@@ -217,9 +217,31 @@ describe('GET /escalas e /escalas/:id', () => {
     expect(res.body.data.assignments[0].conflict).toBe(false);
   });
 
-  it('MEMBRO não pode listar (403)', async () => {
+  it('MEMBRO lista só escalas PUBLICADA de ministério que participa (200)', async () => {
+    const evPub = await newEvent();
+    const pub = await request(app).post('/escalas').set('Authorization', `Bearer ${adminGeralToken}`).send({ ministryId: MINISTRY_ID, eventId: evPub });
+    await prisma.escala.update({ where: { id: pub.body.data.id }, data: { status: 'PUBLICADA', publicadaEm: new Date() } });
+    const evDraft = await newEvent();
+    const draft = await request(app).post('/escalas').set('Authorization', `Bearer ${adminGeralToken}`).send({ ministryId: MINISTRY_ID, eventId: evDraft });
+
     const res = await request(app).get('/escalas').set('Authorization', `Bearer ${membroToken}`);
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(200);
+    const ids = res.body.data.map((x: { id: string }) => x.id);
+    expect(ids).toContain(pub.body.data.id);
+    expect(ids).not.toContain(draft.body.data.id);
+    expect(res.body.data.every((x: { status: string }) => x.status === 'PUBLICADA')).toBe(true);
+  });
+
+  it('MEMBRO vê por id escala publicada do seu ministério (200); 404 em rascunho', async () => {
+    const ev = await newEvent();
+    const created = await request(app).post('/escalas').set('Authorization', `Bearer ${adminGeralToken}`).send({ ministryId: MINISTRY_ID, eventId: ev });
+
+    const asDraft = await request(app).get(`/escalas/${created.body.data.id}`).set('Authorization', `Bearer ${membroToken}`);
+    expect(asDraft.status).toBe(404);
+
+    await prisma.escala.update({ where: { id: created.body.data.id }, data: { status: 'PUBLICADA', publicadaEm: new Date() } });
+    const asPublished = await request(app).get(`/escalas/${created.body.data.id}`).set('Authorization', `Bearer ${membroToken}`);
+    expect(asPublished.status).toBe(200);
   });
 });
 
@@ -276,12 +298,22 @@ describe('GET /escalas/:id/conflitos', () => {
     expect(res.body.data.conflicts).toEqual([]);
   });
 
-  it('MEMBRO não pode consultar (403)', async () => {
+  it('MEMBRO recebe 404 nos conflitos de uma escala RASCUNHO', async () => {
     const scheduleId = await scheduleWithConflict();
     const res = await request(app)
       .get(`/escalas/${scheduleId}/conflitos`)
       .set('Authorization', `Bearer ${membroToken}`);
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(404);
+  });
+
+  it('MEMBRO vê os conflitos de uma escala PUBLICADA do seu ministério (200)', async () => {
+    const scheduleId = await scheduleWithConflict();
+    await prisma.escala.update({ where: { id: scheduleId }, data: { status: 'PUBLICADA', publicadaEm: new Date() } });
+    const res = await request(app)
+      .get(`/escalas/${scheduleId}/conflitos`)
+      .set('Authorization', `Bearer ${membroToken}`);
+    expect(res.status).toBe(200);
+    expect(res.body.data.conflicts.length).toBeGreaterThanOrEqual(1);
   });
 
   it('404 para escala inexistente', async () => {

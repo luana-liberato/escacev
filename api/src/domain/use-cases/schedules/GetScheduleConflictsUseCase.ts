@@ -6,6 +6,8 @@ import { ScheduleRepository } from '../../repositories/ScheduleRepository';
 import { MinistryRepository } from '../../repositories/MinistryRepository';
 import { EventRepository } from '../../repositories/EventRepository';
 import { AssignmentRepository } from '../../repositories/AssignmentRepository';
+import { MinistryMembershipRepository } from '../../repositories/MinistryMembershipRepository';
+import { Actor } from '../../services/MinistryAccessPolicy';
 import { ConflictDetail, ConflictDetectionService } from '../../services/ConflictDetectionService';
 import { AppError } from '../../../shared/errors/AppError';
 
@@ -13,6 +15,8 @@ import { AppError } from '../../../shared/errors/AppError';
 export interface GetScheduleConflictsDTO {
   institutionId: string;
   id: string;
+  /** Ator autenticado — usado só para escopar a visão do MEMBRO. */
+  actor?: Actor;
 }
 
 /**
@@ -46,10 +50,10 @@ export interface ScheduleConflictsResult {
  * evento da própria escala e `excludeAssignmentId = a própria` (para não conflitar
  * consigo mesma). Só entram no resultado as alocações que têm ao menos um conflito.
  *
- * LEITURA aberta a qualquer admin (o rbac da rota já bloqueia MEMBRO) — como o
- * GetScheduleUseCase, não passa pela guarda escopada: a transparência é total,
- * inclusive sobre conflitos em ministérios que o admin não administra (3a). Valida
- * o tenant pela instituição do ministério da escala (a Escala não tem
+ * Para o ADMIN a transparência é total, inclusive sobre conflitos em ministérios
+ * que ele não administra (3a). Para o MEMBRO a leitura é escopada (só escala
+ * PUBLICADA de ministério que participa — RN04), como no GetScheduleUseCase.
+ * Valida o tenant pela instituição do ministério da escala (a Escala não tem
  * instituicaoId próprio); 404 quando não existe ou é de outra instituição.
  * Dependências via construtor (Seção 4.2).
  */
@@ -60,6 +64,7 @@ export class GetScheduleConflictsUseCase {
     private readonly eventRepo: EventRepository,
     private readonly assignmentRepo: AssignmentRepository,
     private readonly conflictDetection: ConflictDetectionService,
+    private readonly membershipRepo?: MinistryMembershipRepository,
   ) {}
 
   async execute(dto: GetScheduleConflictsDTO): Promise<ScheduleConflictsResult> {
@@ -71,6 +76,18 @@ export class GetScheduleConflictsUseCase {
     const ministry = await this.ministryRepo.findById(schedule.ministryId);
     if (!ministry || ministry.institutionId !== dto.institutionId) {
       throw new AppError('Escala não encontrada', 404);
+    }
+
+    // Visão do MEMBRO (RN04): só conflitos de escala PUBLICADA de ministério que
+    // participa; senão 404 (não revela rascunho nem ministério alheio).
+    if (dto.actor?.role === 'MEMBRO' && this.membershipRepo) {
+      const membership = await this.membershipRepo.findByMemberAndMinistry(
+        dto.actor.memberId,
+        schedule.ministryId,
+      );
+      if (schedule.status !== 'PUBLICADA' || !membership) {
+        throw new AppError('Escala não encontrada', 404);
+      }
     }
 
     // Todas as alocações da escala compartilham o mesmo evento; busca uma vez.

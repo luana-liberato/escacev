@@ -198,8 +198,11 @@ model Evento {
 // ESCALA — escala de um ministério para um evento
 // Um ministério pode ter VÁRIAS escalas para o mesmo evento, distinguidas pelo
 // nome/rótulo (ex: infantil com "Berçário", "Sala 1", "Sala 2"). nome = "" é a
-// escala única padrão do ministério — o unique por (ministério, evento, nome)
-// preserva "um ministério = uma escala por evento" no caso comum (só um "").
+// escala única padrão do ministério.
+// `dia` fixa a qual DIA do evento a escala se refere — para eventos multi-dia,
+// cada dia pode ter suas próprias escalas. O unique por (ministério, evento, dia,
+// nome) preserva "uma escala padrão por dia" (um só "" por dia). Evento de um dia
+// só: `dia` é o próprio dia do evento.
 // ─────────────────────────────────────────────────────────────────────────────
 
 model Escala {
@@ -207,6 +210,7 @@ model Escala {
   ministerioId String
   eventoId     String
   nome         String       @default("") // rótulo da escala; "" = escala única do ministério
+  dia          DateTime?    @db.Date // dia do evento a que esta escala se refere (fixa o dia em evento multi-dia)
   status       StatusEscala @default(RASCUNHO)
   publicadaEm  DateTime?    // preenchido ao publicar (RN07: prioridade por publicadaEm)
   criadoEm    DateTime      @default(now())
@@ -215,7 +219,7 @@ model Escala {
   evento     Evento     @relation(fields: [eventoId], references: [id])
   alocacoes  Alocacao[]
 
-  @@unique([ministerioId, eventoId, nome])
+  @@unique([ministerioId, eventoId, dia, nome])
   @@map("escalas")
 }
 

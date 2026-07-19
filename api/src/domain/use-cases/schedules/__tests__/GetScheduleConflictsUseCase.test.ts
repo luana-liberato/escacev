@@ -77,7 +77,7 @@ class FakeScheduleRepository implements ScheduleRepository {
   async findById(id: string): Promise<Schedule | null> {
     return this.schedules.find((s) => s.id === id) ?? null;
   }
-  async findByMinistryEventAndName(): Promise<Schedule | null> {
+  async findByMinistryEventDayAndName(): Promise<Schedule | null> {
     return null;
   }
   async findByMinistryAndEvent(): Promise<Schedule[]> {

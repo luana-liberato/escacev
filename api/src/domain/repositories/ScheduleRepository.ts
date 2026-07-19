@@ -13,12 +13,14 @@ export interface ScheduleRepository {
   /** Escala por id (sem escopo — o use case valida o tenant via ministério). */
   findById(id: string): Promise<Schedule | null>;
   /**
-   * Escala específica pelo trio único (ministério, evento, nome) — usada para
-   * checar duplicata (409). nome = "" busca a escala padrão do ministério.
+   * Escala específica pela chave única (ministério, evento, dia, nome) — usada
+   * para checar duplicata (409). nome = "" busca a escala padrão do ministério
+   * NAQUELE dia; `day = null` busca a escala sem dia fixado (legada/um dia).
    */
-  findByMinistryEventAndName(
+  findByMinistryEventDayAndName(
     ministryId: string,
     eventId: string,
+    day: Date | null,
     name: string,
   ): Promise<Schedule | null>;
   /**

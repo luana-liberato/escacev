@@ -31,10 +31,10 @@ import { respond } from '../../../shared/utils/respond';
  * leitura é aberta a qualquer admin. institutionId sempre do JWT (req.user).
  */
 export class ScheduleController {
-  // POST /escalas — cria a escala vazia (RASCUNHO). body: { ministryId, eventId, name? }.
+  // POST /escalas — cria a escala vazia (RASCUNHO). body: { ministryId, eventId, name?, date? }.
   create = async (req: Request, res: Response): Promise<void> => {
     const { institutionId, memberId, role } = ScheduleController.authUser(req);
-    const { ministryId, eventId, name } = req.body;
+    const { ministryId, eventId, name, date } = req.body;
 
     const useCase = new CreateScheduleUseCase(
       new PrismaScheduleRepository(),
@@ -48,22 +48,26 @@ export class ScheduleController {
       ministryId,
       eventId,
       name,
+      date: ScheduleController.parseDay(date),
     });
 
     respond(res, 201, ScheduleController.serialize(schedule), 'Escala criada');
   };
 
   // GET /escalas — lista com filtros opcionais ?eventId= e ?ministryId=.
+  // O ator escopa a visão do MEMBRO (só publicadas de ministério que participa).
   list = async (req: Request, res: Response): Promise<void> => {
-    const { institutionId } = ScheduleController.authUser(req);
+    const { institutionId, memberId, role } = ScheduleController.authUser(req);
 
     const useCase = new ListSchedulesUseCase(
       new PrismaScheduleRepository(),
       new PrismaMinistryRepository(),
       new PrismaEventRepository(),
+      new PrismaMinistryMembershipRepository(),
     );
     const schedules = await useCase.execute({
       institutionId,
+      actor: { memberId, role },
       eventId: ScheduleController.optionalQuery(req, 'eventId'),
       ministryId: ScheduleController.optionalQuery(req, 'ministryId'),
     });
@@ -72,15 +76,17 @@ export class ScheduleController {
   };
 
   // GET /escalas/:id — busca uma escala da própria instituição, com suas alocações.
+  // O MEMBRO só alcança escala publicada de ministério que participa (senão 404).
   show = async (req: Request, res: Response): Promise<void> => {
-    const { institutionId } = ScheduleController.authUser(req);
+    const { institutionId, memberId, role } = ScheduleController.authUser(req);
 
     const useCase = new GetScheduleUseCase(
       new PrismaScheduleRepository(),
       new PrismaMinistryRepository(),
       new PrismaAssignmentRepository(),
+      new PrismaMinistryMembershipRepository(),
     );
-    const result = await useCase.execute({ id: req.params.id, institutionId });
+    const result = await useCase.execute({ id: req.params.id, institutionId, actor: { memberId, role } });
 
     respond(res, 200, ScheduleController.serializeWithAssignments(result), 'Escala encontrada');
   };
@@ -88,7 +94,7 @@ export class ScheduleController {
   // GET /escalas/:id/conflitos — reavalia AO VIVO os conflitos das alocações da
   // escala (RN01), sem gravar. Leitura aberta a qualquer admin (rbac barra MEMBRO).
   conflicts = async (req: Request, res: Response): Promise<void> => {
-    const { institutionId } = ScheduleController.authUser(req);
+    const { institutionId, memberId, role } = ScheduleController.authUser(req);
 
     const useCase = new GetScheduleConflictsUseCase(
       new PrismaScheduleRepository(),
@@ -96,8 +102,9 @@ export class ScheduleController {
       new PrismaEventRepository(),
       new PrismaAssignmentRepository(),
       ScheduleController.conflictDetection(),
+      new PrismaMinistryMembershipRepository(),
     );
-    const result = await useCase.execute({ id: req.params.id, institutionId });
+    const result = await useCase.execute({ id: req.params.id, institutionId, actor: { memberId, role } });
 
     respond(res, 200, ScheduleController.serializeConflicts(result), 'Conflitos da escala');
   };
@@ -169,13 +176,26 @@ export class ScheduleController {
     return value;
   }
 
-  /** Projeção para a resposta da API. */
+  /**
+   * Converte o `date` do body (dia "YYYY-MM-DD") em Date (meia-noite UTC), ou null
+   * quando ausente. É uma DATA pura (sem hora); string vazia/inválida → 400.
+   */
+  private static parseDay(value: unknown): Date | null {
+    if (value === undefined || value === null || value === '') return null;
+    if (typeof value !== 'string') throw new AppError('Dia inválido', 400);
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) throw new AppError('Dia inválido', 400);
+    return date;
+  }
+
+  /** Projeção para a resposta da API. `date` viaja como "YYYY-MM-DD" (sem hora). */
   private static serialize(schedule: Schedule) {
     return {
       id: schedule.id,
       ministryId: schedule.ministryId,
       eventId: schedule.eventId,
       name: schedule.name,
+      date: schedule.date ? schedule.date.toISOString().slice(0, 10) : null,
       status: schedule.status,
       publishedAt: schedule.publishedAt,
       createdAt: schedule.createdAt,

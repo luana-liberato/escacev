@@ -12,6 +12,8 @@ export interface CreateScheduleDTO {
   ministryId: string;
   eventId: string;
   name?: string;
+  /** Dia do evento a que a escala se refere (fixa o dia em evento multi-dia). */
+  date?: Date | null;
 }
 
 /**
@@ -44,23 +46,25 @@ export class CreateScheduleUseCase {
     await this.accessPolicy.ensureCanManage(dto.actor, ministry.id);
 
     // Cria a entidade primeiro para normalizar o nome (trim, "" quando omitido) e
-    // então checar a duplicata pelo trio único (ministério, evento, nome).
+    // então checar a duplicata pela chave única (ministério, evento, dia, nome).
     const schedule = Schedule.create({
       ministryId: ministry.id,
       eventId: event.id,
       name: dto.name,
+      date: dto.date ?? null,
     });
 
-    const existing = await this.scheduleRepo.findByMinistryEventAndName(
+    const existing = await this.scheduleRepo.findByMinistryEventDayAndName(
       ministry.id,
       event.id,
+      schedule.date,
       schedule.name,
     );
     if (existing) {
       throw new AppError(
         schedule.name
-          ? `Este ministério já tem uma escala "${schedule.name}" para este evento`
-          : 'Este ministério já tem uma escala para este evento',
+          ? `Este ministério já tem uma escala "${schedule.name}" para este evento neste dia`
+          : 'Este ministério já tem uma escala para este evento neste dia',
         409,
       );
     }

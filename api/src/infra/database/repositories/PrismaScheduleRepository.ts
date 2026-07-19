@@ -9,9 +9,10 @@ export class PrismaScheduleRepository implements ScheduleRepository {
     return row ? PrismaScheduleRepository.toEntity(row) : null;
   }
 
-  async findByMinistryEventAndName(
+  async findByMinistryEventDayAndName(
     ministryId: string,
     eventId: string,
+    day: Date | null,
     name: string,
   ): Promise<Schedule | null> {
     // Duplicata é case-insensitive (como em Ministerio/Funcao): "6 e 7" e "6 E 7"
@@ -21,6 +22,7 @@ export class PrismaScheduleRepository implements ScheduleRepository {
       where: {
         ministerioId: ministryId,
         eventoId: eventId,
+        dia: day,
         nome: { equals: name, mode: 'insensitive' },
       },
     });
@@ -68,6 +70,7 @@ export class PrismaScheduleRepository implements ScheduleRepository {
         ministerioId: schedule.ministryId,
         eventoId: schedule.eventId,
         nome: schedule.name,
+        dia: schedule.date,
         status: schedule.status,
         publicadaEm: schedule.publishedAt,
         criadoEm: schedule.createdAt,
@@ -99,6 +102,7 @@ export class PrismaScheduleRepository implements ScheduleRepository {
       ministryId: row.ministerioId,
       eventId: row.eventoId,
       name: row.nome,
+      date: row.dia,
       status: row.status,
       publishedAt: row.publicadaEm,
       createdAt: row.criadoEm,

@@ -20,6 +20,14 @@ describe('Schedule.create', () => {
     expect(Schedule.create({ ...base, name: '   ' }).name).toBe(''); // branco → ""
   });
 
+  it('date é null por padrão, aceita um dia e o preserva ao publicar', () => {
+    expect(Schedule.create(base).date).toBeNull();
+    const dia = new Date('2026-07-21T00:00:00Z');
+    const schedule = Schedule.create({ ...base, date: dia });
+    expect(schedule.date).toEqual(dia);
+    expect(schedule.publish().date).toEqual(dia); // dia preservado na publicação
+  });
+
   it('rejeita nome não-string', () => {
     expect(() => Schedule.create({ ...base, name: 5 as unknown as string })).toThrow(
       'Nome da escala inválido',
@@ -70,6 +78,7 @@ describe('Schedule.publish', () => {
       ministryId: 'min1',
       eventId: 'ev1',
       name: '',
+      date: null,
       status: 'PUBLICADA',
       publishedAt: new Date('2026-07-10T12:00:00Z'),
       createdAt: new Date('2026-07-01T09:00:00Z'),
@@ -95,6 +104,7 @@ describe('Schedule.restore', () => {
       ministryId: 'min1',
       eventId: 'ev1',
       name: 'Sala 1',
+      date: null,
       status: 'PUBLICADA',
       publishedAt,
       createdAt,
