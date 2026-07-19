@@ -383,6 +383,21 @@ export default function AgendaPage() {
                   {selectedEvents.map((ev) => {
                     const status = eventStatus(ev);
                     const myChips = entries.filter((e) => e.eventId === ev.id);
+                    // O membro está escalado E marcou indisponibilidade que cruza o
+                    // horário deste evento (RN05, na visão dele): sinaliza o choque
+                    // na própria escala. Só faz sentido quando ele está escalado aqui.
+                    const clashingUnav =
+                      myChips.length > 0
+                        ? unavailabilities.filter(
+                            (u) =>
+                              new Date(u.startsAt).getTime() < new Date(ev.endsAt).getTime() &&
+                              new Date(u.endsAt).getTime() > new Date(ev.startsAt).getTime(),
+                          )
+                        : [];
+                    const unavReasons = clashingUnav
+                      .map((u) => u.reason)
+                      .filter((r): r is string => !!r && r.trim().length > 0)
+                      .join('; ');
                     return (
                       <div key={ev.id} className="rounded-xl border border-line px-3.5 py-3">
                         <div className="flex flex-wrap items-center gap-2">
@@ -408,6 +423,27 @@ export default function AgendaPage() {
                                 {c.ministryName} · {c.positionName}
                               </span>
                             ))}
+                          </div>
+                        )}
+
+                        {/* Escalado, mas indisponível neste horário: aviso na escala. */}
+                        {clashingUnav.length > 0 && (
+                          <div
+                            className="mt-2 flex items-start gap-1.5 rounded-[10px] border px-2.5 py-1.5"
+                            style={{ borderColor: '#F3C6BE', background: '#FDEDEB' }}
+                          >
+                            <span
+                              aria-hidden="true"
+                              className="mt-px flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-danger text-[10px] font-bold text-white"
+                            >
+                              !
+                            </span>
+                            <p className="text-[12px] font-semibold text-danger">
+                              Você está escalado, mas marcou indisponibilidade neste horário
+                              {unavReasons && (
+                                <span className="font-normal text-alert-text"> — {unavReasons}</span>
+                              )}
+                            </p>
                           </div>
                         )}
 
