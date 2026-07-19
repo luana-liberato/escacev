@@ -1,9 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useContext, useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
+import { PageActionSlotContext } from '@/hooks/pageActionContext';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/useToast';
 import { ApiError } from '@/services/http';
 import { listEvents } from '@/services/events';
+import { EventModal } from '@/pages/events/EventModal';
 import { getMySchedule } from '@/services/mySchedule';
 import { getSchedule, listSchedules } from '@/services/schedules';
 import { listMinistryCards } from '@/services/ministries';
@@ -103,6 +106,7 @@ export default function AgendaPage() {
   const { user } = useAuth();
   const { showToast } = useToast();
   const navigate = useNavigate();
+  const actionSlot = useContext(PageActionSlotContext);
 
   const [year, setYear] = useState(() => new Date().getFullYear());
   const [month, setMonth] = useState(() => new Date().getMonth());
@@ -114,6 +118,9 @@ export default function AgendaPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [modalDate, setModalDate] = useState<string | null>(null);
+  // Modal de criar evento (ADMIN_GERAL). `date` pré-preenche o dia clicado; null =
+  // sem dia (botão do cabeçalho). Não-nulo (o objeto) = aberto.
+  const [eventModal, setEventModal] = useState<{ date: string | null } | null>(null);
 
   const load = () => {
     setLoading(true);
@@ -202,6 +209,7 @@ export default function AgendaPage() {
   if (!user) return null;
 
   const isAdmin = user.role === 'ADMIN_GERAL' || user.role === 'ADMIN_MINISTERIO';
+  const isGeneralAdmin = user.role === 'ADMIN_GERAL';
   const todayKey = dateKeyOf(new Date().toISOString());
 
   const shiftMonth = (delta: number) => {
@@ -234,6 +242,23 @@ export default function AgendaPage() {
 
   return (
     <div>
+      {/* Criar evento é ação de INSTITUIÇÃO; aqui na Agenda a expomos ao ADMIN_GERAL
+          (a tela de Eventos oferece o mesmo aos dois admins). Injetada no header
+          do layout por portal, como nas outras telas. Com um dia selecionado, já
+          nasce com essa data preenchida; sem seleção, `selectedDate` é null (form em branco). */}
+      {isGeneralAdmin &&
+        actionSlot &&
+        createPortal(
+          <button
+            type="button"
+            onClick={() => setEventModal({ date: selectedDate })}
+            className="flex items-center gap-1.5 whitespace-nowrap rounded-[10px] bg-brand px-4 py-2.5 text-[13.5px] font-semibold text-white transition hover:bg-brand-hover"
+          >
+            <span className="text-base leading-none">+</span>Novo evento
+          </button>,
+          actionSlot,
+        )}
+
       {/* Cabeçalho do mês + legenda. */}
       <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2">
         <div className="flex items-center gap-2">
@@ -356,6 +381,15 @@ export default function AgendaPage() {
                   })}
                 </p>
                 <div className="flex flex-wrap gap-2 sm:ml-auto">
+                  {isGeneralAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => setEventModal({ date: selectedDate })}
+                      className="rounded-[10px] bg-brand px-3 py-2 text-[12.5px] font-semibold text-white transition hover:bg-brand-hover"
+                    >
+                      Novo evento
+                    </button>
+                  )}
                   {selectedUnav ? (
                     <button
                       type="button"
@@ -496,6 +530,15 @@ export default function AgendaPage() {
           existing={unavByDate.get(modalDate) ?? null}
           onClose={() => setModalDate(null)}
           onSaved={reloadUnavailabilities}
+        />
+      )}
+
+      {eventModal && (
+        <EventModal
+          event={null}
+          defaultDate={eventModal.date ?? undefined}
+          onClose={() => setEventModal(null)}
+          onSaved={load}
         />
       )}
     </div>
