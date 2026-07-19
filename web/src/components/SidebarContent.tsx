@@ -29,7 +29,9 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         <span className="font-display text-[17px] font-extrabold text-ink">Escacev</span>
       </div>
 
-      <nav className="flex flex-col">
+      {/* min-h-0 permite o nav encolher e rolar por dentro quando há muitos itens;
+          flex-1 empurra o rodapé (perfil + Sair) para a base da sidebar fixa. */}
+      <nav className="flex min-h-0 flex-1 flex-col overflow-y-auto">
         {items.map((item) => (
           <NavLink
             key={item.path}
@@ -45,8 +47,6 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           </NavLink>
         ))}
       </nav>
-
-      <div className="flex-1" />
 
       {/* Bloco clicável: abre "Meu perfil". O Sair fica FORA dele — sair e editar
           o nome são ações diferentes e não podem compartilhar alvo de clique. */}

@@ -36,4 +36,11 @@
     min-height: 100vh;
     min-height: 100svh;
   }
+
+  /** Altura fixa da viewport, mesma lógica do min-h-screen-safe (vh → svh). Usada
+   *  na sidebar fixa, que precisa ocupar a tela inteira e não mais que isso. */
+  .h-screen-safe {
+    height: 100vh;
+    height: 100svh;
+  }
 }

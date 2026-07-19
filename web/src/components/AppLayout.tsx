@@ -48,8 +48,10 @@ export default function AppLayout() {
 
   return (
     <div className="min-h-screen-safe flex bg-white">
-      {/* Sidebar fixa — só no desktop. */}
-      <aside className="hidden w-[232px] flex-shrink-0 flex-col border-r border-line bg-white px-4 py-6 nav:flex">
+      {/* Sidebar fixa — só no desktop. Presa na viewport (sticky + altura da tela)
+          para o rodapé de perfil/Sair ficar sempre visível, mesmo com a página
+          rolando; a navegação rola por dentro se não couber. */}
+      <aside className="hidden h-screen-safe w-[232px] flex-shrink-0 flex-col border-r border-line bg-white px-4 py-6 nav:sticky nav:top-0 nav:flex">
         <SidebarContent />
       </aside>
 
