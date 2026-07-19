@@ -26,6 +26,14 @@ interface MembersData {
  * (`GET /membros/:id/ministerios`, filtrando `isAdmin`) e listamos os membros de
  * cada um. Nunca chamamos `GET /membros` para ele — aquilo devolve a instituição
  * inteira, e filtrar aqui faria os dados dos outros trafegarem do mesmo jeito.
+ *
+ * Os CHIPS, porém, mostram TODOS os ministérios de cada pessoa — não só os do
+ * escopo do admin. Como o escopo do ADMIN_MINISTERIO cobre apenas os ministérios
+ * que administra, buscamos a lista completa de cada membro listado
+ * (`GET /membros/:id/ministerios`, liberado a qualquer admin) para o chip revelar
+ * também onde a pessoa atua fora desse escopo. É uma chamada por membro, mas a
+ * lista do admin de grupo é pequena. O ADMIN_GERAL já monta chips completos (o
+ * escopo dele é a instituição inteira), então não precisa dessa segunda passada.
  */
 export function useMembersData(user: AuthUser): MembersData {
   const [rows, setRows] = useState<MemberRow[]>([]);
@@ -97,8 +105,27 @@ export function useMembersData(user: AuthUser): MembersData {
           }))
         : [...scoped.values()];
 
+      // Fonte dos chips. Para o ADMIN_GERAL o `byMember` (varrido sobre a
+      // instituição inteira) já é completo. Para o ADMIN_MINISTERIO ele só cobre
+      // os ministérios que administra, então buscamos a lista COMPLETA de cada
+      // membro listado — assim o chip revela também onde a pessoa atua fora do
+      // escopo do admin (a rota é liberada a qualquer admin).
+      let ministriesByMember = byMember;
+      if (!isGeneralAdmin) {
+        const entries = await Promise.all(
+          base.map(async (row) => {
+            const views = await listMemberMinistries(row.id).catch(() => []);
+            return [
+              row.id,
+              views.map((view) => ({ id: view.id, name: view.name, isAdmin: view.isAdmin })),
+            ] as [string, { id: string; name: string; isAdmin: boolean }[]];
+          }),
+        );
+        ministriesByMember = new Map(entries);
+      }
+
       if (!active) return;
-      setRows(base.map((row) => ({ ...row, ministries: byMember.get(row.id) ?? [] })));
+      setRows(base.map((row) => ({ ...row, ministries: ministriesByMember.get(row.id) ?? [] })));
       setMinistries(scope);
     };
 
