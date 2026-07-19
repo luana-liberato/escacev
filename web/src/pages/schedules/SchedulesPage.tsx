@@ -119,14 +119,12 @@ export default function SchedulesPage() {
   const isGeneralAdmin = user?.role === 'ADMIN_GERAL';
   const isMember = user?.role === 'MEMBRO';
   /**
-   * Ministérios cujas escalas o ator VÊ: geral todas; grupo as que administra;
-   * membro as que participa (os cards que a API já devolve para ele).
+   * Ministérios cujas escalas o ator VÊ = os cards que a API já devolve escopados
+   * por participação (geral todos; os demais os que participam — administrando ou
+   * só escalado). O admin de grupo vê inclusive os que só participa; a EDIÇÃO é que
+   * segue restrita aos que administra (`writableMinistries` + guarda do back).
    */
-  const visibleMinistries = useMemo(
-    () =>
-      isGeneralAdmin || isMember ? ministries : ministries.filter((m) => m.isCurrentUserAdmin),
-    [isGeneralAdmin, isMember, ministries],
-  );
+  const visibleMinistries = ministries;
   /** Ministérios em que pode CRIAR escala: geral todos; grupo os que administra; membro nenhum. */
   const writableMinistries = useMemo(
     () =>
