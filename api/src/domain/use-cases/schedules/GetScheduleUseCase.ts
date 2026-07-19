@@ -2,15 +2,15 @@ import { Schedule } from '../../entities/Schedule';
 import { ScheduleRepository } from '../../repositories/ScheduleRepository';
 import { MinistryRepository } from '../../repositories/MinistryRepository';
 import { AssignmentDetail, AssignmentRepository } from '../../repositories/AssignmentRepository';
-import { MinistryMembershipRepository } from '../../repositories/MinistryMembershipRepository';
 import { Actor } from '../../services/MinistryAccessPolicy';
+import { ScheduleVisibilityPolicy } from '../../services/ScheduleVisibilityPolicy';
 import { AppError } from '../../../shared/errors/AppError';
 
 /** institutionId vem do JWT (req.user), nunca do body. */
 export interface GetScheduleDTO {
   institutionId: string;
   id: string;
-  /** Ator autenticado — usado só para escopar a visão do MEMBRO. */
+  /** Ator autenticado — usado para escopar a visão por participação. */
   actor?: Actor;
 }
 
@@ -26,17 +26,19 @@ export interface ScheduleWithAssignments {
  * instituicaoId próprio. Responde 404 quando não existe ou é de outra
  * instituição, sem vazar recursos de outro tenant.
  *
- * Escopo por papel: admins veem qualquer escala do tenant (transparência). O
- * MEMBRO só vê escala PUBLICADA de ministério em que participa (RN04) — senão 404
- * (não revela rascunho nem ministério alheio). Sem `actor`/`membershipRepo` a
- * leitura não é escopada (comportamento de admin). Dependências via construtor.
+ * Escopo por papel (ScheduleVisibilityPolicy): ADMIN_GERAL vê qualquer escala do
+ * tenant. O ADMIN_MINISTERIO só alcança escala de ministério que participa —
+ * inclusive rascunho onde é admin, só publicada onde é apenas membro; o MEMBRO só
+ * escala PUBLICADA de ministério que participa (RN04). Fora disso 404 (não revela
+ * rascunho nem ministério alheio). Sem `actor`/`visibilityPolicy` a leitura não é
+ * escopada. Dependências via construtor.
  */
 export class GetScheduleUseCase {
   constructor(
     private readonly scheduleRepo: ScheduleRepository,
     private readonly ministryRepo: MinistryRepository,
     private readonly assignmentRepo: AssignmentRepository,
-    private readonly membershipRepo?: MinistryMembershipRepository,
+    private readonly visibilityPolicy?: ScheduleVisibilityPolicy,
   ) {}
 
   async execute(dto: GetScheduleDTO): Promise<ScheduleWithAssignments> {
@@ -50,12 +52,8 @@ export class GetScheduleUseCase {
       throw new AppError('Escala não encontrada', 404);
     }
 
-    if (dto.actor?.role === 'MEMBRO' && this.membershipRepo) {
-      const membership = await this.membershipRepo.findByMemberAndMinistry(
-        dto.actor.memberId,
-        schedule.ministryId,
-      );
-      if (schedule.status !== 'PUBLICADA' || !membership) {
+    if (dto.actor && this.visibilityPolicy) {
+      if (!(await this.visibilityPolicy.canView(dto.actor, schedule))) {
         throw new AppError('Escala não encontrada', 404);
       }
     }

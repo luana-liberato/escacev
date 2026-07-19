@@ -243,6 +243,44 @@ describe('GET /escalas e /escalas/:id', () => {
     const asPublished = await request(app).get(`/escalas/${created.body.data.id}`).set('Authorization', `Bearer ${membroToken}`);
     expect(asPublished.status).toBe(200);
   });
+
+  it('ADMIN_MINISTERIO que NÃO participa do ministério não vê suas escalas (lista sem ela; :id 404)', async () => {
+    const eventId = await newEvent();
+    const created = await request(app).post('/escalas').set('Authorization', `Bearer ${adminGeralToken}`).send({ ministryId: MINISTRY_ID, eventId });
+    const scheduleId = created.body.data.id;
+    // Mesmo publicada: o admin sem vínculo com o ministério não a enxerga.
+    await prisma.escala.update({ where: { id: scheduleId }, data: { status: 'PUBLICADA', publicadaEm: new Date() } });
+
+    const list = await request(app).get('/escalas').query({ eventId }).set('Authorization', `Bearer ${adminUnscopedToken}`);
+    expect(list.status).toBe(200);
+    expect(list.body.data.map((x: { id: string }) => x.id)).not.toContain(scheduleId);
+
+    const byId = await request(app).get(`/escalas/${scheduleId}`).set('Authorization', `Bearer ${adminUnscopedToken}`);
+    expect(byId.status).toBe(404);
+  });
+
+  it('ADMIN_MINISTERIO que SÓ participa (não administra) vê publicada, mas não o rascunho', async () => {
+    // Vincula o admin sem escopo ao ministério como MEMBRO (isAdmin=false).
+    await prisma.membroMinisterio.create({
+      data: { membroId: ADMIN_UNSCOPED_ID, ministerioId: MINISTRY_ID, isAdmin: false },
+    });
+    try {
+      const eventId = await newEvent();
+      const created = await request(app).post('/escalas').set('Authorization', `Bearer ${adminGeralToken}`).send({ ministryId: MINISTRY_ID, eventId });
+      const scheduleId = created.body.data.id;
+
+      // Rascunho: invisível a quem só participa (RN04) — 404.
+      const asDraft = await request(app).get(`/escalas/${scheduleId}`).set('Authorization', `Bearer ${adminUnscopedToken}`);
+      expect(asDraft.status).toBe(404);
+
+      // Publicada: passa a ver.
+      await prisma.escala.update({ where: { id: scheduleId }, data: { status: 'PUBLICADA', publicadaEm: new Date() } });
+      const asPublished = await request(app).get(`/escalas/${scheduleId}`).set('Authorization', `Bearer ${adminUnscopedToken}`);
+      expect(asPublished.status).toBe(200);
+    } finally {
+      await prisma.membroMinisterio.deleteMany({ where: { membroId: ADMIN_UNSCOPED_ID, ministerioId: MINISTRY_ID } });
+    }
+  });
 });
 
 describe('GET /escalas/:id/conflitos', () => {
