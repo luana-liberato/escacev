@@ -24,6 +24,11 @@ export function listInstitutionPositions(): Promise<InstitutionPosition[]> {
   return http.get<InstitutionPosition[]>('/funcoes');
 }
 
+/** Funções de UM ministério (para os seletores de alocação da escala). */
+export function listMinistryPositions(ministryId: string): Promise<Position[]> {
+  return http.get<Position[]>(`/ministerios/${ministryId}/funcoes`);
+}
+
 /** Cria uma função dentro de um ministério. 409 no nome duplicado no ministério. */
 export function createPosition(ministryId: string, name: string): Promise<Position> {
   return http.post<Position>(`/ministerios/${ministryId}/funcoes`, { name });

@@ -135,6 +135,8 @@ export interface Schedule {
   ministryId: string;
   eventId: string;
   name: string;
+  /** Dia do evento a que a escala se refere ("YYYY-MM-DD"); null = não fixado. */
+  date: string | null;
   status: ScheduleStatus;
   publishedAt: string | null;
   createdAt: string;
