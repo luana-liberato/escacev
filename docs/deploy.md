@@ -31,8 +31,9 @@ do compose.
 
 ## Antes de começar
 
-1. **DNS.** `escacev.com` e `www.escacev.com` com registro `A` para o IP da VPS.
-   Confira com `dig +short escacev.com`.
+1. **DNS.** `escacev.com` e `www.escacev.com` com registro `A` para o IP da VPS
+   — ver a seção "DNS: Hostinger + Cloudflare" logo abaixo. Confira com
+   `dig +short escacev.com`.
 2. **Google Console.** Em *Credenciais → URIs de redirecionamento autorizados*,
    adicione `https://escacev.com/api/auth/google/callback`. **O login falha se
    não bater exatamente com o `GOOGLE_CALLBACK_URL` do `.env`.**
@@ -40,6 +41,76 @@ do compose.
    desenvolvimento: captura os e-mails e não entrega a ninguém. Convite é o
    único caminho de entrada de um membro, então sem SMTP você sobe o sistema e
    não consegue cadastrar ninguém além de si.
+
+## DNS: Hostinger + Cloudflare
+
+O domínio foi comprado na **Hostinger** e o DNS é gerido pelo **Cloudflare**. A
+Hostinger continua sendo a dona do registro (é lá que se renova); o Cloudflare
+só passa a responder pelas consultas de DNS.
+
+> ⚠️ **A ordem importa.** Emita o certificado com o proxy do Cloudflare
+> **desligado**. Com ele ligado desde o início, o `certbot --nginx` tende a
+> falhar na validação, e o erro não diz que a causa é o Cloudflare.
+
+### 1. Apontar o domínio para o Cloudflare
+
+1. No Cloudflare: *Add a site* → `escacev.com` → plano Free. Ele varre os
+   registros existentes na Hostinger e mostra dois nameservers
+   (`algo.ns.cloudflare.com`).
+2. Na Hostinger (hPanel): *Domínios → escacev.com → DNS / Nameservers* →
+   **Alterar nameservers → Usar nameservers personalizados** e cole os dois.
+3. Espere a propagação (minutos a algumas horas). O Cloudflare avisa por e-mail
+   quando o domínio fica *Active*. Confira:
+   `dig +short NS escacev.com` deve devolver os nameservers do Cloudflare.
+
+### 2. Registros
+
+Em *DNS → Records*, deixe só o necessário apontando para o IP da VPS:
+
+| Tipo | Nome | Conteúdo | Proxy |
+|------|------|----------|-------|
+| A | `escacev.com` | IP da VPS | **DNS only** (nuvem cinza) por enquanto |
+| A | `www` | IP da VPS | **DNS only** por enquanto |
+
+Apague registros que a Hostinger tenha criado apontando para a hospedagem dela
+(páginas de estacionamento), senão o domínio resolve para o lugar errado.
+
+Confirme antes de seguir: `dig +short escacev.com` tem que devolver o IP da
+VPS. Se devolver um IP do Cloudflare, o proxy ainda está ligado.
+
+### 3. Emitir o certificado
+
+Faça o deploy e rode o `certbot --nginx` (seção seguinte) **com o proxy ainda
+desligado**. A validação HTTP-01 fala direto com a VPS, sem intermediário.
+
+### 4. Ligar o proxy (opcional)
+
+Só depois de o `https://escacev.com` funcionar direto:
+
+1. Mude os dois registros A para **Proxied** (nuvem laranja).
+2. *SSL/TLS → Overview* → **Full (strict)**. Isto não é detalhe:
+   - **Flexible** faz o Cloudflare falar HTTP com a VPS. Como o nginx redireciona
+     HTTP para HTTPS, vira **laço infinito de redirecionamento**
+     (`ERR_TOO_MANY_REDIRECTS`) — é o erro mais comum de Cloudflare, e a causa
+     não é óbvia olhando o servidor, porque direto na VPS tudo funciona.
+   - **Full** aceita certificado inválido na origem; **Full (strict)** valida.
+     Como o Let's Encrypt já está instalado, use o strict.
+3. *Caching → Cache Rules*: crie uma regra que **não cacheia a API**, com
+   expressão `starts_with(http.request.uri.path, "/api/")` e ação *Bypass
+   cache*. Sem isso o Cloudflare pode servir resposta de API repetida entre
+   usuários diferentes — inclusive dados de escala de outra pessoa.
+
+> Os nomes das telas do Cloudflare mudam de tempos em tempos; se algo não
+> estiver onde este guia diz, procure pelo conceito (modo de criptografia SSL,
+> regra de cache), não pelo caminho exato do menu.
+
+### IP real do visitante (só se o proxy estiver ligado)
+
+Com o proxy, todo acesso chega com o IP do Cloudflare, e os logs do nginx
+passam a registrar só isso. Se precisar do IP real, adicione ao bloco `server`
+do host as faixas do Cloudflare com `set_real_ip_from` e
+`real_ip_header CF-Connecting-IP`. Não é necessário para o app funcionar — o
+Escacev não usa IP em regra de negócio.
 
 ## Deploy
 
