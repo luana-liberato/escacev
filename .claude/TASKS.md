@@ -578,11 +578,17 @@
 
 ## Fase 11 — Deploy e Produção 🔴
 
-> **Desenho escolhido (19/07/2026): domínio único.** Front em `https://escacev.com/` e API
-> atrás de `https://escacev.com/api/`, no mesmo nginx (a barra final do `proxy_pass` remove
-> o prefixo, então as rotas do back seguem na raiz). Mesma origem ⇒ **não há CORS a
-> configurar**, um certificado só, um registro DNS. O bundle usa `/api` relativo, sem o
-> domínio embutido. Guia completo em `docs/deploy.md`.
+> **Desenho escolhido (19/07/2026): domínio único, atrás do nginx do host.** Front em
+> `https://escacev.com/` e API em `https://escacev.com/api/` (a barra final do `proxy_pass`
+> remove o prefixo, então as rotas do back seguem na raiz). Mesma origem ⇒ **não há CORS a
+> configurar**; o bundle usa `/api` relativo, sem o domínio embutido.
+>
+> **A VPS já hospeda `cantinhodajenny`, `juntosnameta` e `realnaveia`**, com um nginx NO
+> HOST dono de 80/443 e um arquivo por site em `sites-enabled`. O Escacev segue o mesmo
+> padrão: publica só em `127.0.0.1:8083` e o host termina o TLS. Não traz certbot próprio —
+> dois certbots disputando a porta 80 fariam as renovações falharem de forma intermitente.
+> **8083 porque 8081/8082/7080 já estão em uso, e a 3001 é do `juntosnameta-backend`** — por
+> isso a API do Escacev não publica porta alguma. Guia completo em `docs/deploy.md`.
 
 - [x] **Corrigir o ambiente da API no `docker-compose.yml`** — o serviço declarava as
       variáveis inline e não recebia `JWT_SECRET`, `GOOGLE_*`, `FRONTEND_URL` nem SMTP.
@@ -596,15 +602,21 @@
 - [x] **Build de produção do frontend** — alvo `production` do `web/Dockerfile` gera o
       build do Vite e o serve por nginx. `VITE_API_URL` entra como `ARG` porque o Vite
       inlina as `VITE_*` em tempo de build; no `environment` do compose não teria efeito.
-- [x] **nginx: proxy reverso + servir o frontend** (`web/nginx.conf`) — inclui fallback de
-      SPA (sem ele, recarregar `/agenda` dá 404), `/.well-known` fora do redirect para o
-      certbot renovar, www → apex, HSTS e cabeçalhos de segurança, gzip e cache dos assets.
-      **Verificado ponta a ponta** com certificado autoassinado: `/api/health` atravessa o
-      proxy, `/escalas/:id` cai no `index.html`, `/api/escalas` sem token devolve 401.
-- [x] **HTTPS com Let's Encrypt** — serviço `certbot` renovando a cada 12h e nginx
-      recarregando a cada 6h (sem o reload ele serviria o certificado antigo até o próximo
-      restart). `scripts/init-letsencrypt.sh` resolve o impasse do primeiro certificado.
-      **Escrito e validado na sintaxe, mas ainda não executado contra o domínio real.**
+- [x] **nginx interno do projeto** (`web/nginx.conf`) — serve os estáticos e resolve o
+      `/api` internamente; fallback de SPA (sem ele, recarregar `/agenda` dá 404), gzip e
+      cache dos assets. Só HTTP: TLS, HSTS e redirect de www são do host, e duplicá-los
+      aqui criaria duas fontes de verdade. Repassa o `X-Forwarded-Proto` que CHEGA (usar
+      `$scheme` diria "http", perdendo a informação de que o usuário veio por HTTPS).
+      **Verificado ponta a ponta:** `/api/health` atravessa o proxy, `/escalas/:id` cai no
+      `index.html`, `/api/escalas` sem token devolve 401.
+- [x] **nginx do host** (`deploy/nginx-host.conf`) — arquivo para `sites-available`, no
+      formato dos outros 3 sites. Versionado só com o bloco HTTP de propósito: o
+      `certbot --nginx` injeta o 443 e o redirect, e escrever o bloco TLS antes de o
+      certificado existir faria o `nginx -t` falhar — **derrubando os outros 3 projetos
+      junto, porque é o mesmo nginx**.
+- [x] **HTTPS com Let's Encrypt** — reusa o certbot do host, que já serve os outros
+      projetos; a renovação já está no timer dele, nada a configurar. **Não executado
+      contra o domínio real ainda.**
 - [x] **Configurar `prisma migrate deploy`** — serviço `migrate` roda e encerra; a API só
       sobe após ele sair com sucesso (`service_completed_successfully`), então nunca há API
       contra schema desatualizado. Falta apenas executar na VPS.
@@ -616,7 +628,10 @@
   - [ ] Criar a conta SMTP real (SendGrid) — item aberto desde a Fase 0. Sem e-mail não há
         convite, e convite é o único caminho de entrada de um membro
   - [ ] Preencher o `.env` de produção na VPS (bloco PRODUÇÃO do `.env.example`)
-  - [ ] Rodar `scripts/init-letsencrypt.sh` e o seed da instituição
+  - [ ] `up -d --build`, conferir em `127.0.0.1:8083` e rodar o seed da instituição
+  - [ ] Instalar o `deploy/nginx-host.conf` em `sites-available` + link, `nginx -t`,
+        `reload` (nunca `restart` — é o nginx dos 4 sites) e `certbot --nginx`
+  - [ ] Confirmar que os outros 3 projetos continuam no ar depois do reload
 - [ ] Smoke test em produção: login → ministério → evento → escala → notificação
 - [ ] Agendar o backup do banco no cron da VPS — o comando está no `docs/deploy.md`, mas
       backup que depende de alguém lembrar não é backup

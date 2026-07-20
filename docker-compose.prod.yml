@@ -92,30 +92,14 @@ services:
         VITE_API_URL: /api
     restart: unless-stopped
     ports:
-      - '80:80'
-      - '443:443'
-    volumes:
-      - certbot-conf:/etc/letsencrypt:ro
-      - certbot-www:/var/www/certbot:ro
+      # SÓ em 127.0.0.1, como os outros projetos da VPS: quem atende a internet
+      # é o nginx do host, que termina o TLS e repassa para cá. Publicar em
+      # 0.0.0.0 exporia o app sem TLS direto na porta.
+      # 8083 porque 8081 (juntosnameta), 8082 (cantinhodajenny) e 7080
+      # (realnaveia) já estão em uso.
+      - '127.0.0.1:8083:80'
     depends_on:
       - api
-    # O certbot renova o arquivo do certificado, mas o nginx só passa a usá-lo
-    # depois de recarregar — sem isto ele serviria o certificado antigo até o
-    # próximo restart, e um dia expiraria com o novo já no disco.
-    command: sh -c "while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g 'daemon off;'"
-
-  # Renova o certificado. Acorda a cada 12h; o certbot só age quando falta menos
-  # de 30 dias para expirar, então rodar com frequência é barato e seguro.
-  certbot:
-    image: certbot/certbot
-    container_name: escacev-certbot
-    restart: unless-stopped
-    volumes:
-      - certbot-conf:/etc/letsencrypt
-      - certbot-www:/var/www/certbot
-    entrypoint: sh -c "trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 12h & wait $${!}; done"
 
 volumes:
   escacev-pgdata:
-  certbot-conf:
-  certbot-www:

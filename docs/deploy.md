@@ -1,31 +1,43 @@
 # Deploy em produção
 
-Domínio único: o front em `https://escacev.com/` e a API atrás de
-`https://escacev.com/api/`, no mesmo nginx. Front e API na **mesma origem** —
-por isso não há CORS a configurar, e o bundle do front usa `/api` relativo, sem
-o domínio embutido.
+A VPS já hospeda outros projetos (`cantinhodajenny`, `juntosnameta`,
+`realnaveia`) e tem um **nginx no host** que é o dono das portas 80 e 443. O
+Escacev segue o mesmo padrão: os containers publicam **só em `127.0.0.1`**, e o
+nginx do host termina o TLS e repassa para eles.
+
+Domínio único: front em `https://escacev.com/` e API atrás de
+`https://escacev.com/api/`. Mesma origem ⇒ **não há CORS a configurar**, e o
+bundle usa `/api` relativo, sem o domínio embutido.
 
 ```
-                    ┌─────────────────── VPS ───────────────────┐
-  navegador ──443──▶│ nginx (web)                               │
-                    │   /      → build estático do Vite         │
-                    │   /api/  → proxy para api:3001 (sem /api) │
-                    │                    │                      │
-                    │              api ──┴──▶ postgres          │
-                    └───────────────────────────────────────────┘
+                         ┌──────────────── VPS ─────────────────┐
+                         │ nginx DO HOST (80/443, TLS)          │
+  navegador ────443─────▶│   escacev.com → 127.0.0.1:8083       │
+                         │   (+ os outros 3 sites)              │
+                         │            │                         │
+                         │  ┌─────────▼──── compose do Escacev ─┐│
+                         │  │ web  (nginx interno, :8083→80)    ││
+                         │  │   /     → estáticos do Vite       ││
+                         │  │   /api/ → api:3001 (sem /api)     ││
+                         │  │ api ──▶ postgres                  ││
+                         │  └───────────────────────────────────┘│
+                         └──────────────────────────────────────┘
 ```
+
+**Porta 8083** porque 8081 (juntosnameta), 8082 (cantinhodajenny) e 7080
+(realnaveia) já estão ocupadas. A 3001 também está: é do `juntosnameta-backend`
+— por isso a API do Escacev não publica porta nenhuma, só existe na rede interna
+do compose.
 
 ## Antes de começar
 
-1. **DNS.** `escacev.com` e `www.escacev.com` com registro `A` apontando para o
-   IP da VPS. Confira com `dig +short escacev.com` — sem isso o Let's Encrypt
-   não valida o domínio e o passo do certificado falha.
-2. **Docker na VPS.** `docker --version` e `docker compose version`.
-3. **Google Console.** Em *Credenciais → URIs de redirecionamento autorizados*,
+1. **DNS.** `escacev.com` e `www.escacev.com` com registro `A` para o IP da VPS.
+   Confira com `dig +short escacev.com`.
+2. **Google Console.** Em *Credenciais → URIs de redirecionamento autorizados*,
    adicione `https://escacev.com/api/auth/google/callback`. **O login falha se
-   esse valor não bater exatamente com o `GOOGLE_CALLBACK_URL` do `.env`.**
-4. **Conta SMTP real** (SendGrid ou similar). O Mailtrap é só de
-   desenvolvimento: ele captura os e-mails e não entrega a ninguém. Convite é o
+   não bater exatamente com o `GOOGLE_CALLBACK_URL` do `.env`.**
+3. **Conta SMTP real** (SendGrid ou similar). O Mailtrap é só de
+   desenvolvimento: captura os e-mails e não entrega a ninguém. Convite é o
    único caminho de entrada de um membro, então sem SMTP você sobe o sistema e
    não consegue cadastrar ninguém além de si.
 
@@ -35,23 +47,41 @@ o domínio embutido.
 git clone https://github.com/luana-liberato/escacev.git
 cd escacev
 
-# 1. Variáveis. Veja o bloco "PRODUÇÃO" no fim do .env.example — ele lista
-#    todas as obrigatórias e como gerar o JWT_SECRET.
+# 1. Variáveis. Veja o bloco "PRODUÇÃO" no fim do .env.example.
 cp .env.example .env
 nano .env
 
-# 2. Primeiro certificado + subir tudo (roda UMA vez; renovação é automática).
-CERTBOT_EMAIL=voce@gmail.com sh scripts/init-letsencrypt.sh
+# 2. Subir o stack. Fica só em 127.0.0.1:8083 — ainda invisível de fora.
+docker compose -f docker-compose.prod.yml up -d --build
+curl -H 'Host: escacev.com' http://127.0.0.1:8083/api/health   # confira antes de seguir
 
 # 3. Seed: cria a instituição e convida o primeiro ADMIN_GERAL.
-#    Sem isto ninguém consegue entrar — o login exige um membro já convidado.
-#    Use o e-mail do SEU Google em SEED_ADMIN_EMAIL no .env.
+#    Sem isto ninguém entra — o login exige um membro já convidado.
 docker compose -f docker-compose.prod.yml run --rm migrate npx prisma db seed
 ```
 
 As migrations rodam sozinhas: o serviço `migrate` executa `prisma migrate
 deploy` e encerra, e a API só sobe depois que ele sai com sucesso. Nunca há API
 rodando contra um schema desatualizado.
+
+### Publicar no nginx do host
+
+> ⚠️ **Este nginx serve os outros 3 projetos.** Uma configuração inválida faz o
+> `reload` falhar e, se você reiniciar em vez de recarregar, **os 4 sites caem
+> junto**. Sempre `nginx -t` antes, e `reload` (nunca `restart`).
+
+```bash
+sudo cp deploy/nginx-host.conf /etc/nginx/sites-available/escacev
+sudo ln -s /etc/nginx/sites-available/escacev /etc/nginx/sites-enabled/escacev
+sudo nginx -t && sudo systemctl reload nginx
+
+# TLS: o certbot injeta os blocos 443 e o redirect no arquivo, como fez nos
+# outros sites. Por isso o arquivo versionado é só HTTP.
+sudo certbot --nginx -d escacev.com -d www.escacev.com
+```
+
+A renovação já está no cron/timer do certbot que serve os outros projetos — não
+há nada a configurar aqui. Confirme com `sudo certbot renew --dry-run`.
 
 ## Conferir
 
@@ -60,6 +90,9 @@ curl https://escacev.com/api/health          # {"success":true,...,"status":"ok"
 curl -I https://escacev.com/                 # 200, o index.html
 curl -I http://escacev.com/                  # 301 para https
 curl -I https://escacev.com/agenda           # 200 (fallback de SPA, não 404)
+
+# E que os outros projetos continuam de pé:
+curl -I https://<dominio-do-outro-projeto>/
 ```
 
 Depois, no navegador: entrar com o Google, criar um ministério, um evento e uma
@@ -83,15 +116,17 @@ gunzip -c backup-2026-07-19.sql.gz | \
   docker compose -f docker-compose.prod.yml exec -T postgres psql -U escacev escacev
 ```
 
-O backup acima é manual. Agendar no cron da VPS é o item que falta para ele
-valer de verdade — um backup que depende de alguém lembrar não é backup.
+O backup acima é manual. Agendar no cron da VPS é o que falta para ele valer —
+backup que depende de alguém lembrar não é backup.
 
 ## Notas de segurança
 
-- **O Postgres não é exposto à internet** — o serviço não publica portas, só
-  existe na rede interna do compose. Para acessá-lo da sua máquina, use túnel
-  SSH: `ssh -L 5432:localhost:5432 usuario@vps`.
-- **A API também não é exposta** — só o nginx publica 80/443.
+- **Nada do Escacev fica exposto à internet** além do que o nginx do host
+  publica: o Postgres e a API não têm portas publicadas, e o `web` escuta só em
+  `127.0.0.1`.
+- Para acessar o banco da sua máquina, use túnel SSH:
+  `ssh -L 5432:localhost:5432 usuario@vps` e então
+  `docker compose -f docker-compose.prod.yml exec postgres psql -U escacev`.
 - **`JWT_SECRET` não tem valor padrão**: a API lança se ele faltar, em vez de
   assinar tokens com um segredo previsível.
 - **Trocar o `JWT_SECRET` desloga todo mundo.** É o botão de emergência se algum
@@ -99,5 +134,5 @@ valer de verdade — um backup que depende de alguém lembrar não é backup.
 - Pendência conhecida: um `ADMIN_GERAL` consegue rebaixar ou desativar a si
   mesmo pela API (`PUT /membros/:id`), e se ele for o único, a instituição fica
   sem administrador, sem recuperação pela aplicação. Enquanto a guarda não
-  existe no back, **mantenha ao menos dois `ADMIN_GERAL` cadastrados** — com dois,
-  um sempre pode restaurar o outro.
+  existe no back, **mantenha ao menos dois `ADMIN_GERAL` cadastrados** — com
+  dois, um sempre pode restaurar o outro.
