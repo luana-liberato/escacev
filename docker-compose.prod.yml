@@ -42,7 +42,10 @@ services:
       NODE_ENV: production
       INSTITUTION_ID: ${INSTITUTION_ID:?defina INSTITUTION_ID no .env}
       INSTITUTION_NAME: ${INSTITUTION_NAME:?defina INSTITUTION_NAME no .env}
-      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-}
+      # Obrigatória, e com `:?` de propósito. O seed usa `??`, que NÃO cai no
+      # padrão para string vazia — um `:-` aqui criaria um ADMIN_GERAL de e-mail
+      # vazio sem erro nenhum, e o login com o Google daria 403 sem explicação.
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:?defina SEED_ADMIN_EMAIL no .env - e o e-mail Google do primeiro admin, sem ele ninguem consegue entrar}
       SEED_ADMIN_NAME: ${SEED_ADMIN_NAME:-Administrador Geral}
     depends_on:
       postgres:
