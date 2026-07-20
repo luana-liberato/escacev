@@ -71,8 +71,8 @@ Em *DNS → Records*, deixe só o necessário apontando para o IP da VPS:
 
 | Tipo | Nome | Conteúdo | Proxy |
 |------|------|----------|-------|
-| A | `escacev.com` | IP da VPS | **DNS only** (nuvem cinza) por enquanto |
-| A | `www` | IP da VPS | **DNS only** por enquanto |
+| A | `escacev.com` | IP da VPS | **DNS only** (nuvem cinza) — liga depois, no passo 4 |
+| A | `www` | IP da VPS | **DNS only** — liga depois, no passo 4 |
 
 Apague registros que a Hostinger tenha criado apontando para a hospedagem dela
 (páginas de estacionamento), senão o domínio resolve para o lugar errado.
@@ -85,22 +85,58 @@ VPS. Se devolver um IP do Cloudflare, o proxy ainda está ligado.
 Faça o deploy e rode o `certbot --nginx` (seção seguinte) **com o proxy ainda
 desligado**. A validação HTTP-01 fala direto com a VPS, sem intermediário.
 
-### 4. Ligar o proxy (opcional)
+### 4. Ligar o proxy
 
-Só depois de o `https://escacev.com` funcionar direto:
+**Só depois de `https://escacev.com` funcionar direto**, com o certificado já
+emitido. Ligar antes disso quebra a emissão.
 
-1. Mude os dois registros A para **Proxied** (nuvem laranja).
-2. *SSL/TLS → Overview* → **Full (strict)**. Isto não é detalhe:
-   - **Flexible** faz o Cloudflare falar HTTP com a VPS. Como o nginx redireciona
-     HTTP para HTTPS, vira **laço infinito de redirecionamento**
-     (`ERR_TOO_MANY_REDIRECTS`) — é o erro mais comum de Cloudflare, e a causa
-     não é óbvia olhando o servidor, porque direto na VPS tudo funciona.
-   - **Full** aceita certificado inválido na origem; **Full (strict)** valida.
-     Como o Let's Encrypt já está instalado, use o strict.
-3. *Caching → Cache Rules*: crie uma regra que **não cacheia a API**, com
-   expressão `starts_with(http.request.uri.path, "/api/")` e ação *Bypass
-   cache*. Sem isso o Cloudflare pode servir resposta de API repetida entre
-   usuários diferentes — inclusive dados de escala de outra pessoa.
+**4.1. Registros → Proxied.** Mude os dois registros A para a nuvem laranja.
+
+**4.2. SSL/TLS → Overview → `Full (strict)`.** Isto não é detalhe:
+
+- **Flexible** faz o Cloudflare falar HTTP com a VPS. Como o nginx redireciona
+  HTTP para HTTPS, vira **laço infinito** (`ERR_TOO_MANY_REDIRECTS`). É o erro
+  mais comum de Cloudflare e o diagnóstico engana, porque direto na VPS
+  funciona.
+- **Full** aceita certificado inválido na origem; **Full (strict)** valida. Com
+  o Let's Encrypt instalado, use o strict — é o único que garante que o trecho
+  Cloudflare→VPS também está cifrado e autenticado.
+
+**4.3. Cache: bypass na API.** *Caching → Cache Rules* → nova regra:
+
+- Expressão: `starts_with(http.request.uri.path, "/api/")`
+- Ação: **Bypass cache**
+
+Sem isso o Cloudflare pode cachear uma resposta da API e servir a mesma para
+outro usuário — no Escacev, dados de escala de uma pessoa aparecendo para
+outra. O padrão do Cloudflare já é conservador com JSON, mas aqui não vale
+depender do padrão.
+
+**4.4. IP real do visitante.** Com o proxy, quem conecta na VPS é o Cloudflare,
+e o nginx passa a registrar o IP dele em todo acesso. Para restaurar o IP
+verdadeiro:
+
+```bash
+sudo sh deploy/cloudflare-realip.sh
+```
+
+O script busca as faixas atuais do Cloudflare (elas mudam de tempos em tempos),
+gera `/etc/nginx/conf.d/cloudflare-realip.conf` e recarrega o nginx. Rode de
+novo se o Cloudflare anunciar faixas novas. É seguro para os outros 3 projetos:
+`set_real_ip_from` só reescreve o IP quando a conexão vem de uma das faixas
+listadas, e o tráfego deles não passa pelo Cloudflare.
+
+### O proxy não esconde a VPS neste caso
+
+O Cloudflare mascara o IP de origem de `escacev.com`, mas **os seus outros três
+domínios apontam direto para a mesma VPS**. Quem consultar o DNS de qualquer um
+deles descobre o IP e pode falar com o servidor sem passar pelo Cloudflare.
+
+Isso não anula os outros ganhos (CDN, cache dos estáticos, TLS na borda,
+filtragem), mas significa que **o proxy aqui não deve ser tratado como camada de
+segurança**. Fechar esse flanco exigiria ou colocar os quatro domínios atrás do
+Cloudflare, ou restringir no firewall o acesso às faixas dele — o que derrubaria
+os três projetos não proxiados.
 
 > Os nomes das telas do Cloudflare mudam de tempos em tempos; se algo não
 > estiver onde este guia diz, procure pelo conceito (modo de criptografia SSL,
