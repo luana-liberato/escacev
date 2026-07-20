@@ -578,26 +578,53 @@
 
 ## Fase 11 — Deploy e Produção 🔴
 
-- [ ] **Corrigir o ambiente da API no `docker-compose.yml`** — o serviço `api` declara as
-      variáveis **inline** e não usa `env_file`, então não recebe `JWT_SECRET`,
-      `GOOGLE_CLIENT_ID/SECRET`, `FRONTEND_URL` nem as de SMTP; o `.dockerignore` também
-      exclui o `.env`, que portanto não entra na imagem. Como `middlewares/auth.ts` faz
-      `new JwtService()` no escopo do módulo e o construtor lança sem `JWT_SECRET`, a API
-      containerizada deve quebrar já no boot. Provável correção: `env_file: ./api/.env`.
-      **Não verificado empiricamente** — hoje o dev roda a API por `npm run dev` no host
-      (só o Postgres está no Docker), então o caminho containerizado não é exercitado.
-- [ ] Escrever Dockerfile de produção da API
-- [ ] Escrever build de produção do frontend (Vite build → estáticos)
-- [ ] Configurar nginx na VPS: proxy reverso para a API + servir o frontend
-- [ ] Configurar HTTPS com Let's Encrypt (certbot)
-- [ ] Configurar variáveis de ambiente de produção na VPS
-- [ ] Atualizar redirect URIs do Google OAuth para o domínio de produção
-- [ ] Executar `prisma migrate deploy` na VPS
-- [ ] Executar seed da instituição em produção
+> **Desenho escolhido (19/07/2026): domínio único.** Front em `https://escacev.com/` e API
+> atrás de `https://escacev.com/api/`, no mesmo nginx (a barra final do `proxy_pass` remove
+> o prefixo, então as rotas do back seguem na raiz). Mesma origem ⇒ **não há CORS a
+> configurar**, um certificado só, um registro DNS. O bundle usa `/api` relativo, sem o
+> domínio embutido. Guia completo em `docs/deploy.md`.
+
+- [x] **Corrigir o ambiente da API no `docker-compose.yml`** — o serviço declarava as
+      variáveis inline e não recebia `JWT_SECRET`, `GOOGLE_*`, `FRONTEND_URL` nem SMTP.
+      Corrigido com `env_file: ./api/.env`, com o `environment` sobrescrevendo só o que é
+      específico do container (`DATABASE_URL` aponta para `postgres`, não `localhost`).
+      A suspeita do item original **se confirmou**: sem `JWT_SECRET` a API quebra no boot.
+- [x] **Dockerfile de produção da API** — multi-stage com alvos `development`/`build`/
+      `production`. O alvo `build` é o único com o CLI do Prisma (devDependency), então a
+      imagem de produção recebe o client já gerado por `COPY`. **Verificado:** a imagem
+      sobe e responde em `GET /health`.
+- [x] **Build de produção do frontend** — alvo `production` do `web/Dockerfile` gera o
+      build do Vite e o serve por nginx. `VITE_API_URL` entra como `ARG` porque o Vite
+      inlina as `VITE_*` em tempo de build; no `environment` do compose não teria efeito.
+- [x] **nginx: proxy reverso + servir o frontend** (`web/nginx.conf`) — inclui fallback de
+      SPA (sem ele, recarregar `/agenda` dá 404), `/.well-known` fora do redirect para o
+      certbot renovar, www → apex, HSTS e cabeçalhos de segurança, gzip e cache dos assets.
+      **Verificado ponta a ponta** com certificado autoassinado: `/api/health` atravessa o
+      proxy, `/escalas/:id` cai no `index.html`, `/api/escalas` sem token devolve 401.
+- [x] **HTTPS com Let's Encrypt** — serviço `certbot` renovando a cada 12h e nginx
+      recarregando a cada 6h (sem o reload ele serviria o certificado antigo até o próximo
+      restart). `scripts/init-letsencrypt.sh` resolve o impasse do primeiro certificado.
+      **Escrito e validado na sintaxe, mas ainda não executado contra o domínio real.**
+- [x] **Configurar `prisma migrate deploy`** — serviço `migrate` roda e encerra; a API só
+      sobe após ele sair com sucesso (`service_completed_successfully`), então nunca há API
+      contra schema desatualizado. Falta apenas executar na VPS.
+- [x] **Documentar o processo de deploy** — `docs/deploy.md`.
+- [ ] 🔴 **Executar o deploy na VPS** (o que sobra é operação, não código):
+  - [ ] Apontar o DNS de `escacev.com` e `www` para o IP da VPS
+  - [ ] Cadastrar `https://escacev.com/api/auth/google/callback` no Google Console —
+        **o login falha se não bater exatamente com o `GOOGLE_CALLBACK_URL`**
+  - [ ] Criar a conta SMTP real (SendGrid) — item aberto desde a Fase 0. Sem e-mail não há
+        convite, e convite é o único caminho de entrada de um membro
+  - [ ] Preencher o `.env` de produção na VPS (bloco PRODUÇÃO do `.env.example`)
+  - [ ] Rodar `scripts/init-letsencrypt.sh` e o seed da instituição
 - [ ] Smoke test em produção: login → ministério → evento → escala → notificação
-- [ ] Configurar backup do banco de dados
+- [ ] Agendar o backup do banco no cron da VPS — o comando está no `docs/deploy.md`, mas
+      backup que depende de alguém lembrar não é backup
 - [ ] Configurar logs e monitoramento básico
-- [ ] Documentar o processo de deploy no README
+- [ ] 🟡 Restringir o CORS à origem do front — hoje `app.ts` usa `app.use(cors())` aberto.
+      Com domínio único o front não precisa de CORS nenhum, então dá para fechar de vez.
+      Risco baixo (o JWT vai no header, não em cookie), mas é higiene.
+- [ ] 🟡 Adicionar `helmet` e rate limiting na API
 
 ---
 
