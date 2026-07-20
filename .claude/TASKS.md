@@ -543,19 +543,17 @@
 
 ## Fase 10 — Testes e Qualidade 🔴
 
-- [ ] 🔴 **A main está VERMELHA: 2 testes de `compatibility.routes.test.ts` falham na suíte
-      completa.** Não é regressão — reproduz na `main` limpa, 3/3 rodadas. Isolado o arquivo
-      passa; `compatibility` + `assignment` juntos reproduzem. O banco está limpo (zero linhas
-      órfãs), então **não é estado residual: é corrida entre workers do Jest no mesmo banco**.
-      **Causa:** o teste assume ser o dono único da tabela — usa
-      `prisma.compatibilidadeFuncao.findFirst()` (linha ~81) e `.count()` (linhas ~88 e ~147)
-      **sem `where`**. Quando o `assignment.routes.test.ts` roda em paralelo e cria os próprios
-      pares para o motor de conflito, o `count()` enxerga as linhas dele e o `findFirst()` pode
-      devolver a linha errada. Os demais testes de rota escopam tudo por fixtures `test-`.
-      **Correção:** escopar o `findFirst`/`count` pelas funções do próprio teste. Sugerida em
-      branch curta e separada (`fix/testes-compatibilidade-isolamento`), antes de novos merges —
-      o CONTRIBUTING diz que a `main` é sempre deployável. (achado ao verificar a
-      `fix/auth-callback-redirect-erro`)
+- [x] **A main estava VERMELHA: 2 testes de `compatibility.routes.test.ts`.** Não era
+      regressão — reproduzia na `main` limpa.
+      **Causa:** o teste assumia ser o dono único da tabela — usava
+      `prisma.compatibilidadeFuncao.findFirst()` e `.count()` **sem `where`**, enquanto os
+      demais testes de rota escopam tudo por fixtures `test-`. Qualquer linha alheia na
+      tabela quebrava a asserção, viesse ela de outra suíte ou do banco de desenvolvimento.
+      O diagnóstico inicial ("corrida entre workers do Jest, banco limpo") estava incompleto:
+      o arquivo também falhava **isolado**, contra os 5 pares reais do `inst-escacev`
+      criados pela própria UI.
+      **Correção:** helper `ownPairs()` escopando `findFirst`/`count` às funções do próprio
+      teste. Suíte completa 539/539. (achado ao verificar a `fix/auth-callback-redirect-erro`)
 - [ ] Testes unitários do **motor de conflito** (cenários: sem conflito, sobreposição compatível, sobreposição incompatível, prioridade por publicação)
 - [x] Testes unitários das entidades (validações de `create()`) — 7/7 entidades com suíte dedicada (Parte A)
 - [ ] Testes de integração dos principais fluxos (criar escala → alocar → publicar) — depende da Fase 5
