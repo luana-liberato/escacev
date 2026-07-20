@@ -51,6 +51,14 @@ function isSmtpConfigured(config: SmtpConfig): boolean {
 }
 
 /**
+ * `SMTP_HOST="ethereal"` liga a caixa de teste do próprio Nodemailer. Não é um
+ * host real: é a palavra-chave que pede uma conta descartável ao Ethereal.
+ */
+function isEtherealRequested(config: SmtpConfig): boolean {
+  return config.host?.trim().toLowerCase() === 'ethereal';
+}
+
+/**
  * Serviço de e-mail via Nodemailer/SMTP. Serve indistintamente Mailtrap (dev) e
  * SendGrid (prod) — ambos são SMTP; a diferença mora só no `.env`.
  *
@@ -59,11 +67,21 @@ function isSmtpConfigured(config: SmtpConfig): boolean {
  * e-mail no console em vez de tentar conectar. Assim S2/S3 rodam de ponta a ponta
  * sem nenhuma credencial; basta plugar `SMTP_*` depois para o envio real ligar,
  * sem tocar em código.
+ *
+ * DESENVOLVIMENTO — `SMTP_HOST="ethereal"`: usa a caixa de teste do próprio
+ * Nodemailer, criada na hora e sem cadastro. Nada é entregue de verdade; cada
+ * envio imprime no console um link com o e-mail RENDERIZADO. É o substituto do
+ * Mailtrap: o modo log sozinho mostra só destinatário e assunto, e não permite
+ * conferir o HTML dos templates. Nunca use em produção — as mensagens ficam numa
+ * caixa pública e não chegam a ninguém.
  */
 export class NodemailerEmailService implements EmailService {
   private readonly config: SmtpConfig;
   private readonly configured: boolean;
-  private readonly transporter: Transporter | null;
+  private readonly ethereal: boolean;
+  private transporter: Transporter | null;
+  /** Criação da conta Ethereal em voo — memoizada para não abrir uma por e-mail. */
+  private etherealSetup: Promise<Transporter | null> | null = null;
 
   /**
    * @param options.config  sobrescreve a config do .env (usado em testes).
@@ -72,10 +90,14 @@ export class NodemailerEmailService implements EmailService {
    */
   constructor(options?: { config?: SmtpConfig; transporter?: Transporter }) {
     this.config = options?.config ?? loadSmtpConfigFromEnv();
+    this.ethereal = !options?.transporter && isEtherealRequested(this.config);
     this.configured = !!options?.transporter || isSmtpConfigured(this.config);
 
     if (options?.transporter) {
       this.transporter = options.transporter;
+    } else if (this.ethereal) {
+      // Resolvido no primeiro envio: criar a conta é assíncrono e o construtor não é.
+      this.transporter = null;
     } else if (this.configured) {
       this.transporter = nodemailer.createTransport({
         host: this.config.host,
@@ -88,7 +110,40 @@ export class NodemailerEmailService implements EmailService {
     }
   }
 
+  /**
+   * Cria (uma vez) a caixa de teste do Ethereal. Se falhar — tipicamente sem
+   * rede —, devolve null e o serviço cai no modo log, que é o comportamento
+   * seguro: e-mail é best-effort e não pode derrubar a operação que o disparou.
+   */
+  private async resolveEthereal(): Promise<Transporter | null> {
+    if (this.transporter) return this.transporter;
+    if (!this.etherealSetup) {
+      this.etherealSetup = nodemailer
+        .createTestAccount()
+        .then((account) => {
+          const transporter = nodemailer.createTransport({
+            host: account.smtp.host,
+            port: account.smtp.port,
+            secure: account.smtp.secure,
+            auth: { user: account.user, pass: account.pass },
+          });
+          this.transporter = transporter;
+          // eslint-disable-next-line no-console
+          console.info(`[email:ethereal] caixa de teste criada (${account.user})`);
+          return transporter;
+        })
+        .catch((err) => {
+          // eslint-disable-next-line no-console
+          console.error('[email:ethereal] não foi possível criar a caixa; caindo no modo log:', err);
+          return null;
+        });
+    }
+    return this.etherealSetup;
+  }
+
   async send(message: EmailMessage): Promise<boolean> {
+    if (this.ethereal) await this.resolveEthereal();
+
     // Modo log: sem SMTP, só registra o que seria enviado. Não é erro — conta como
     // "ok" (true) para não sinalizar falha em ambiente sem credencial.
     if (!this.transporter) {
@@ -102,13 +157,22 @@ export class NodemailerEmailService implements EmailService {
     // Best-effort: qualquer falha de envio loga e é engolida — nunca propaga.
     // Devolve false para o caller poder reagir (sem tratar exceção).
     try {
-      await this.transporter.sendMail({
+      const info = await this.transporter.sendMail({
         from: this.config.from,
         to: message.to,
         subject: message.subject,
         html: message.html,
         text: message.text,
       });
+
+      // O Ethereal não entrega nada: guarda a mensagem e expõe um link com o
+      // e-mail RENDERIZADO. É esse link que substitui a caixa do Mailtrap —
+      // sem ele o modo de teste não teria como conferir o HTML do template.
+      if (this.ethereal) {
+        const preview = nodemailer.getTestMessageUrl(info);
+        // eslint-disable-next-line no-console
+        if (preview) console.info(`[email:ethereal] preview de "${message.subject}": ${preview}`);
+      }
       return true;
     } catch (err) {
       // eslint-disable-next-line no-console

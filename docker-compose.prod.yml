@@ -1,0 +1,108 @@
+# Ambiente de PRODUÇÃO (VPS). Subir com:
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# As variáveis vêm do arquivo `.env` na raiz do projeto, na VPS (nunca
+# versionado). A sintaxe ${VAR:?...} faz o compose ABORTAR com mensagem clara se
+# uma variável obrigatória faltar — melhor do que subir um sistema quebrado.
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: escacev-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?defina POSTGRES_USER no .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}
+      POSTGRES_DB: ${POSTGRES_DB:?defina POSTGRES_DB no .env}
+    volumes:
+      - escacev-pgdata:/var/lib/postgresql/data
+    # Sem `ports`: o banco não é exposto à internet, só à rede interna do
+    # compose. Para acessá-lo da sua máquina, use um túnel SSH.
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Aplica as migrations e encerra. A API só sobe depois que este container sai
+  # com sucesso, então nunca há API rodando contra um schema desatualizado.
+  # Usa o alvo `build` porque é o único que tem o CLI do Prisma (devDependency).
+  migrate:
+    container_name: escacev-migrate
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+      target: build
+    restart: 'no'
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?defina DATABASE_URL no .env}
+      # O seed roda por este mesmo serviço (`run --rm migrate npx prisma db seed`),
+      # e é ele quem cria a instituição e convida o primeiro ADMIN_GERAL — sem
+      # esse convite não existe ninguém que consiga entrar no sistema.
+      # NODE_ENV=production também faz o seed pular os dados de exemplo.
+      NODE_ENV: production
+      INSTITUTION_ID: ${INSTITUTION_ID:?defina INSTITUTION_ID no .env}
+      INSTITUTION_NAME: ${INSTITUTION_NAME:?defina INSTITUTION_NAME no .env}
+      # Obrigatória, e com `:?` de propósito. O seed usa `??`, que NÃO cai no
+      # padrão para string vazia — um `:-` aqui criaria um ADMIN_GERAL de e-mail
+      # vazio sem erro nenhum, e o login com o Google daria 403 sem explicação.
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:?defina SEED_ADMIN_EMAIL no .env - e o e-mail Google do primeiro admin, sem ele ninguem consegue entrar}
+      SEED_ADMIN_NAME: ${SEED_ADMIN_NAME:-Administrador Geral}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: npx prisma migrate deploy
+
+  api:
+    container_name: escacev-api
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+      target: production
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: '3001'
+      DATABASE_URL: ${DATABASE_URL:?defina DATABASE_URL no .env}
+      JWT_SECRET: ${JWT_SECRET:?defina JWT_SECRET no .env}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?defina GOOGLE_CLIENT_ID no .env}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:?defina GOOGLE_CLIENT_SECRET no .env}
+      GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:?defina GOOGLE_CALLBACK_URL no .env}
+      FRONTEND_URL: ${FRONTEND_URL:?defina FRONTEND_URL no .env}
+      APP_LOGIN_URL: ${APP_LOGIN_URL:?defina APP_LOGIN_URL no .env}
+      INSTITUTION_ID: ${INSTITUTION_ID:?defina INSTITUTION_ID no .env}
+      INSTITUTION_NAME: ${INSTITUTION_NAME:?defina INSTITUTION_NAME no .env}
+      SMTP_HOST: ${SMTP_HOST:?defina SMTP_HOST no .env}
+      SMTP_PORT: ${SMTP_PORT:?defina SMTP_PORT no .env}
+      SMTP_USER: ${SMTP_USER:?defina SMTP_USER no .env}
+      SMTP_PASS: ${SMTP_PASS:?defina SMTP_PASS no .env}
+      FROM_EMAIL: ${FROM_EMAIL:?defina FROM_EMAIL no .env}
+    # Sem `ports`: quem fala com a internet é o nginx, que alcança a API pela
+    # rede interna do compose.
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  web:
+    container_name: escacev-web
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+      target: production
+      args:
+        # O Vite inlina isto no bundle em tempo de build. Relativo de propósito:
+        # front e API na mesma origem, então o domínio não fica embutido.
+        VITE_API_URL: /api
+    restart: unless-stopped
+    ports:
+      # SÓ em 127.0.0.1, como os outros projetos da VPS: quem atende a internet
+      # é o nginx do host, que termina o TLS e repassa para cá. Publicar em
+      # 0.0.0.0 exporia o app sem TLS direto na porta.
+      # 8083 porque 8081 (juntosnameta), 8082 (cantinhodajenny) e 7080
+      # (realnaveia) já estão em uso.
+      - '127.0.0.1:8083:80'
+    depends_on:
+      - api
+
+volumes:
+  escacev-pgdata:

@@ -78,7 +78,7 @@ Permissão Escopada e reutilizada em funções, associações e escalas.
 | Banco | PostgreSQL 16 |
 | ORM | Prisma |
 | Auth | Google OAuth 2.0 + JWT (identidade no token; **perfil e status vêm do banco** — ver Seção 5) |
-| E-mail | Nodemailer + Mailtrap (dev) / SendGrid (prod) |
+| E-mail | Nodemailer — Ethereal (dev, caixa de teste do próprio Nodemailer) / SMTP real (prod) |
 | Deploy | Docker + Docker Compose + nginx + Let's Encrypt |
 | Lint | ESLint + Prettier |
 
@@ -370,11 +370,13 @@ GOOGLE_CALLBACK_URL="http://localhost:3001/auth/google/callback"
 INSTITUTION_ID="inst-escacev"
 INSTITUTION_NAME="Nome da Igreja"
 
-# E-mail (dev = Mailtrap, prod = SendGrid)
-SMTP_HOST="smtp.mailtrap.io"
+# E-mail (dev = "ethereal", prod = SMTP real)
+# "ethereal" = caixa de teste do próprio Nodemailer: sem cadastro, sem
+# user/pass, e cada envio loga um link com o e-mail renderizado.
+SMTP_HOST="ethereal"
 SMTP_PORT="587"
-SMTP_USER="..."
-SMTP_PASS="..."
+SMTP_USER=""
+SMTP_PASS=""
 FROM_EMAIL="noreply@escacev.app"
 
 # App

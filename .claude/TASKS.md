@@ -578,26 +578,68 @@
 
 ## Fase 11 — Deploy e Produção 🔴
 
-- [ ] **Corrigir o ambiente da API no `docker-compose.yml`** — o serviço `api` declara as
-      variáveis **inline** e não usa `env_file`, então não recebe `JWT_SECRET`,
-      `GOOGLE_CLIENT_ID/SECRET`, `FRONTEND_URL` nem as de SMTP; o `.dockerignore` também
-      exclui o `.env`, que portanto não entra na imagem. Como `middlewares/auth.ts` faz
-      `new JwtService()` no escopo do módulo e o construtor lança sem `JWT_SECRET`, a API
-      containerizada deve quebrar já no boot. Provável correção: `env_file: ./api/.env`.
-      **Não verificado empiricamente** — hoje o dev roda a API por `npm run dev` no host
-      (só o Postgres está no Docker), então o caminho containerizado não é exercitado.
-- [ ] Escrever Dockerfile de produção da API
-- [ ] Escrever build de produção do frontend (Vite build → estáticos)
-- [ ] Configurar nginx na VPS: proxy reverso para a API + servir o frontend
-- [ ] Configurar HTTPS com Let's Encrypt (certbot)
-- [ ] Configurar variáveis de ambiente de produção na VPS
-- [ ] Atualizar redirect URIs do Google OAuth para o domínio de produção
-- [ ] Executar `prisma migrate deploy` na VPS
-- [ ] Executar seed da instituição em produção
+> **Desenho escolhido (19/07/2026): domínio único, atrás do nginx do host.** Front em
+> `https://escacev.com/` e API em `https://escacev.com/api/` (a barra final do `proxy_pass`
+> remove o prefixo, então as rotas do back seguem na raiz). Mesma origem ⇒ **não há CORS a
+> configurar**; o bundle usa `/api` relativo, sem o domínio embutido.
+>
+> **A VPS já hospeda `cantinhodajenny`, `juntosnameta` e `realnaveia`**, com um nginx NO
+> HOST dono de 80/443 e um arquivo por site em `sites-enabled`. O Escacev segue o mesmo
+> padrão: publica só em `127.0.0.1:8083` e o host termina o TLS. Não traz certbot próprio —
+> dois certbots disputando a porta 80 fariam as renovações falharem de forma intermitente.
+> **8083 porque 8081/8082/7080 já estão em uso, e a 3001 é do `juntosnameta-backend`** — por
+> isso a API do Escacev não publica porta alguma. Guia completo em `docs/deploy.md`.
+
+- [x] **Corrigir o ambiente da API no `docker-compose.yml`** — o serviço declarava as
+      variáveis inline e não recebia `JWT_SECRET`, `GOOGLE_*`, `FRONTEND_URL` nem SMTP.
+      Corrigido com `env_file: ./api/.env`, com o `environment` sobrescrevendo só o que é
+      específico do container (`DATABASE_URL` aponta para `postgres`, não `localhost`).
+      A suspeita do item original **se confirmou**: sem `JWT_SECRET` a API quebra no boot.
+- [x] **Dockerfile de produção da API** — multi-stage com alvos `development`/`build`/
+      `production`. O alvo `build` é o único com o CLI do Prisma (devDependency), então a
+      imagem de produção recebe o client já gerado por `COPY`. **Verificado:** a imagem
+      sobe e responde em `GET /health`.
+- [x] **Build de produção do frontend** — alvo `production` do `web/Dockerfile` gera o
+      build do Vite e o serve por nginx. `VITE_API_URL` entra como `ARG` porque o Vite
+      inlina as `VITE_*` em tempo de build; no `environment` do compose não teria efeito.
+- [x] **nginx interno do projeto** (`web/nginx.conf`) — serve os estáticos e resolve o
+      `/api` internamente; fallback de SPA (sem ele, recarregar `/agenda` dá 404), gzip e
+      cache dos assets. Só HTTP: TLS, HSTS e redirect de www são do host, e duplicá-los
+      aqui criaria duas fontes de verdade. Repassa o `X-Forwarded-Proto` que CHEGA (usar
+      `$scheme` diria "http", perdendo a informação de que o usuário veio por HTTPS).
+      **Verificado ponta a ponta:** `/api/health` atravessa o proxy, `/escalas/:id` cai no
+      `index.html`, `/api/escalas` sem token devolve 401.
+- [x] **nginx do host** (`deploy/nginx-host.conf`) — arquivo para `sites-available`, no
+      formato dos outros 3 sites. Versionado só com o bloco HTTP de propósito: o
+      `certbot --nginx` injeta o 443 e o redirect, e escrever o bloco TLS antes de o
+      certificado existir faria o `nginx -t` falhar — **derrubando os outros 3 projetos
+      junto, porque é o mesmo nginx**.
+- [x] **HTTPS com Let's Encrypt** — reusa o certbot do host, que já serve os outros
+      projetos; a renovação já está no timer dele, nada a configurar. **Não executado
+      contra o domínio real ainda.**
+- [x] **Configurar `prisma migrate deploy`** — serviço `migrate` roda e encerra; a API só
+      sobe após ele sair com sucesso (`service_completed_successfully`), então nunca há API
+      contra schema desatualizado. Falta apenas executar na VPS.
+- [x] **Documentar o processo de deploy** — `docs/deploy.md`.
+- [ ] 🔴 **Executar o deploy na VPS** (o que sobra é operação, não código):
+  - [ ] Apontar o DNS de `escacev.com` e `www` para o IP da VPS
+  - [ ] Cadastrar `https://escacev.com/api/auth/google/callback` no Google Console —
+        **o login falha se não bater exatamente com o `GOOGLE_CALLBACK_URL`**
+  - [ ] Criar a conta SMTP real (SendGrid) — item aberto desde a Fase 0. Sem e-mail não há
+        convite, e convite é o único caminho de entrada de um membro
+  - [ ] Preencher o `.env` de produção na VPS (bloco PRODUÇÃO do `.env.example`)
+  - [ ] `up -d --build`, conferir em `127.0.0.1:8083` e rodar o seed da instituição
+  - [ ] Instalar o `deploy/nginx-host.conf` em `sites-available` + link, `nginx -t`,
+        `reload` (nunca `restart` — é o nginx dos 4 sites) e `certbot --nginx`
+  - [ ] Confirmar que os outros 3 projetos continuam no ar depois do reload
 - [ ] Smoke test em produção: login → ministério → evento → escala → notificação
-- [ ] Configurar backup do banco de dados
+- [ ] Agendar o backup do banco no cron da VPS — o comando está no `docs/deploy.md`, mas
+      backup que depende de alguém lembrar não é backup
 - [ ] Configurar logs e monitoramento básico
-- [ ] Documentar o processo de deploy no README
+- [ ] 🟡 Restringir o CORS à origem do front — hoje `app.ts` usa `app.use(cors())` aberto.
+      Com domínio único o front não precisa de CORS nenhum, então dá para fechar de vez.
+      Risco baixo (o JWT vai no header, não em cookie), mas é higiene.
+- [ ] 🟡 Adicionar `helmet` e rate limiting na API
 
 ---
 

@@ -1,3 +1,4 @@
+# Ambiente de DESENVOLVIMENTO. Produção fica no docker-compose.prod.yml.
 services:
   postgres:
     image: postgres:16-alpine
@@ -22,13 +23,21 @@ services:
     build:
       context: ./api
       dockerfile: Dockerfile
+      # Os Dockerfiles são multi-stage: sem `target`, o build pegaria o último
+      # estágio (produção) e o modo de desenvolvimento sumiria.
+      target: development
     restart: unless-stopped
+    # Segredos e credenciais do dia a dia (JWT_SECRET, GOOGLE_*, SMTP_*,
+    # FRONTEND_URL) saem do api/.env — o mesmo arquivo usado ao rodar fora do
+    # Docker. Sem isto o container subia sem JWT_SECRET e quebrava no login.
+    env_file:
+      - ./api/.env
     environment:
+      # Sobrescreve o que é específico do container: dentro da rede do compose o
+      # banco é `postgres`, não `localhost` (o `environment` vence o `env_file`).
       DATABASE_URL: postgresql://escacev:escacev@postgres:5432/escacev
       PORT: '3001'
       NODE_ENV: development
-      INSTITUTION_ID: inst-escacev
-      INSTITUTION_NAME: Minha Igreja
     ports:
       - '3001:3001'
     depends_on:
@@ -42,6 +51,7 @@ services:
     build:
       context: ./web
       dockerfile: Dockerfile
+      target: development
     restart: unless-stopped
     environment:
       # O browser roda no host, então aponta para a porta exposta da API.
