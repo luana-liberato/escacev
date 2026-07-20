@@ -18,6 +18,7 @@ import {
 } from '../../../repositories/MinistryMembershipRepository';
 import { AssignmentDetail, AssignmentRepository, MemberAssignmentContext } from '../../../repositories/AssignmentRepository';
 import { MinistryAccessPolicy, Actor } from '../../../services/MinistryAccessPolicy';
+import { ScheduleVisibilityPolicy } from '../../../services/ScheduleVisibilityPolicy';
 import { PublishNotification } from '../../../services/PublishNotification';
 import { RecordingNotifier } from '../../../../test/fakeNotifier';
 import { SyncBackgroundTasks } from '../../../../test/fakeBackground';
@@ -218,6 +219,7 @@ async function scenario() {
   const scheduleRepo = new FakeScheduleRepository(ministryRepo);
   const membershipRepo = new FakeMembershipRepository();
   const policy = new MinistryAccessPolicy(membershipRepo);
+  const visibility = new ScheduleVisibilityPolicy(membershipRepo);
 
   const ministry = Ministry.create({ institutionId: INST, name: 'Louvor' });
   await ministryRepo.save(ministry);
@@ -230,7 +232,7 @@ async function scenario() {
   });
   await eventRepo.save(event);
 
-  return { ministryRepo, eventRepo, scheduleRepo, membershipRepo, policy, ministry, event };
+  return { ministryRepo, eventRepo, scheduleRepo, membershipRepo, policy, visibility, ministry, event };
 }
 
 describe('CreateScheduleUseCase', () => {
@@ -432,7 +434,7 @@ describe('GetScheduleUseCase', () => {
     );
     const MEMBER: Actor = { memberId: 'mb', role: 'MEMBRO' };
     const get = () =>
-      new GetScheduleUseCase(s.scheduleRepo, s.ministryRepo, new FakeAssignmentRepository(), s.membershipRepo);
+      new GetScheduleUseCase(s.scheduleRepo, s.ministryRepo, new FakeAssignmentRepository(), s.visibility);
 
     // Rascunho: invisível ao membro (404, não revela).
     await expect(get().execute({ institutionId: INST, id: created.id, actor: MEMBER })).rejects.toMatchObject({
@@ -447,6 +449,59 @@ describe('GetScheduleUseCase', () => {
     // Membro que NÃO participa: 404 mesmo publicada.
     await expect(
       get().execute({ institutionId: INST, id: created.id, actor: { memberId: 'stranger', role: 'MEMBRO' } }),
+    ).rejects.toMatchObject({ statusCode: 404 });
+  });
+
+  it('ADMIN_MINISTERIO que ADMINISTRA o ministério vê a escala mesmo em RASCUNHO', async () => {
+    const s = await scenario();
+    const created = await new CreateScheduleUseCase(s.scheduleRepo, s.ministryRepo, s.eventRepo, s.policy).execute({
+      institutionId: INST, actor: ADMIN_GERAL, ministryId: s.ministry.id, eventId: s.event.id,
+    });
+    s.membershipRepo.memberships.push(
+      MinistryMembership.create({ memberId: 'am', ministryId: s.ministry.id, isAdmin: true }),
+    );
+    const result = await new GetScheduleUseCase(
+      s.scheduleRepo, s.ministryRepo, new FakeAssignmentRepository(), s.visibility,
+    ).execute({ institutionId: INST, id: created.id, actor: { memberId: 'am', role: 'ADMIN_MINISTERIO' } });
+
+    expect(result.schedule.status).toBe('RASCUNHO');
+  });
+
+  it('ADMIN_MINISTERIO que SÓ participa (não administra) vê publicada, mas 404 em rascunho', async () => {
+    const s = await scenario();
+    const created = await new CreateScheduleUseCase(s.scheduleRepo, s.ministryRepo, s.eventRepo, s.policy).execute({
+      institutionId: INST, actor: ADMIN_GERAL, ministryId: s.ministry.id, eventId: s.event.id,
+    });
+    // Participa como MEMBRO daquele ministério (isAdmin=false), embora seja admin global.
+    s.membershipRepo.memberships.push(
+      MinistryMembership.create({ memberId: 'am', ministryId: s.ministry.id, isAdmin: false }),
+    );
+    const ADMIN: Actor = { memberId: 'am', role: 'ADMIN_MINISTERIO' };
+    const get = () =>
+      new GetScheduleUseCase(s.scheduleRepo, s.ministryRepo, new FakeAssignmentRepository(), s.visibility);
+
+    // Rascunho de ministério que só participa: invisível (RN04) — 404.
+    await expect(get().execute({ institutionId: INST, id: created.id, actor: ADMIN })).rejects.toMatchObject({
+      statusCode: 404,
+    });
+
+    // Publicada: passa a ver.
+    await s.scheduleRepo.update(created.publish());
+    const ok = await get().execute({ institutionId: INST, id: created.id, actor: ADMIN });
+    expect(ok.schedule.status).toBe('PUBLICADA');
+  });
+
+  it('ADMIN_MINISTERIO que NÃO participa do ministério recebe 404 (mesmo publicada)', async () => {
+    const s = await scenario();
+    const created = await new CreateScheduleUseCase(s.scheduleRepo, s.ministryRepo, s.eventRepo, s.policy).execute({
+      institutionId: INST, actor: ADMIN_GERAL, ministryId: s.ministry.id, eventId: s.event.id,
+    });
+    await s.scheduleRepo.update(created.publish());
+
+    await expect(
+      new GetScheduleUseCase(s.scheduleRepo, s.ministryRepo, new FakeAssignmentRepository(), s.visibility).execute({
+        institutionId: INST, id: created.id, actor: { memberId: 'forasteiro', role: 'ADMIN_MINISTERIO' },
+      }),
     ).rejects.toMatchObject({ statusCode: 404 });
   });
 });
@@ -527,12 +582,53 @@ describe('ListSchedulesUseCase', () => {
     );
 
     const list = await new ListSchedulesUseCase(
-      s.scheduleRepo, s.ministryRepo, s.eventRepo, s.membershipRepo,
+      s.scheduleRepo, s.ministryRepo, s.eventRepo, s.visibility,
     ).execute({ institutionId: INST, actor: { memberId: 'mb', role: 'MEMBRO' } });
 
     expect(list).toHaveLength(1);
     expect(list[0].ministryId).toBe(s.ministry.id);
     expect(list[0].status).toBe('PUBLICADA');
+  });
+
+  it('ADMIN_MINISTERIO lista os ministérios que participa: rascunho onde administra, só publicada onde é membro', async () => {
+    const { s, ministryB } = await withTwoMinistriesOnSameEvent(); // A (s.ministry) e B, ambas RASCUNHO
+    // Administra A (vê rascunho); só participa de B como membro (só publicada).
+    s.membershipRepo.memberships.push(
+      MinistryMembership.create({ memberId: 'am', ministryId: s.ministry.id, isAdmin: true }),
+      MinistryMembership.create({ memberId: 'am', ministryId: ministryB.id, isAdmin: false }),
+    );
+    const list = () =>
+      new ListSchedulesUseCase(s.scheduleRepo, s.ministryRepo, s.eventRepo, s.visibility).execute({
+        institutionId: INST, actor: { memberId: 'am', role: 'ADMIN_MINISTERIO' },
+      });
+
+    // Com ambas em RASCUNHO: vê só a de A (que administra); a de B (só participa) fica oculta.
+    const draftPhase = await list();
+    expect(draftPhase.map((x) => x.ministryId)).toEqual([s.ministry.id]);
+
+    // Publicada a de B: passa a vê-la também.
+    const inB = s.scheduleRepo.schedules.find((x) => x.ministryId === ministryB.id)!;
+    await s.scheduleRepo.update(inB.publish());
+    const publishedPhase = await list();
+    expect(publishedPhase.map((x) => x.ministryId).sort()).toEqual([ministryB.id, s.ministry.id].sort());
+  });
+
+  it('ADMIN_MINISTERIO não lista escalas de ministério que NÃO participa', async () => {
+    const { s } = await withTwoMinistriesOnSameEvent(); // A e B, nenhuma vinculada ao ator
+    const list = await new ListSchedulesUseCase(
+      s.scheduleRepo, s.ministryRepo, s.eventRepo, s.visibility,
+    ).execute({ institutionId: INST, actor: { memberId: 'forasteiro', role: 'ADMIN_MINISTERIO' } });
+
+    expect(list).toEqual([]);
+  });
+
+  it('ADMIN_GERAL lista todas as escalas da instituição (não é escopado)', async () => {
+    const { s } = await withTwoMinistriesOnSameEvent(); // A e B, ambas RASCUNHO
+    const list = await new ListSchedulesUseCase(
+      s.scheduleRepo, s.ministryRepo, s.eventRepo, s.visibility,
+    ).execute({ institutionId: INST, actor: ADMIN_GERAL });
+
+    expect(list).toHaveLength(2);
   });
 });
 

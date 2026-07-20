@@ -12,6 +12,7 @@ import { ListSchedulesUseCase } from '../../../domain/use-cases/schedules/ListSc
 import { PublishScheduleUseCase } from '../../../domain/use-cases/schedules/PublishScheduleUseCase';
 import { DeleteScheduleUseCase } from '../../../domain/use-cases/schedules/DeleteScheduleUseCase';
 import { MinistryAccessPolicy } from '../../../domain/services/MinistryAccessPolicy';
+import { ScheduleVisibilityPolicy } from '../../../domain/services/ScheduleVisibilityPolicy';
 import { PublishNotification } from '../../../domain/services/PublishNotification';
 import { ConflictDetectionService } from '../../../domain/services/ConflictDetectionService';
 import { CheckPositionCompatibilityUseCase } from '../../../domain/use-cases/position-compatibilities/CheckPositionCompatibilityUseCase';
@@ -28,7 +29,9 @@ import { respond } from '../../../shared/utils/respond';
 /**
  * Escalas (Schedule) — a "casca" da escala de um ministério para um evento.
  * Escrita é escopo de ministério (rbac + MinistryAccessPolicy no use case);
- * leitura é aberta a qualquer admin. institutionId sempre do JWT (req.user).
+ * leitura é escopada por participação (ScheduleVisibilityPolicy): ADMIN_GERAL vê
+ * tudo, o ADMIN_MINISTERIO vê os ministérios que participa (rascunho onde é admin,
+ * publicadas onde é só membro). institutionId sempre do JWT (req.user).
  */
 export class ScheduleController {
   // POST /escalas — cria a escala vazia (RASCUNHO). body: { ministryId, eventId, name?, date? }.
@@ -63,7 +66,7 @@ export class ScheduleController {
       new PrismaScheduleRepository(),
       new PrismaMinistryRepository(),
       new PrismaEventRepository(),
-      new PrismaMinistryMembershipRepository(),
+      ScheduleController.visibilityPolicy(),
     );
     const schedules = await useCase.execute({
       institutionId,
@@ -84,7 +87,7 @@ export class ScheduleController {
       new PrismaScheduleRepository(),
       new PrismaMinistryRepository(),
       new PrismaAssignmentRepository(),
-      new PrismaMinistryMembershipRepository(),
+      ScheduleController.visibilityPolicy(),
     );
     const result = await useCase.execute({ id: req.params.id, institutionId, actor: { memberId, role } });
 
@@ -102,7 +105,7 @@ export class ScheduleController {
       new PrismaEventRepository(),
       new PrismaAssignmentRepository(),
       ScheduleController.conflictDetection(),
-      new PrismaMinistryMembershipRepository(),
+      ScheduleController.visibilityPolicy(),
     );
     const result = await useCase.execute({ id: req.params.id, institutionId, actor: { memberId, role } });
 
@@ -147,6 +150,11 @@ export class ScheduleController {
   /** Guarda de escopo de ministério (ADMIN_GERAL ou admin com isAdmin no ministério). */
   private static accessPolicy(): MinistryAccessPolicy {
     return new MinistryAccessPolicy(new PrismaMinistryMembershipRepository());
+  }
+
+  /** Guarda de LEITURA: quais escalas o ator enxerga, por participação (RN04). */
+  private static visibilityPolicy(): ScheduleVisibilityPolicy {
+    return new ScheduleVisibilityPolicy(new PrismaMinistryMembershipRepository());
   }
 
   /** Motor de detecção de conflito (RN01) — reusa o Check de compatibilidade já existente. */

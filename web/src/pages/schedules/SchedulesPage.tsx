@@ -7,7 +7,11 @@ import { ApiError } from '@/services/http';
 import { listSchedules, getSchedule } from '@/services/schedules';
 import { listEvents } from '@/services/events';
 import { listMinistryCards, type MinistryCard } from '@/services/ministries';
-import { listMemberUnavailabilities, overlapsUnavailability } from '@/services/unavailability';
+import {
+  listMemberUnavailabilities,
+  listMyUnavailabilities,
+  overlapsUnavailability,
+} from '@/services/unavailability';
 import type { Event, Schedule, ScheduleStatus, Unavailability } from '@/services/types';
 import { ScheduleStatusBadge } from '@/components/ScheduleStatusBadge';
 import {
@@ -49,6 +53,9 @@ export default function SchedulesPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [ministries, setMinistries] = useState<MinistryCard[]>([]);
   const [allocInfo, setAllocInfo] = useState<Map<string, AllocInfo>>(new Map());
+  // Indisponibilidades do PRÓPRIO usuário logado (RN05, na visão dele): sinaliza a
+  // escala em que ele está escalado e marcou indisponibilidade cruzando o horário.
+  const [myUnavailabilities, setMyUnavailabilities] = useState<Unavailability[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -62,8 +69,8 @@ export default function SchedulesPage() {
   const load = () => {
     setLoading(true);
     setError(null);
-    Promise.all([listSchedules(), listEvents(), listMinistryCards()])
-      .then(async ([scheds, evts, cards]) => {
+    Promise.all([listSchedules(), listEvents(), listMinistryCards(), listMyUnavailabilities()])
+      .then(async ([scheds, evts, cards, myUnavs]) => {
         // Enriquecimento: a contagem e o "está escalado" precisam das alocações,
         // que só vêm no detalhe. Busca uma vez por escala (escala de igreja é
         // pequena); se um detalhe falhar, aquela escala fica sem enriquecimento.
@@ -107,6 +114,7 @@ export default function SchedulesPage() {
         setEvents(evts);
         setMinistries(cards);
         setAllocInfo(info);
+        setMyUnavailabilities(myUnavs);
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Não foi possível carregar.'))
       .finally(() => setLoading(false));
@@ -119,14 +127,12 @@ export default function SchedulesPage() {
   const isGeneralAdmin = user?.role === 'ADMIN_GERAL';
   const isMember = user?.role === 'MEMBRO';
   /**
-   * Ministérios cujas escalas o ator VÊ: geral todas; grupo as que administra;
-   * membro as que participa (os cards que a API já devolve para ele).
+   * Ministérios cujas escalas o ator VÊ = os cards que a API já devolve escopados
+   * por participação (geral todos; os demais os que participam — administrando ou
+   * só escalado). O admin de grupo vê inclusive os que só participa; a EDIÇÃO é que
+   * segue restrita aos que administra (`writableMinistries` + guarda do back).
    */
-  const visibleMinistries = useMemo(
-    () =>
-      isGeneralAdmin || isMember ? ministries : ministries.filter((m) => m.isCurrentUserAdmin),
-    [isGeneralAdmin, isMember, ministries],
-  );
+  const visibleMinistries = ministries;
   /** Ministérios em que pode CRIAR escala: geral todos; grupo os que administra; membro nenhum. */
   const writableMinistries = useMemo(
     () =>
@@ -151,6 +157,13 @@ export default function SchedulesPage() {
           count: info?.count ?? 0,
           isMemberIn: !!memberId && (info?.memberIds.has(memberId) ?? false),
           memberHasConflict: !!memberId && (info?.conflictMemberIds.has(memberId) ?? false),
+          // Usuário logado está escalado E marcou a própria indisponibilidade cruzando
+          // o horário do evento (RN05, na visão dele).
+          iMarkedUnavailable:
+            !!memberId &&
+            (info?.memberIds.has(memberId) ?? false) &&
+            !!event &&
+            overlapsUnavailability(myUnavailabilities, event.startsAt, event.endsAt),
           // Escala tem ALGUM conflito (qualquer alocação) — indicador para admins.
           hasScheduleConflict: (info?.conflictMemberIds.size ?? 0) > 0,
           hasUnavailableMember: info?.hasUnavailableMember ?? false,
@@ -169,7 +182,7 @@ export default function SchedulesPage() {
         if (aPast !== bPast) return aPast ? 1 : -1; // passadas afundam
         return da - db;
       });
-  }, [schedules, scopedIds, ministries, eventById, allocInfo, user, onlyMine, anchor, mode, filterMinistry, filterStatus]);
+  }, [schedules, scopedIds, ministries, eventById, allocInfo, myUnavailabilities, user, onlyMine, anchor, mode, filterMinistry, filterStatus]);
 
   if (!user) return null;
 
@@ -310,9 +323,11 @@ export default function SchedulesPage() {
           // Evento multi-dia: mostra o dia a que a escala se refere (distingue as escalas).
           const eventMultiDay =
             new Date(r.event.startsAt).toDateString() !== new Date(r.event.endsAt).toDateString();
-          // Prioridade visual: indisponível (vermelho, só admin) > conflito (âmbar)
-          // > minha (teal). Indisponibilidade é mais grave que conflito de agenda.
-          const showUnavailable = isAdmin && r.hasUnavailableMember;
+          // Prioridade visual: indisponível (vermelho) > conflito (âmbar) > minha
+          // (teal). Indisponibilidade é mais grave que conflito de agenda. O vermelho
+          // vale tanto para o admin (algum alocado indisponível) quanto para o próprio
+          // usuário escalado que marcou indisponibilidade neste horário.
+          const showUnavailable = (isAdmin && r.hasUnavailableMember) || r.iMarkedUnavailable;
           const showConflict =
             !showUnavailable && (r.memberHasConflict || (isAdmin && r.hasScheduleConflict));
           const showMine = r.isMemberIn && !showUnavailable && !showConflict;
@@ -343,7 +358,13 @@ export default function SchedulesPage() {
                   {r.isMemberIn && (
                     <span
                       className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
-                      style={{ background: r.memberHasConflict ? '#8A6D1F' : '#1C7C8C' }}
+                      style={{
+                        background: r.iMarkedUnavailable
+                          ? '#C0392B'
+                          : r.memberHasConflict
+                            ? '#8A6D1F'
+                            : '#1C7C8C',
+                      }}
                       aria-hidden="true"
                     >
                       ✓
@@ -351,7 +372,7 @@ export default function SchedulesPage() {
                   )}
                   <p className="truncate text-sm font-bold text-ink">{displayName}</p>
                 </div>
-                {showUnavailable && (
+                {isAdmin && r.hasUnavailableMember && (
                   <p className="mt-0.5">
                     <span className="inline-block whitespace-nowrap rounded-full bg-danger px-2.5 py-0.5 text-[11px] font-semibold text-white">
                       Membro indisponível
@@ -361,20 +382,28 @@ export default function SchedulesPage() {
                 {r.isMemberIn && (
                   <p
                     className="mt-0.5 flex items-center gap-1.5 text-[12px] font-semibold"
-                    style={{ color: r.memberHasConflict ? '#8A6D1F' : '#1C7C8C' }}
+                    style={{
+                      color: r.iMarkedUnavailable
+                        ? '#C0392B'
+                        : r.memberHasConflict
+                          ? '#8A6D1F'
+                          : '#1C7C8C',
+                    }}
                   >
-                    {r.memberHasConflict && (
+                    {(r.iMarkedUnavailable || r.memberHasConflict) && (
                       <span
                         className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
-                        style={{ background: '#8A6D1F' }}
+                        style={{ background: r.iMarkedUnavailable ? '#C0392B' : '#8A6D1F' }}
                         aria-hidden="true"
                       >
                         !
                       </span>
                     )}
-                    {r.memberHasConflict
-                      ? 'Você está escalado com conflito em outra escala'
-                      : 'Você está escalado'}
+                    {r.iMarkedUnavailable
+                      ? 'Você está escalado, mas marcou indisponibilidade neste horário'
+                      : r.memberHasConflict
+                        ? 'Você está escalado com conflito em outra escala'
+                        : 'Você está escalado'}
                   </p>
                 )}
                 {isAdmin && r.hasScheduleConflict && !r.memberHasConflict && (

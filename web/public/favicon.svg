@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
+  <!-- Marca "losango partido" da Escacev (espelha src/components/Logo.tsx). -->
+  <polygon points="26,4 48,26 26,48 4,26" fill="#1C7C8C" />
+  <polygon points="26,14 40,26 26,38 26,14" fill="#1A1A1A" />
+</svg>

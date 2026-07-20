@@ -1,9 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useContext, useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
+import { PageActionSlotContext } from '@/hooks/pageActionContext';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/useToast';
 import { ApiError } from '@/services/http';
 import { listEvents } from '@/services/events';
+import { EventModal } from '@/pages/events/EventModal';
 import { getMySchedule } from '@/services/mySchedule';
 import { getSchedule, listSchedules } from '@/services/schedules';
 import { listMinistryCards } from '@/services/ministries';
@@ -103,6 +106,7 @@ export default function AgendaPage() {
   const { user } = useAuth();
   const { showToast } = useToast();
   const navigate = useNavigate();
+  const actionSlot = useContext(PageActionSlotContext);
 
   const [year, setYear] = useState(() => new Date().getFullYear());
   const [month, setMonth] = useState(() => new Date().getMonth());
@@ -114,6 +118,9 @@ export default function AgendaPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [modalDate, setModalDate] = useState<string | null>(null);
+  // Modal de criar evento (ADMIN_GERAL). `date` pré-preenche o dia clicado; null =
+  // sem dia (botão do cabeçalho). Não-nulo (o objeto) = aberto.
+  const [eventModal, setEventModal] = useState<{ date: string | null } | null>(null);
 
   const load = () => {
     setLoading(true);
@@ -202,6 +209,7 @@ export default function AgendaPage() {
   if (!user) return null;
 
   const isAdmin = user.role === 'ADMIN_GERAL' || user.role === 'ADMIN_MINISTERIO';
+  const isGeneralAdmin = user.role === 'ADMIN_GERAL';
   const todayKey = dateKeyOf(new Date().toISOString());
 
   const shiftMonth = (delta: number) => {
@@ -234,6 +242,23 @@ export default function AgendaPage() {
 
   return (
     <div>
+      {/* Criar evento é ação de INSTITUIÇÃO; aqui na Agenda a expomos ao ADMIN_GERAL
+          (a tela de Eventos oferece o mesmo aos dois admins). Injetada no header
+          do layout por portal, como nas outras telas. Com um dia selecionado, já
+          nasce com essa data preenchida; sem seleção, `selectedDate` é null (form em branco). */}
+      {isGeneralAdmin &&
+        actionSlot &&
+        createPortal(
+          <button
+            type="button"
+            onClick={() => setEventModal({ date: selectedDate })}
+            className="flex items-center gap-1.5 whitespace-nowrap rounded-[10px] bg-brand px-4 py-2.5 text-[13.5px] font-semibold text-white transition hover:bg-brand-hover"
+          >
+            <span className="text-base leading-none">+</span>Novo evento
+          </button>,
+          actionSlot,
+        )}
+
       {/* Cabeçalho do mês + legenda. */}
       <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2">
         <div className="flex items-center gap-2">
@@ -356,6 +381,15 @@ export default function AgendaPage() {
                   })}
                 </p>
                 <div className="flex flex-wrap gap-2 sm:ml-auto">
+                  {isGeneralAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => setEventModal({ date: selectedDate })}
+                      className="rounded-[10px] bg-brand px-3 py-2 text-[12.5px] font-semibold text-white transition hover:bg-brand-hover"
+                    >
+                      Novo evento
+                    </button>
+                  )}
                   {selectedUnav ? (
                     <button
                       type="button"
@@ -383,6 +417,21 @@ export default function AgendaPage() {
                   {selectedEvents.map((ev) => {
                     const status = eventStatus(ev);
                     const myChips = entries.filter((e) => e.eventId === ev.id);
+                    // O membro está escalado E marcou indisponibilidade que cruza o
+                    // horário deste evento (RN05, na visão dele): sinaliza o choque
+                    // na própria escala. Só faz sentido quando ele está escalado aqui.
+                    const clashingUnav =
+                      myChips.length > 0
+                        ? unavailabilities.filter(
+                            (u) =>
+                              new Date(u.startsAt).getTime() < new Date(ev.endsAt).getTime() &&
+                              new Date(u.endsAt).getTime() > new Date(ev.startsAt).getTime(),
+                          )
+                        : [];
+                    const unavReasons = clashingUnav
+                      .map((u) => u.reason)
+                      .filter((r): r is string => !!r && r.trim().length > 0)
+                      .join('; ');
                     return (
                       <div key={ev.id} className="rounded-xl border border-line px-3.5 py-3">
                         <div className="flex flex-wrap items-center gap-2">
@@ -408,6 +457,27 @@ export default function AgendaPage() {
                                 {c.ministryName} · {c.positionName}
                               </span>
                             ))}
+                          </div>
+                        )}
+
+                        {/* Escalado, mas indisponível neste horário: aviso na escala. */}
+                        {clashingUnav.length > 0 && (
+                          <div
+                            className="mt-2 flex items-start gap-1.5 rounded-[10px] border px-2.5 py-1.5"
+                            style={{ borderColor: '#F3C6BE', background: '#FDEDEB' }}
+                          >
+                            <span
+                              aria-hidden="true"
+                              className="mt-px flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-danger text-[10px] font-bold text-white"
+                            >
+                              !
+                            </span>
+                            <p className="text-[12px] font-semibold text-danger">
+                              Você está escalado, mas marcou indisponibilidade neste horário
+                              {unavReasons && (
+                                <span className="font-normal text-alert-text"> — {unavReasons}</span>
+                              )}
+                            </p>
                           </div>
                         )}
 
@@ -460,6 +530,15 @@ export default function AgendaPage() {
           existing={unavByDate.get(modalDate) ?? null}
           onClose={() => setModalDate(null)}
           onSaved={reloadUnavailabilities}
+        />
+      )}
+
+      {eventModal && (
+        <EventModal
+          event={null}
+          defaultDate={eventModal.date ?? undefined}
+          onClose={() => setEventModal(null)}
+          onSaved={load}
         />
       )}
     </div>

@@ -303,7 +303,7 @@ router.get('/minhas-escalas', auth,                                      asyncHa
 | RN02 | **Compatibilidade** = par em `CompatibilidadeFuncao`; ausência = incompatível. Armazenar sempre com `funcaoAId < funcaoBId` |
 | RN03 | Admin pode confirmar alocação com conflito; `alocacao.conflito = true` fica registrado |
 | RN04 | Escala com `status = RASCUNHO` é invisível ao membro; só aparece após `PUBLICADA` |
-| RN05 | Alertar ao escalar membro com `Indisponibilidade` no período; admin pode ignorar |
+| RN05 | Membro com `Indisponibilidade` no período **não é escalável**: a UI o desabilita no seletor. A API mantém o `confirm` (alerta, não bloqueio) como rede de proteção — a UI decide com dados do carregamento, e a indisponibilidade pode ser criada depois ou a consulta falhar |
 | RN06 | Sobrecarga: membro ultrapassa N escalas no mês (N configurável pela instituição) |
 | RN07 | Em conflito entre escalas, prevalece a com `publicadaEm` mais antiga |
 | RN08 | Troca/cobertura só válida entre membros do mesmo ministério + confirmação do admin |

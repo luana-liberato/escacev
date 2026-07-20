@@ -17,11 +17,15 @@ import { EVENT_TYPES } from './eventTypes';
  */
 export function EventModal({
   event,
+  defaultDate,
   onClose,
   onSaved,
 }: {
   /** null = criar; preenchido = editar. */
   event: Event | null;
+  /** Dia "YYYY-MM-DD" que pré-preenche início/término AO CRIAR (ex.: dia clicado
+   *  na Agenda). Ignorado na edição, em que as datas vêm do próprio evento. */
+  defaultDate?: string;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -31,9 +35,9 @@ export function EventModal({
 
   const [name, setName] = useState(event?.name ?? '');
   const [type, setType] = useState<EventType>(event?.type ?? 'SERVICE');
-  const [startDate, setStartDate] = useState(start.date);
+  const [startDate, setStartDate] = useState(start.date || (defaultDate ?? ''));
   const [startTime, setStartTime] = useState(start.time);
-  const [endDate, setEndDate] = useState(end.date);
+  const [endDate, setEndDate] = useState(end.date || (defaultDate ?? ''));
   const [endTime, setEndTime] = useState(end.time);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);

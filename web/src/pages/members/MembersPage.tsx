@@ -201,10 +201,12 @@ export default function MembersPage() {
                   podem empurrar as ações. */}
               <div className="order-3 flex basis-full flex-wrap items-center gap-1.5">
                 {row.ministries.map((ministry) => {
-                  // O "· admin" mostra ONDE a pessoa administra — é a informação
-                  // que a tag de perfil não dava. Some para o ADMIN_GERAL: ele
-                  // administra todos, e marcar um chip sugeriria que só aquele.
-                  const showsAdmin = ministry.isAdmin && row.role !== 'ADMIN_GERAL';
+                  // O "· admin" mostra ONDE a pessoa administra DE FATO (isAdmin no
+                  // vínculo) — inclusive para o ADMIN_GERAL: os chips distinguem os
+                  // ministérios que ele administra dos que participa só como membro.
+                  // A tag de perfil ("Administrador geral") continua dizendo o papel
+                  // global; os chips dizem o vínculo, com precisão.
+                  const showsAdmin = ministry.isAdmin;
                   return (
                     <span
                       key={ministry.id}

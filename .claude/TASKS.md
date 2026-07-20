@@ -244,8 +244,8 @@
       escala se refere**, para evento multi-dia ter escala por dia. Unicidade evoluiu para
       `(ministerioId, eventoId, dia, nome)` = uma escala padrão POR DIA. Legadas backfilladas
       com o dia de início do evento. Front: o modal envia o dia do calendário; lista/detalhe
-      exibem o dia quando o evento é multi-dia. *(uncommitted na main)*
-- [x] RBAC das escritas: `ADMIN_GERAL` ou admin escopado do ministério da escala (reusa a `MinistryAccessPolicy`); leitura aberta a admins
+      exibem o dia quando o evento é multi-dia.
+- [x] RBAC das escritas: `ADMIN_GERAL` ou admin escopado do ministério da escala (reusa a `MinistryAccessPolicy`); leitura escopada por participação (`ScheduleVisibilityPolicy` — ver Fase 8)
 - [x] Endpoints: `POST /escalas`, `GET /escalas` (filtros `?eventId`/`?ministryId`), `GET /escalas/:id`, `DELETE /escalas/:id`
 - [x] Testes: entidade, use cases (unit) e endpoints (supertest) — inclui salas por evento e caixa diferente
 
@@ -348,10 +348,13 @@
       "Membro indisponível" + card vermelho, prioridade sobre escalado/conflito), no detalhe
       (linha vermelha + badge "Indisponível", distinto do "Conflito" âmbar) e na tela de
       Membros (datas de indisponibilidade próximas por membro). Cruza `GET /membros/:id/
-      indisponibilidades` com o horário do evento. *(uncommitted na main)*
-- [ ] 🟡 **Excluir o membro indisponível do seletor "Pessoa"** ao adicionar/editar alocação
-      (1º item do handoff de Agenda). É reforço preventivo — o back JÁ avisa ao alocar alguém
-      indisponível (via `needsConfirmation`), então não é bloqueio.
+      indisponibilidades` com o horário do evento.
+- [x] **Excluir o membro indisponível do seletor "Pessoa"** ao adicionar/editar alocação
+      (1º item do handoff de Agenda). Implementado como **bloqueio de fato**, não como reforço
+      preventivo: o indisponível vem `disabled` nos dois seletores, com rótulo
+      "(indisponível)". A RN05 no CLAUDE.md foi ajustada para refletir isso. O `confirm` da
+      API permanece como rede de proteção — o bloqueio decide com os dados do carregamento, e
+      a indisponibilidade pode surgir depois ou a consulta por membro pode falhar.
 
 ### Sobrecarga (RN06) — pode ser tratada aqui ou no dashboard
 - [ ] Definir limite configurável de escalas simultâneas por membro no período
@@ -410,9 +413,15 @@
 - [x] **Abrir `GET /escalas` ao MEMBRO** (decisão da cliente) — a LEITURA (`GET /escalas`,
       `/escalas/:id`, `/conflitos`) passou a aceitar o MEMBRO, escopada NO USE CASE: só
       escalas `PUBLICADA` de ministérios em que participa (RN04); rascunho ou ministério
-      alheio → 404. Escrita segue admin-only. Actor/membershipRepo opcionais nos use cases;
-      testes de rota + unit. `GET /eventos` idem (leitura ao MEMBRO — PR #33). *(o de escalas
-      está uncommitted na main)*
+      alheio → 404. Escrita segue admin-only. Actor opcional nos use cases;
+      testes de rota + unit. `GET /eventos` idem (leitura ao MEMBRO — PR #33).
+- [x] **Escopo de leitura extraído para a `ScheduleVisibilityPolicy`** — a guarda "quais
+      escalas este ator ENXERGA?" saiu de dentro dos três use cases (`ListSchedules`,
+      `GetSchedule`, `GetScheduleConflicts`) para um serviço de domínio, complementar à
+      `MinistryAccessPolicy` ("pode ADMINISTRAR?"). A regra deixou de valer só para o MEMBRO:
+      o `ADMIN_MINISTERIO` também passa a enxergar apenas os ministérios em que participa —
+      rascunho onde administra, só publicadas onde é apenas membro. `ADMIN_GERAL` segue
+      vendo toda a instituição.
 - [ ] Tela de tratamento de erros e loading states reutilizáveis — **adiado de propósito
       até a primeira tela de conteúdo (Ministérios)**. Extrair antes seria adivinhar a
       forma: spinner de página ou skeleton no lugar do conteúdo? Erro como banner, card ou
@@ -451,7 +460,7 @@
 - [x] **Calendário** de eventos — a visão de calendário mensal por dia é a tela de **Agenda**
       (abaixo); a tela de Eventos é lista com filtro por mês.
 
-### Telas de Escala *(construídas, uncommitted na main)*
+### Telas de Escala
 - [x] Tela de **geração de escala** (`web/src/pages/schedules/`): lista (período dia/semana/
       mês, filtros, "Minhas escalas") + detalhe (montar), criar via modal com mini-calendário.
 - [x] Alocar membros (pessoa + função) — painel "Adicionar", editar inline, remover.
@@ -462,7 +471,7 @@
 - [x] Botão de **publicar** escala (modal de confirmação; volta à lista).
 - [x] Revisar conflitos (modal read-only, `GET /escalas/:id/conflitos`).
 
-### Telas do Membro *(Agenda construída, uncommitted na main)*
+### Telas do Membro
 - [x] "Onde estou escalado" + calendário — tela de **Agenda** (`web/src/pages/agenda/`):
       calendário mensal com eventos, "você escalado" (via `/minhas-escalas`) e a
       indisponibilidade do próprio membro. Visão de admin: as escalas do dia no escopo
@@ -473,8 +482,9 @@
 - [ ] 🟡 **Agenda — "escalado com conflito" para o MEMBRO:** o calendário mostra só "escalado";
       o variante em conflito precisaria o `GET /minhas-escalas` expor o `conflict` da alocação
       (hoje não expõe conflito ao membro).
-- [ ] 🟡 **Agenda — botões "+ Evento" / "+ Escala"** (admin) pré-preenchendo a data escolhida
-      — deferido (integração com os modais de criação de Evento/Escala).
+- [ ] 🟡 **Agenda — botão "+ Escala"** (admin) pré-preenchendo a data escolhida — deferido
+      (integração com o modal de criação de Escala). O **"+ Evento" já foi feito**: botão no
+      cabeçalho e no painel do dia (ADMIN_GERAL), com `defaultDate` no `EventModal`.
 - [ ] Central de notificações (in-app)
 - [ ] 🟡 **Enriquecimento N+M no front (Escalas/Agenda/Membros):** as telas fazem `getSchedule`
       por escala + indisponibilidade por membro para computar contagem, "está escalado",

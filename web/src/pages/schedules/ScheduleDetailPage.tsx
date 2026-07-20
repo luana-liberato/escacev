@@ -13,7 +13,11 @@ import {
 } from '@/services/assignments';
 import { listMinistryPositions } from '@/services/positions';
 import { listMinistryMembers } from '@/services/memberships';
-import { listMemberUnavailabilities, overlapsUnavailability } from '@/services/unavailability';
+import {
+  listMemberUnavailabilities,
+  listMyUnavailabilities,
+  overlapsUnavailability,
+} from '@/services/unavailability';
 import { listEvents } from '@/services/events';
 import { listMinistryCards } from '@/services/ministries';
 import type {
@@ -36,6 +40,13 @@ import { formatDay, formatEventWhen } from './scheduleTime';
  * erro, é o cartão âmbar "aguardando decisão"; reenviar com confirm=true escala
  * mesmo assim (a alocação nasce com selo "Conflito", RN03). Editar uma alocação
  * (trocar pessoa/função) reavalia da mesma forma, com o mesmo cartão âmbar.
+ *
+ * Indisponibilidade (RN05) é BLOQUEIO na UI: o indisponível vem desabilitado no
+ * seletor, então o caminho normal nem chega ao cartão. O ramo de indisponibilidade
+ * do cartão âmbar segue existindo como rede de proteção — o bloqueio decide com os
+ * dados do carregamento, e a indisponibilidade pode ser criada depois disso ou a
+ * consulta por membro pode falhar (cai no catch como "disponível"). Sem esse ramo,
+ * nesses casos o admin travaria sem entender o motivo.
  */
 
 /** O ramo "aguardando decisão" da edição — reusa o shape do service. */
@@ -77,8 +88,8 @@ export default function ScheduleDetailPage() {
   const load = () => {
     setLoading(true);
     setError(null);
-    Promise.all([getSchedule(id), listEvents(), listMinistryCards()])
-      .then(async ([schedule, events, cards]) => {
+    Promise.all([getSchedule(id), listEvents(), listMinistryCards(), listMyUnavailabilities()])
+      .then(async ([schedule, events, cards, myUnavs]) => {
         setData(schedule);
         setEvent(events.find((e) => e.id === schedule.eventId) ?? null);
         const card = cards.find((c) => c.id === schedule.ministryId);
@@ -86,6 +97,19 @@ export default function ScheduleDetailPage() {
         const manage = user?.role === 'ADMIN_GERAL' || (card?.isCurrentUserAdmin ?? false);
         setCanManage(manage);
         const ev = events.find((e) => e.id === schedule.eventId) ?? null;
+
+        // Indisponibilidade (RN05). Sinaliza quem está indisponível no horário do
+        // evento. Duas fontes: a do PRÓPRIO usuário (endpoint member-scoped, vale
+        // para qualquer perfil — inclusive o MEMBRO que abre a própria escala) e,
+        // só para o admin, a dos DEMAIS alocados (endpoint admin-only).
+        const unavailable = new Set<string>();
+        if (ev && user?.memberId) {
+          const iAmAllocated = schedule.assignments.some((a) => a.member.id === user.memberId);
+          if (iAmAllocated && overlapsUnavailability(myUnavs, ev.startsAt, ev.endsAt)) {
+            unavailable.add(user.memberId);
+          }
+        }
+
         if (manage) {
           const [mems, poss] = await Promise.all([
             listMinistryMembers(schedule.ministryId),
@@ -94,30 +118,33 @@ export default function ScheduleDetailPage() {
           setMembers(mems);
           setPositions(poss);
 
-          // Indisponibilidade (RN05): quais alocados estão indisponíveis no
-          // horário do evento — consulta só do admin (endpoint admin-only).
           if (ev) {
-            const allocatedIds = [...new Set(schedule.assignments.map((a) => a.member.id))];
+            // Checa a indisponibilidade dos alocados (para o vermelho na linha) E de
+            // todos os membros do ministério (para desabilitar os indisponíveis no
+            // seletor de adicionar/editar — só disponíveis podem ser escolhidos).
+            const idsToCheck = [
+              ...new Set([
+                ...schedule.assignments.map((a) => a.member.id),
+                ...mems.map((m) => m.id),
+              ]),
+            ];
             const checks = await Promise.all(
-              allocatedIds.map((mid) =>
+              idsToCheck.map((mid) =>
                 listMemberUnavailabilities(mid)
                   .then((list) => ({ mid, unavailable: overlapsUnavailability(list, ev.startsAt, ev.endsAt) }))
                   .catch(() => ({ mid, unavailable: false })),
               ),
             );
-            setUnavailableMemberIds(new Set(checks.filter((c) => c.unavailable).map((c) => c.mid)));
-          } else {
-            setUnavailableMemberIds(new Set());
+            checks.filter((c) => c.unavailable).forEach((c) => unavailable.add(c.mid));
           }
-        } else {
-          setUnavailableMemberIds(new Set());
         }
+        setUnavailableMemberIds(unavailable);
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Não foi possível carregar a escala.'))
       .finally(() => setLoading(false));
   };
 
-  useEffect(load, [id, user?.role]);
+  useEffect(load, [id, user?.role, user?.memberId]);
 
   /** Envia UM item ao lote. confirm=true reenvia após o alerta âmbar (RN03). */
   const submitAdd = async (confirm: boolean) => {
@@ -341,11 +368,15 @@ export default function ScheduleDetailPage() {
                             onChange={(e) => setEditMemberId(e.target.value)}
                             className="w-full rounded-[10px] border border-line bg-white px-3 py-2 text-sm sm:min-w-[150px] sm:flex-1"
                           >
-                            {members.map((m) => (
-                              <option key={m.id} value={m.id}>
-                                {m.name}
-                              </option>
-                            ))}
+                            {members.map((m) => {
+                              const unavailable = unavailableMemberIds.has(m.id);
+                              return (
+                                <option key={m.id} value={m.id} disabled={unavailable}>
+                                  {m.name}
+                                  {unavailable ? ' (indisponível)' : ''}
+                                </option>
+                              );
+                            })}
                           </select>
                           <select
                             aria-label="Função"
@@ -502,6 +533,14 @@ export default function ScheduleDetailPage() {
                               </button>
                             </div>
                           ))}
+
+                        {/* Escalado, mas indisponível neste horário: aviso na própria
+                            linha (RN05, na visão do membro). */}
+                        {isMine && unavailLook && (
+                          <p className="w-full text-[12px] font-semibold text-danger">
+                            Você está escalado, mas marcou indisponibilidade neste horário
+                          </p>
+                        )}
                       </>
                     )}
                   </div>
@@ -572,11 +611,15 @@ export default function ScheduleDetailPage() {
                   className="w-full rounded-[10px] border border-line bg-white px-3 py-2.5 text-sm sm:min-w-[160px] sm:flex-1"
                 >
                   <option value="">Pessoa…</option>
-                  {members.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name}
-                    </option>
-                  ))}
+                  {members.map((m) => {
+                    const unavailable = unavailableMemberIds.has(m.id);
+                    return (
+                      <option key={m.id} value={m.id} disabled={unavailable}>
+                        {m.name}
+                        {unavailable ? ' (indisponível)' : ''}
+                      </option>
+                    );
+                  })}
                 </select>
                 <select
                   aria-label="Função"
