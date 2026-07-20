@@ -35,6 +35,15 @@ services:
     restart: 'no'
     environment:
       DATABASE_URL: ${DATABASE_URL:?defina DATABASE_URL no .env}
+      # O seed roda por este mesmo serviço (`run --rm migrate npx prisma db seed`),
+      # e é ele quem cria a instituição e convida o primeiro ADMIN_GERAL — sem
+      # esse convite não existe ninguém que consiga entrar no sistema.
+      # NODE_ENV=production também faz o seed pular os dados de exemplo.
+      NODE_ENV: production
+      INSTITUTION_ID: ${INSTITUTION_ID:?defina INSTITUTION_ID no .env}
+      INSTITUTION_NAME: ${INSTITUTION_NAME:?defina INSTITUTION_NAME no .env}
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-}
+      SEED_ADMIN_NAME: ${SEED_ADMIN_NAME:-Administrador Geral}
     depends_on:
       postgres:
         condition: service_healthy
