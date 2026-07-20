@@ -37,10 +37,12 @@ do compose.
 2. **Google Console.** Em *Credenciais → URIs de redirecionamento autorizados*,
    adicione `https://escacev.com/api/auth/google/callback`. **O login falha se
    não bater exatamente com o `GOOGLE_CALLBACK_URL` do `.env`.**
-3. **Conta SMTP real** (SendGrid ou similar). O Mailtrap é só de
-   desenvolvimento: captura os e-mails e não entrega a ninguém. Convite é o
-   único caminho de entrada de um membro, então sem SMTP você sobe o sistema e
-   não consegue cadastrar ninguém além de si.
+3. **Conta SMTP real** (SendGrid, Gmail, o e-mail do domínio na Hostinger…).
+   Em desenvolvimento o projeto usa `SMTP_HOST="ethereal"`, a caixa de teste do
+   Nodemailer, que **não entrega nada a ninguém** — serve só para conferir o
+   HTML dos templates. Em produção isso não vale: convite é o único caminho de
+   entrada de um membro, então sem SMTP de verdade você sobe o sistema e não
+   consegue cadastrar ninguém além de si.
 
 ## DNS: Hostinger + Cloudflare
 

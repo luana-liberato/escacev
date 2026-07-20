@@ -1,4 +1,4 @@
-import type { Transporter } from 'nodemailer';
+import nodemailer, { type Transporter } from 'nodemailer';
 import { NodemailerEmailService, EmailService, EmailMessage } from '../email';
 import { AppNotifier } from '../AppNotifier';
 import { CreateNotificationUseCase } from '../../../domain/use-cases/notifications/CreateNotificationUseCase';
@@ -102,6 +102,61 @@ describe('NodemailerEmailService', () => {
     await service.send({ to: 'a@b.c', subject: 's', html: 'h', text: 't' });
 
     expect(info).toHaveBeenCalledWith(expect.stringContaining('SMTP não configurado'));
+    info.mockRestore();
+  });
+
+  it('ethereal: falha ao criar a caixa cai no modo log e NÃO lança', async () => {
+    // Sem rede (ou Ethereal fora do ar) o envio não pode derrubar a operação que
+    // o disparou — e-mail é best-effort por contrato.
+    const createTestAccount = jest
+      .spyOn(nodemailer, 'createTestAccount')
+      .mockRejectedValue(new Error('sem rede'));
+    const err = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    const info = jest.spyOn(console, 'info').mockImplementation(() => undefined);
+
+    const service = new NodemailerEmailService({
+      config: { host: 'ethereal', port: 587, from: 'f@x.y' },
+    });
+
+    await expect(
+      service.send({ to: 'a@b.c', subject: 's', html: 'h', text: 't' }),
+    ).resolves.toBe(true);
+    expect(info).toHaveBeenCalledWith(expect.stringContaining('SMTP não configurado'));
+
+    createTestAccount.mockRestore();
+    err.mockRestore();
+    info.mockRestore();
+  });
+
+  it('ethereal: cria a caixa UMA vez e loga o link de preview a cada envio', async () => {
+    const sendMail = jest.fn().mockResolvedValue({ messageId: 'x' });
+    const createTestAccount = jest.spyOn(nodemailer, 'createTestAccount').mockResolvedValue({
+      user: 'conta@ethereal.email',
+      pass: 'p',
+      smtp: { host: 'smtp.ethereal.email', port: 587, secure: false },
+    } as unknown as nodemailer.TestAccount);
+    const createTransport = jest
+      .spyOn(nodemailer, 'createTransport')
+      .mockReturnValue({ sendMail } as unknown as ReturnType<typeof nodemailer.createTransport>);
+    const getTestMessageUrl = jest
+      .spyOn(nodemailer, 'getTestMessageUrl')
+      .mockReturnValue('https://ethereal.email/message/abc');
+    const info = jest.spyOn(console, 'info').mockImplementation(() => undefined);
+
+    const service = new NodemailerEmailService({
+      config: { host: 'ethereal', port: 587, from: 'f@x.y' },
+    });
+    await service.send({ to: 'a@b.c', subject: 'primeiro', html: 'h', text: 't' });
+    await service.send({ to: 'd@e.f', subject: 'segundo', html: 'h', text: 't' });
+
+    // A conta é memoizada: dois envios, uma criação só.
+    expect(createTestAccount).toHaveBeenCalledTimes(1);
+    expect(sendMail).toHaveBeenCalledTimes(2);
+    expect(info).toHaveBeenCalledWith(expect.stringContaining('https://ethereal.email/message/abc'));
+
+    createTestAccount.mockRestore();
+    createTransport.mockRestore();
+    getTestMessageUrl.mockRestore();
     info.mockRestore();
   });
 });
